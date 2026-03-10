@@ -32,16 +32,7 @@ with st.sidebar:
 if df is not None:
     st.title("⚡ Sistema de Gestión Energética - PAC3200")
     
-        if seccion == "🕒 Tiempo Real":
-        st.subheader("🕒 Monitoreo en Tiempo Real (Grafana)")
-        st.markdown("Mediciones instantáneas del analizador Siemens PAC3200.")
-
-        # Reemplazá este link por el tuyo de Grafana y agregale &kiosk al final
-        link_grafana = "http://localhost:3000/d/ad8s7vr/variables-electricas?orgId=1&from=now-30d&to=now&timezone=browser"
-
-        st.components.v1.iframe(link_grafana, height=800, scrolling=True)
-    
-    elif seccion == "🏠 Inicio":
+    if seccion == "🏠 Inicio":
         st.subheader("Facultad Regional Tucumán")
         e_total = df['EA_imp_T1_kwh'].max() - df['EA_imp_T1_kwh'].min()
         c1, c2, c3 = st.columns(3)
@@ -49,6 +40,14 @@ if df is not None:
         c2.metric("Huella de Carbono", f"{e_total * 0.45:,.1f} kg CO2")
         c3.metric("Última Medición", df.index.max().strftime('%d/%m/%Y'))
         st.success("Sistema Operativo y conectado a la base de datos histórica.")
+
+    elif seccion == "🕒 Tiempo Real":
+        st.subheader("🕒 Monitoreo en Tiempo Real (Grafana)")
+        st.markdown("Mediciones instantáneas del analizador Siemens PAC3200.")
+        
+        # ACA PEGAS TU LINK DE GRAFANA (Acordate de ponerle &kiosk al final si podes)
+        link_grafana = "http://TU_LINK_DE_GRAFANA_AQUI"
+        st.components.v1.iframe(link_grafana, height=800, scrolling=True)
 
     elif seccion == "📶 Calidad (QoS)":
         st.subheader("📶 Calidad de Servicio (QoS) y Gaps de Red")
