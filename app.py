@@ -24,7 +24,7 @@ df = load_data()
 with st.sidebar:
     st.image("https://www.frt.utn.edu.ar/imagenes/logo_utn.png", width=150)
     st.title("Navegación")
-    seccion = st.radio("Secciones:", ["🏠 Inicio", "📶 Calidad (QoS)", "📊 Consumo por Día"])
+    seccion = st.radio("Secciones:", ["🕒 Tiempo Real", "🏠 Inicio", "📶 Calidad (QoS)", "📊 Consumo por Día"])
     st.markdown("---")
     st.info("Ingeniería Electrónica - UTN FRT")
 
@@ -32,7 +32,16 @@ with st.sidebar:
 if df is not None:
     st.title("⚡ Sistema de Gestión Energética - PAC3200")
     
-    if seccion == "🏠 Inicio":
+        if seccion == "🕒 Tiempo Real":
+        st.subheader("🕒 Monitoreo en Tiempo Real (Grafana)")
+        st.markdown("Mediciones instantáneas del analizador Siemens PAC3200.")
+
+        # Reemplazá este link por el tuyo de Grafana y agregale &kiosk al final
+        link_grafana = "http://localhost:3000/d/ad8s7vr/variables-electricas?orgId=1&from=now-30d&to=now&timezone=browser"
+
+        st.components.v1.iframe(link_grafana, height=800, scrolling=True)
+    
+    elif seccion == "🏠 Inicio":
         st.subheader("Facultad Regional Tucumán")
         e_total = df['EA_imp_T1_kwh'].max() - df['EA_imp_T1_kwh'].min()
         c1, c2, c3 = st.columns(3)
