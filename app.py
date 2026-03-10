@@ -47,7 +47,7 @@ if df is not None:
         
         # ACA PEGAS TU LINK DE GRAFANA (Acordate de ponerle &kiosk al final si podes)
         link_grafana = "https://pac3200pf2026frt.grafana.net/public-dashboards/53f62d53508742059348db1629e4f587?kiosk"
-        st.components.v1.iframe(link_grafana, height=800, scrolling=True)
+        st.link_button("🚀 Abrir Terminal en Tiempo Real", link_grafana, use_container_width=True)
 
     elif seccion == "📶 Calidad (QoS)":
         st.subheader("📶 Calidad de Servicio (QoS) y Gaps de Red")
