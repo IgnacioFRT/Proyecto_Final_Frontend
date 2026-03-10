@@ -42,12 +42,77 @@ if df is not None:
         st.success("Sistema Operativo y conectado a la base de datos histórica.")
 
     elif seccion == "🕒 Tiempo Real":
-        st.subheader("🕒 Monitoreo en Tiempo Real (Grafana)")
-        st.markdown("Mediciones instantáneas del analizador Siemens PAC3200.")
+        st.subheader("🕒 Monitoreo en Tiempo Real (Streamlit)")
+        st.markdown("Mediciones instantáneas extraídas directamente de InfluxDB Cloud.")
         
-        # ACA PEGAS TU LINK DE GRAFANA (Acordate de ponerle &kiosk al final si podes)
-        link_grafana = "https://pac3200pf2026frt.grafana.net/public-dashboards/53f62d53508742059348db1629e4f587?kiosk"
-        st.link_button("🚀 Abrir Terminal en Tiempo Real", link_grafana, use_container_width=True)
+        # 1. EL BOTÓN DE ACTUALIZACIÓN MANUAL
+        if st.button("🔄 Actualizar Mediciones Ahora", use_container_width=True):
+            with st.spinner('Consultando al PAC3200 en la nube...'):
+                
+                # Credenciales
+                url = "https://influxdb.utn.xrob.com.ar"
+                token = "VPJoZH--S2GGPNNhfmWVUsZEaHqV4h1wkOX235FSfhk6GkitChp2e-8DxQ701ns6s7VwpKnmE-Evj7KYhLcWJQ=="
+                org = "ec1aafe9e31ba7af"
+                bucket = "UTN FRT"
+                
+                from influxdb_client import InfluxDBClient
+                client = InfluxDBClient(url=url, token=token, org=org)
+                query_api = client.query_api()
+                
+                # 2. LA CONSULTA ULTRA RÁPIDA (Solo el último dato)
+                query = f'''
+                    from(bucket: "{bucket}")
+                      |> range(start: -5m) 
+                      |> filter(fn: (r) => r._measurement == "pruebas_fn")
+                      |> filter(fn: (r) => r.deviceID == "08B764")
+                      |> filter(fn: (r) => r._field == "UL1N" or r._field == "IL1" or r._field == "freq")
+                      |> last()
+                '''
+                
+                try:
+                    result = query_api.query(org=org, query=query)
+                    
+                    # Extraer los datos
+                    val_v, val_i, val_f = 0.0, 0.0, 0.0
+                    for table in result:
+                        for record in table.records:
+                            campo = record.get_field()
+                            if campo == "UL1N": val_v = record.get_value()
+                            elif campo == "IL1": val_i = record.get_value()
+                            elif campo == "freq": val_f = record.get_value()
+
+                    # 3. DIBUJAR LOS VELOCÍMETROS CON PLOTLY
+                    c1, c2, c3 = st.columns(3)
+                    
+                    # Reloj de Tensión
+                    fig_v = go.Figure(go.Indicator(
+                        mode = "gauge+number", value = val_v, title = {'text': "Tensión (V)"},
+                        gauge = {'axis': {'range': [0, 250]}, 'bar': {'color': "#4caf50"},
+                                 'steps': [{'range': [0, 200], 'color': "lightgray"},
+                                           {'range': [200, 240], 'color': "gray"}]}
+                    ))
+                    fig_v.update_layout(height=250, margin=dict(l=10, r=10, t=30, b=10))
+                    c1.plotly_chart(fig_v, use_container_width=True)
+
+                    # Reloj de Corriente
+                    fig_i = go.Figure(go.Indicator(
+                        mode = "gauge+number", value = val_i, title = {'text': "Corriente (A)"},
+                        gauge = {'axis': {'range': [0, 10]}, 'bar': {'color': "#ff9800"}}
+                    ))
+                    fig_i.update_layout(height=250, margin=dict(l=10, r=10, t=30, b=10))
+                    c2.plotly_chart(fig_i, use_container_width=True)
+
+                    # Reloj de Frecuencia
+                    fig_f = go.Figure(go.Indicator(
+                        mode = "gauge+number", value = val_f, title = {'text': "Frecuencia (Hz)"},
+                        gauge = {'axis': {'range': [45, 55]}, 'bar': {'color': "#2196f3"}}
+                    ))
+                    fig_f.update_layout(height=250, margin=dict(l=10, r=10, t=30, b=10))
+                    c3.plotly_chart(fig_f, use_container_width=True)
+                    
+                except Exception as e:
+                    st.error(f"Error de conexión: {e}")
+        
 
     elif seccion == "📶 Calidad (QoS)":
         st.subheader("📶 Calidad de Servicio (QoS) y Gaps de Red")
