@@ -24,7 +24,7 @@ df = load_data()
 with st.sidebar:
     st.image("https://www.frt.utn.edu.ar/imagenes/logo_utn.png", width=150)
     st.title("Navegación")
-    seccion = st.radio("Secciones:", ["🕒 Tiempo Real", "🏠 Inicio", "📶 Calidad (QoS)", "📊 Consumo por Día"])
+    seccion = st.radio("Secciones:", ["🏠 Inicio", "🕒 Tiempo Real", "📶 Calidad (QoS)", "📊 Consumo por Día"])
     st.markdown("---")
     st.info("Ingeniería Electrónica - UTN FRT")
 
