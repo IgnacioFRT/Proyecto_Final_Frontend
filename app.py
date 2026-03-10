@@ -46,7 +46,7 @@ if df is not None:
         st.markdown("Mediciones instantáneas del analizador Siemens PAC3200.")
         
         # ACA PEGAS TU LINK DE GRAFANA (Acordate de ponerle &kiosk al final si podes)
-        link_grafana = "https://pac3200pf2026frt.grafana.net/public-dashboards/53f62d53508742059348db1629e4f587"
+        link_grafana = "https://pac3200pf2026frt.grafana.net/public-dashboards/53f62d53508742059348db1629e4f587?kiosk"
         st.components.v1.iframe(link_grafana, height=800, scrolling=True)
 
     elif seccion == "📶 Calidad (QoS)":
