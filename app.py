@@ -149,8 +149,8 @@ with st.sidebar:
     st.info("Ingeniería Electrónica - UTN FRT")
 
 # 4. LÓGICA DE LAS SECCIONES
-if df is not None:
-    st.title("⚡ Sistema de Gestión Energética - PAC3200")
+    
+st.title("⚡ Sistema de Gestión Energética - PAC3200")
     
     if seccion == "🏠 Inicio":
         
