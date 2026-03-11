@@ -316,10 +316,12 @@ elif seccion == "📊 Consumo por Día":
                 labels=['Línea 1', 'Línea 2', 'Línea 3'],
                 values=[energia_p1, energia_p2, energia_p3],
                 marker_colors=['#1f77b4', '#ff7f0e', '#2ca02c'],
-                pull=[0.05, 0.05, 0.05], textinfo='percent+label',
+                pull=[0.05, 0.05, 0.05], 
+                textinfo='percent+label',
+                textposition='outside',
                 hovertemplate="<b>%{label}</b><br>Estimado: %{value:,.1f} kWh<br>%{percent}<extra></extra>"
             )])
-            fig_fases.update_layout(margin=dict(t=20, b=20, l=10, r=10), showlegend=False, height=350, paper_bgcolor="rgba(0,0,0,0)")
+            fig_fases.update_layout(margin=dict(t=20, b=20, l=10, r=10), showlegend=False, height=350, paper_bgcolor="rgba(0,0,0,0)", font=dict(color="black", size=14))
             st.plotly_chart(fig_fases, use_container_width=True)
 
         with col_info_fases:
