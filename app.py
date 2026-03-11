@@ -4,6 +4,7 @@ from influxdb_client import InfluxDBClient
 import plotly.graph_objects as go
 from streamlit_autorefresh import st_autorefresh
 import os
+import pytz # Para la zona horaria
 
 # 1. CONFIGURACIÓN DE PÁGINA
 st.set_page_config(page_title="EMS - PAC3200 UTN", layout="wide")
@@ -48,9 +49,13 @@ if df is not None:
         # --- CONFIGURACIÓN DE ACTUALIZACIÓN AUTOMÁTICA ---
         # Refresca la app cada 30 segundos (30000 milisegundos)
         count = st_autorefresh(interval=30000, key="datarefresh")
+
+        # --- AJUSTE DE HORA ARGENTINA ---
+        tz_ar = pytz.timezone("America/Argentina/Buenos_Aires")
+        hora_actual = pd.Timestamp.now(tz=tz_ar).strftime('%H:%M:%S')
         
         st.subheader("⛅ Condiciones en Tiempo Real (Actualización Automática)")
-        st.caption(f"Última actualización: {pd.Timestamp.now().strftime('%H:%M:%S')}")
+        st.caption(f"Última actualización (Hora Arg): {hora_actual}")
         
         # 1. Credenciales y Conexión (Igual que antes)
         url = "https://influxdb.utn.xrob.com.ar"
@@ -92,7 +97,7 @@ if df is not None:
                 title = {'text': "Temperatura (°C)"},
                 gauge = {'axis': {'range': [0, 50]}, 'bar': {'color': "#4caf50"}}
             ))
-            fig_t.update_layout(height=250, margin=dict(l=10, r=10, t=30, b=10))
+            fig_t.update_layout(height=300, margin=dict(l=20, r=20, t=60, b=20))
             c1.plotly_chart(fig_t, use_container_width=True)
 
             # --- Reloj de Humedad ---
@@ -102,7 +107,7 @@ if df is not None:
                 title = {'text': "Humedad (%)"},
                 gauge = {'axis': {'range': [0, 100]}, 'bar': {'color': "#f44336"}}
             ))
-            fig_h.update_layout(height=250, margin=dict(l=10, r=10, t=30, b=10))
+            fig_h.update_layout(height=300, margin=dict(l=20, r=20, t=60, b=20))
             c2.plotly_chart(fig_h, use_container_width=True)
 
             # --- Reloj de Viento ---
@@ -112,7 +117,7 @@ if df is not None:
                 title = {'text': "Viento (km/h)"},
                 gauge = {'axis': {'range': [0, 100]}, 'bar': {'color': "#8bc34a"}}
             ))
-            fig_v.update_layout(height=250, margin=dict(l=10, r=10, t=30, b=10))
+            fig_v.update_layout(height=300, margin=dict(l=20, r=20, t=60, b=20))
             c3.plotly_chart(fig_v, use_container_width=True)
             
         except Exception as e:
