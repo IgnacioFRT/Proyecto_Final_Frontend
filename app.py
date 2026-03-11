@@ -89,7 +89,7 @@ if df is not None:
                 for record in table.records:
                     data[record.get_field()] = record.get_value()
 
-           def crear_gauge_doble(val_v, val_i, titulo):
+            def crear_gauge_doble(val_v, val_i, titulo):
                 fig = go.Figure()
 
                 # 1. Anillo Exterior: TENSIÓN (Azul)
