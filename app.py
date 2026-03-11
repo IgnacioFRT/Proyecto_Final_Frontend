@@ -344,11 +344,6 @@ elif seccion == "📊 Consumo por Día":
                 ))
             fig_stack.update_layout(barmode='stack', height=400, template='plotly_white', hovermode='x unified', legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
             st.plotly_chart(fig_stack, use_container_width=True)
-            
-            m1, m2, m3 = st.columns(3)
-            m1.metric("L1 (Azul)", f"{energia_p1:,.1f} kWh")
-            m2.metric("L2 (Naranja)", f"{energia_p2:,.1f} kWh")
-            m3.metric("L3 (Verde)", f"{energia_p3:,.1f} kWh")
 
     except Exception as e:
         st.error(f"Error en el procesamiento de datos: {e}")
