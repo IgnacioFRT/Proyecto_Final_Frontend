@@ -132,6 +132,7 @@ if seccion == "🏠 Inicio":
     st.write("👈 *Utilice el menú de navegación lateral para acceder a la visualización.*")
 
 elif seccion == "🕒 Tiempo Real":
+    
     st_autorefresh(interval=30000, key="datarefresh")
     tz_ar = pytz.timezone("America/Argentina/Buenos_Aires")
     hora_actual = pd.Timestamp.now(tz=tz_ar).strftime('%H:%M:%S')
@@ -212,7 +213,6 @@ elif seccion == "🕒 Tiempo Real":
         st.error(f"Error en la adquisición de datos en vivo: {e}")
 
 elif seccion == "📊 Consumo por Día":
-    st.write("### 📊 Análisis de Consumo por Día y Fase")
     
     try:
         # A. ADQUISICIÓN DE DATOS
