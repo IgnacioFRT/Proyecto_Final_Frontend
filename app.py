@@ -89,33 +89,37 @@ if df is not None:
                 for record in table.records:
                     data[record.get_field()] = record.get_value()
 
-            # --- FUNCIÓN GAUGE DOBLE SIMÉTRICA ---
             def crear_gauge_doble(val_v, val_i, titulo):
                 fig = go.Figure()
 
-                # Estilo de fuente para que sea igual a Clima
-                fuente_titulos = {'size': 16, 'color': "#5d6d7e", 'family': "Source Sans Pro"}
-
-                # 1. Anillo Exterior: TENSIÓN
+                # 1. Anillo Exterior: TENSIÓN (Azul)
                 fig.add_trace(go.Indicator(
-                    mode = "gauge", 
-                    value = val_v,
-                    title = {'text': titulo, 'font': fuente_titulos},
-                    domain = {'x': [0, 1], 'y': [0.1, 1]}, # Subimos un poco el origen (0.1)
+                    mode = "gauge+number", value = val_v,
+                    number = {
+                        'valueformat': ".1f", 
+                        'suffix': "V", 
+                        'font': {'size': 20, 'color': "#1f77b4"} # Azul
+                    },
+                    title = {'text': titulo, 'font': {'size': 18}},
+                    domain = {'x': [0, 1], 'y': [0, 1]},
                     gauge = {
-                        'axis': {'range': [0, 250], 'tickwidth': 1, 'tickcolor': "#5d6d7e", 'nticks': 6},
+                        'axis': {'range': [0, 250], 'tickwidth': 1, 'tickcolor': "#5d6d7e"},
                         'bar': {'color': "#1f77b4", 'thickness': 0.5},
                         'bgcolor': "white",
                         'borderwidth': 1, 'bordercolor': "#f2f4f4"
                     }
                 ))
 
-                # 2. Anillo Interior: CORRIENTE
+                # 2. Anillo Interior: CORRIENTE (Rojo)
                 fig.add_trace(go.Indicator(
-                    mode = "gauge", 
-                    value = val_i,
-                    # Ajustamos el dominio para que las bases coincidan visualmente
-                    domain = {'x': [0.25, 0.75], 'y': [0.1, 0.6]}, 
+                    mode = "gauge+number", value = val_i,
+                    number = {
+                        'valueformat': ".2f", 
+                        'suffix': "A", 
+                        'font': {'size': 24, 'color': "#f44336"} # Rojo
+                    },
+                    # Bajamos el dominio y el número para que no se pisen
+                    domain = {'x': [0.25, 0.75], 'y': [0.0, 0.5]}, 
                     gauge = {
                         'axis': {'range': [0, 20], 'tickwidth': 1, 'tickcolor': "#5d6d7e", 'nticks': 4},
                         'bar': {'color': "#f44336", 'thickness': 0.7},
@@ -123,10 +127,10 @@ if df is not None:
                     }
                 ))
 
+                # USAMOS EL MISMO LAYOUT QUE EN CLIMA
                 fig.update_layout(
                     height=280, 
-                    # Aumentamos el margen inferior (b) para que no se corten los números de la base
-                    margin=dict(l=25, r=25, t=50, b=40), 
+                    margin=dict(l=25, r=25, t=60, b=25), # IDÉNTICO AL DE CLIMA
                     paper_bgcolor="rgba(0,0,0,0)",
                     font={'family': "Source Sans Pro, sans-serif"}
                 )
