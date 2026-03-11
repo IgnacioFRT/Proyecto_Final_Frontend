@@ -273,6 +273,8 @@ elif seccion == "📊 Consumo por Día":
                 st.caption(f"**Total real registrado:** {energia_total:,.1f} kWh")
 
         with col_barras:
+            with col_barras:
+            st.markdown("#### 📊 Evolución de Consumo Diario") # Usamos H4 para igualar al resto
             color_map = {'Día hábil': '#2ca02c', 'Sábado': '#1f77b4', 'Domingo': '#ff7f0e', 'Feriado': 'red'}
             fig_barras = go.Figure()
             for tipo, color in color_map.items():
@@ -283,7 +285,7 @@ elif seccion == "📊 Consumo por Día":
                         customdata=df_temp[['nombre_dia', 'categoria']],
                         hovertemplate="<b>%{customdata[0]}</b>, %{x|%d de %b}<br><b>Consumo</b>: %{y:.2f} kWh<br><b>Tipo</b>: %{customdata[1]}<extra></extra>"
                     ))
-            fig_barras.update_layout(title='<b>Evolución de Consumo Diario</b>', title_x=0.5, height=450, template='plotly_white', hovermode='x unified', legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
+            fig_barras.update_layout(height=450, template='plotly_white', hovermode='x unified', legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
             st.plotly_chart(fig_barras, use_container_width=True)
 
         # ---------------------------------------------------------
