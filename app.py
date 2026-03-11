@@ -24,6 +24,24 @@ def load_data():
 df = load_data()
 
 # 3. INTERFAZ Y MENÚ LATERAL
+
+# --- ESTILOS CSS PERSONALIZADOS ---
+st.markdown("""
+    <style>
+        /* Cambia el fondo de la barra lateral */
+        [data-testid="stSidebar"] {
+            background-color: #1a252c; /* Azul Marino Industrial */
+        }
+        /* Fuerza a que los textos del menú se vuelvan blancos para que se lean */
+        [data-testid="stSidebar"] p, 
+        [data-testid="stSidebar"] div, 
+        [data-testid="stSidebar"] span, 
+        [data-testid="stSidebar"] label {
+            color: #ffffff !important;
+        }
+    </style>
+""", unsafe_allow_html=True)
+
 with st.sidebar:
     # use_container_width=True hace que se adapte perfecto a los bordes
     st.image("LOGO-BLANCO-UTN.png", use_container_width=True) 
@@ -54,7 +72,7 @@ if df is not None:
         #st.markdown("<h1 style='text-align: center;'>⚡ Sistema de Gestión Energética - PAC3200</h1>", unsafe_allow_html=True)
         st.markdown("<h2 style='text-align: center; color: #34495e;'>Facultad Regional Tucumán (UTN FRT)</h2>", unsafe_allow_html=True)
         st.markdown("<h4 style='text-align: center; color: #7f8c8d;'>Departamento de Ingeniería Electrónica</h4>", unsafe_allow_html=True)
-        st.markdown("<p style='text-align: center; color: #95a5a6;'>Práctica Supervisada: Monitoreo IoT y Análisis de Calidad Eléctrica con analizador Siemens PAC3200</p>", unsafe_allow_html=True)
+        st.markdown("<p style='text-align: center; color: #95a5a6;'>Monitoreo IoT y Análisis de Calidad Eléctrica con analizador Siemens PAC3200</p>", unsafe_allow_html=True)
 
         st.divider()
 
