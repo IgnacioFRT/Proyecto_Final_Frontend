@@ -100,7 +100,7 @@ if df is not None:
                         'axis': {'range': [0, max_val], 'tickwidth': 1, 'tickcolor': "#5d6d7e"},
                         'bar': {'color': color},
                         'bgcolor': "white",
-                        'borderwidth': 1, 'bordercolor': "#e5e8e8"
+                        'borderwidth': 3, 'bordercolor': "#e5e8e8"
                     }
                 ))
                 fig.update_layout(height=280, margin=dict(l=25, r=25, t=60, b=25), paper_bgcolor="rgba(0,0,0,0)", font={'family': "Source Sans Pro, sans-serif"})
@@ -126,7 +126,7 @@ if df is not None:
                     plot_bgcolor="rgba(0,0,0,0)",
                     # ENCERRANDO EL EJE X
                     xaxis=dict(
-                        showline=True, linewidth=1.5, linecolor='#e5e8e8', mirror=True,
+                        showline=True, linewidth=3, linecolor='#e5e8e8', mirror=True,
                         tickfont=dict(size=14, color="#5d6d7e")
                     ),
                     # ENCERRANDO EL EJE Y
@@ -134,7 +134,7 @@ if df is not None:
                         title="Corriente (A)", 
                         range=[0, 20], 
                         gridcolor="#f2f4f4", # Cuadrícula de fondo muy suave
-                        showline=True, linewidth=1.5, linecolor='#e5e8e8', mirror=True,
+                        showline=True, linewidth=3, linecolor='#e5e8e8', mirror=True,
                         tickfont=dict(size=14, color="#5d6d7e")
                     ),
                     font=dict(family="Source Sans Pro, sans-serif", size=14, color="#5d6d7e")
