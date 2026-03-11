@@ -120,38 +120,37 @@ if df is not None:
             f2.plotly_chart(crear_gauge_pro(data.get("IL2",0), "Corriente L2", 20, "#ff7f0e", " A"), use_container_width=True)
             f3.plotly_chart(crear_gauge_pro(data.get("IL3",0), "Corriente L3", 20, "#2ca02c", " A"), use_container_width=True)
 
-            # --- FILA 3: MATRIZ DE CALIDAD COMPACTA ---
+            # --- FILA 3: MATRIZ DE CALIDAD ESTILO "DASHBOARD" ---
             st.divider()
             st.markdown("### 💎 Calidad de Energía")
             
-            # Encabezados de fase rápidos para ahorrar espacio vertical
-            st.write("**Fase: | L1 | L2 | L3 |**")
-            
+            # Usamos 4 columnas igual que antes
             q1, q2, q3, q4 = st.columns(4)
             
             with q1:
                 st.markdown("⚡ **Tensión (V)**")
-                st.metric("L1-N", f"{data.get('UL1N', 0):.1f} V", label_visibility="collapsed")
-                st.metric("L2-N", f"{data.get('UL2N', 0):.1f} V", label_visibility="collapsed")
-                st.metric("L3-N", f"{data.get('UL3N', 0):.1f} V", label_visibility="collapsed")
+                # El componente metric es genial, pero vamos a agruparlos
+                st.metric("L1-N", f"{data.get('UL1N', 0):.1f} V")
+                st.metric("L2-N", f"{data.get('UL2N', 0):.1f} V", delta_color="off")
+                st.metric("L3-N", f"{data.get('UL3N', 0):.1f} V", delta_color="off")
 
             with q2:
                 st.markdown("📉 **Factor Potencia**")
-                st.metric("PF1", f"{data.get('FP1', 0):.2f}", label_visibility="collapsed")
-                st.metric("PF2", f"{data.get('FP2', 0):.2f}", label_visibility="collapsed")
-                st.metric("PF3", f"{data.get('FP3', 0):.2f}", label_visibility="collapsed")
+                st.metric("PF Fase 1", f"{data.get('FP1', 0):.2f}")
+                st.metric("PF Fase 2", f"{data.get('FP2', 0):.2f}")
+                st.metric("PF Fase 3", f"{data.get('FP3', 0):.2f}")
 
             with q3:
                 st.markdown("🌪️ **THD V (%)**")
-                st.metric("V1", f"{data.get('THDv1', 0):.1f} %", label_visibility="collapsed")
-                st.metric("V2", f"{data.get('THDv2', 0):.1f} %", label_visibility="collapsed")
-                st.metric("V3", f"{data.get('THDv3', 0):.1f} %", label_visibility="collapsed")
+                st.metric("V1 THD", f"{data.get('THDv1', 0):.1f} %")
+                st.metric("V2 THD", f"{data.get('THDv2', 0):.1f} %")
+                st.metric("V3 THD", f"{data.get('THDv3', 0):.1f} %")
 
             with q4:
                 st.markdown("🌪️ **THD I (%)**")
-                st.metric("I1", f"{data.get('THDi1', 0):.1f} %", label_visibility="collapsed")
-                st.metric("I2", f"{data.get('THDi2', 0):.1f} %", label_visibility="collapsed")
-                st.metric("I3", f"{data.get('THDi3', 0):.1f} %", label_visibility="collapsed")
+                st.metric("I1 THD", f"{data.get('THDi1', 0):.1f} %")
+                st.metric("I2 THD", f"{data.get('THDi2', 0):.1f} %")
+                st.metric("I3 THD", f"{data.get('THDi3', 0):.1f} %")
                 
         except Exception as e:
             st.error(f"Error en la adquisición de datos: {e}")
