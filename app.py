@@ -148,7 +148,7 @@ if df is not None:
             c3.plotly_chart(crear_gauge(data["wind"], "Viento", 100, "#8bc34a", " km/h"), use_container_width=True)
 
             # --- FILA 2: CORRIENTES POR FASE ---
-            st.write("### 🔌 Análisis por Fase (V exterior | A interior)")
+            st.write("### 🔌 Análisis por Fase")
             f1, f2, f3 = st.columns(3)
             
             # Mostramos el gráfico y debajo los valores con st.columns para que sea legible en móvil
