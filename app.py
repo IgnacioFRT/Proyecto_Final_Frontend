@@ -26,7 +26,7 @@ df = load_data()
 # 3. INTERFAZ Y MENÚ LATERAL
 with st.sidebar:
     # use_container_width=True hace que se adapte perfecto a los bordes
-    st.image("imagen_secundaria.jpg", use_container_width=True) 
+    st.image("LOGO-BLANCO-UTN.pgn", use_container_width=True) 
     st.divider() # Una línea finita para separar el logo del menú queda muy prolija
     st.title("Navegación")
     seccion = st.radio("Secciones:", ["🏠 Inicio", "🕒 Tiempo Real", "📶 Calidad (QoS)", "📊 Consumo por Día"])
