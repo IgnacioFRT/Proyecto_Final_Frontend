@@ -71,26 +71,29 @@ if df is not None:
               |> range(start: -15m) 
               |> filter(fn: (r) => r._measurement == "pruebas_fn")
               |> filter(fn: (r) => r.deviceID == "08B764")
-              |> filter(fn: (r) => r._field == "temp" or r._field == "hum" or r._field == "wind" or r._field == "IL1" or r._field == "IL2" or r._field == "IL3" or
-                                   r._field == "UL1N" or r._field == "UL2N" or r._field == "UL3N")
+              |> filter(fn: (r) => r._field == "temp" or r._field == "hum" or r._field == "wind" or 
+                                   r._field == "IL1" or r._field == "IL2" or r._field == "IL3" or
+                                   r._field == "UL1N" or r._field == "UL2N" or r._field == "UL3N or"
+                                   r._field == "FP1" or r._field == "FP2" or r._field == "FP3" or
+                                   r._field == "THDv1" or r._field == "THDv2" or r._field == "THDv3" or
+                                   r._field == "THDi1" or r._field == "THDi2" or r._field == "THDi3")
               |> last()
         '''
         
         try:
             result = query_api.query(org=org, query=query)
-            # Inicializamos todas las variables
-            data = {"temp": 0.0, "hum": 0.0, "wind": 0.0, "IL1": 0.0, "IL2": 0.0, "IL3": 0.0, "UL1N": 0.0, "UL2N": 0.0, "UL3N": 0.0}
+            # Inicializamos con valores en 0.0 para evitar errores si falta algún dato
+            data = {record.get_field(): 0.0 for table in result for record in table.records}
             
+            # Re-llenamos con los datos reales obtenidos
             for table in result:
                 for record in table.records:
                     data[record.get_field()] = record.get_value()
 
-        
-        # --- FUNCIÓN ÚNICA DE DISEÑO (IDÉNTICA PARA TODO) ---
+        # --- FUNCIÓN ÚNICA DE DISEÑO (Gauges) ---
             def crear_gauge_pro(valor, titulo, max_val, color, sufijo):
                 fig = go.Figure(go.Indicator(
-                    mode = "gauge+number", 
-                    value = valor,
+                    mode = "gauge+number", value = valor,
                     number = {'valueformat': ".2f", 'suffix': sufijo, 'font': {'size': 35, 'color': "#5d6d7e"}},
                     title = {'text': titulo, 'font': {'size': 18, 'color': "#5d6d7e"}},
                     gauge = {
@@ -100,34 +103,53 @@ if df is not None:
                         'borderwidth': 1, 'bordercolor': "#e5e8e8"
                     }
                 ))
-                fig.update_layout(
-                    height=280, 
-                    margin=dict(l=25, r=25, t=60, b=25),
-                    paper_bgcolor="rgba(0,0,0,0)",
-                    font={'family': "Source Sans Pro, sans-serif"}
-                )
+                fig.update_layout(height=280, margin=dict(l=25, r=25, t=60, b=25), paper_bgcolor="rgba(0,0,0,0)", font={'family': "Source Sans Pro, sans-serif"})
                 return fig
 
             # --- FILA 1: CLIMA ---
             st.write("### 🌤️ Variables Climáticas")
             c1, c2, c3 = st.columns(3)
-            c1.plotly_chart(crear_gauge_pro(data["temp"], "Temperatura", 50, "#4caf50", "°C"), use_container_width=True)
-            c2.plotly_chart(crear_gauge_pro(data["hum"], "Humedad", 100, "#f44336", "%"), use_container_width=True)
-            c3.plotly_chart(crear_gauge_pro(data["wind"], "Viento", 100, "#8bc34a", " km/h"), use_container_width=True)
+            c1.plotly_chart(crear_gauge_pro(data.get("temp",0), "Temperatura", 50, "#4caf50", "°C"), use_container_width=True)
+            c2.plotly_chart(crear_gauge_pro(data.get("hum",0), "Humedad", 100, "#f44336", "%"), use_container_width=True)
+            c3.plotly_chart(crear_gauge_pro(data.get("wind",0), "Viento", 100, "#8bc34a", " km/h"), use_container_width=True)
 
             # --- FILA 2: CORRIENTES ---
             st.write("### ⚡ Corrientes por Fase")
             f1, f2, f3 = st.columns(3)
-            f1.plotly_chart(crear_gauge_pro(data["IL1"], "Corriente L1", 20, "#1f77b4", " A"), use_container_width=True)
-            f2.plotly_chart(crear_gauge_pro(data["IL2"], "Corriente L2", 20, "#ff7f0e", " A"), use_container_width=True)
-            f3.plotly_chart(crear_gauge_pro(data["IL3"], "Corriente L3", 20, "#2ca02c", " A"), use_container_width=True)
+            f1.plotly_chart(crear_gauge_pro(data.get("IL1",0), "Corriente L1", 20, "#1f77b4", " A"), use_container_width=True)
+            f2.plotly_chart(crear_gauge_pro(data.get("IL2",0), "Corriente L2", 20, "#ff7f0e", " A"), use_container_width=True)
+            f3.plotly_chart(crear_gauge_pro(data.get("IL3",0), "Corriente L3", 20, "#2ca02c", " A"), use_container_width=True)
 
-            # --- FILA 3: TENSIONES (Métricas compactas para no saturar) ---
-            st.write("### 🔌 Tensiones de Fase")
-            v1, v2, v3 = st.columns(3)
-            v1.metric("L1 - Neutro", f"{data['UL1N']:.1f} V")
-            v2.metric("L2 - Neutro", f"{data['UL2N']:.1f} V")
-            v3.metric("L3 - Neutro", f"{data['UL3N']:.1f} V")
+            # --- NUEVA FILA 3: MATRIZ DE CALIDAD (Tensiones + PF + THD) ---
+            st.divider()
+            st.write("### 💎 Calidad de Energía y Parámetros de Red")
+            
+            q1, q2, q3, q4 = st.columns(4)
+            
+            with q1:
+                st.markdown("**⚡ Tensión (V)**")
+                st.metric("L1-N", f"{data.get('UL1N', 0):.1f} V")
+                st.metric("L2-N", f"{data.get('UL2N', 0):.1f} V")
+                st.metric("L3-N", f"{data.get('UL3N', 0):.1f} V")
+
+            with q2:
+                st.markdown("**📉 Factor Potencia**")
+                # El delta puede indicar si estás cerca del ideal (1.0)
+                st.metric("PF Fase 1", f"{data.get('FP1', 0):.2f}")
+                st.metric("PF Fase 2", f"{data.get('FP2', 0):.2f}")
+                st.metric("PF Fase 3", f"{data.get('FP3', 0):.2f}")
+
+            with q3:
+                st.markdown("**🌪️ THD Tensión**")
+                st.metric("V1 THD", f"{data.get('THDv1', 0):.1f} %")
+                st.metric("V2 THD", f"{data.get('THDv2', 0):.1f} %")
+                st.metric("V3 THD", f"{data.get('THDv3', 0):.1f} %")
+
+            with q4:
+                st.markdown("**🌪️ THD Corriente**")
+                st.metric("I1 THD", f"{data.get('THDi1', 0):.1f} %")
+                st.metric("I2 THD", f"{data.get('THDi2', 0):.1f} %")
+                st.metric("I3 THD", f"{data.get('THDi3', 0):.1f} %")
 
         except Exception as e:
             st.error(f"Error en la adquisición de datos: {e}")
