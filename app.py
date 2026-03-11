@@ -267,6 +267,7 @@ elif seccion == "📊 Consumo por Día":
                     pull=[0.05, 0.05, 0.05],
                     textinfo='percent+label',
                     textposition='outside',
+                    insidetextorientation='radial',
                     hovertemplate="%{label}<br>%{value:,.1f} kWh<br>%{percent}<extra></extra>"
                 )])
                 fig_torta.update_layout(margin=dict(t=20, b=20, l=10, r=10), showlegend=False, height=350, paper_bgcolor="rgba(0,0,0,0)", font=dict(color="black", size=14))
