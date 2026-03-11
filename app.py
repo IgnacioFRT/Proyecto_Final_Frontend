@@ -120,34 +120,43 @@ if df is not None:
             f2.plotly_chart(crear_gauge_pro(data.get("IL2",0), "Corriente L2", 20, "#ff7f0e", " A"), use_container_width=True)
             f3.plotly_chart(crear_gauge_pro(data.get("IL3",0), "Corriente L3", 20, "#2ca02c", " A"), use_container_width=True)
 
-            # --- FILA 3 COMPACTA: MATRIZ DE CALIDAD ---
+            # --- FILA 3: MATRIZ DE CALIDAD ESTILO "DASHBOARD" ---
             st.divider()
             st.markdown("### 💎 Calidad de Energía")
             
-            # Usamos 4 columnas para los títulos
-            c1, c2, c3, c4 = st.columns(4)
+            # Usamos 4 columnas igual que antes
+            q1, q2, q3, q4 = st.columns(4)
             
-            with c1:
-                st.caption("⚡ **Tensión (V)**")
-                st.write(f"**L1:** {data.get('UL1N',0):.1f} | **L2:** {data.get('UL2N',0):.1f} | **L3:** {data.get('UL3N',0):.1f}")
+            with q1:
+                st.markdown("⚡ **Tensión (V)**")
+                # El componente metric es genial, pero vamos a agruparlos
+                st.metric("L1-N", f"{data.get('UL1N', 0):.1f} V")
+                st.metric("L2-N", f"{data.get('UL2N', 0):.1f} V", delta_color="off")
+                st.metric("L3-N", f"{data.get('UL3N', 0):.1f} V", delta_color="off")
 
-            with c2:
-                st.caption("📉 **Factor Potencia**")
-                # Mostramos los 3 en una sola línea para ahorrar espacio
-                st.write(f"**L1:** {data.get('FP1',0):.2f} | **L2:** {data.get('FP2',0):.2f} | **L3:** {data.get('FP3',0):.2f}")
+            with q2:
+                st.markdown("📉 **Factor Potencia**")
+                st.metric("PF Fase 1", f"{data.get('FP1', 0):.2f}")
+                st.metric("PF Fase 2", f"{data.get('FP2', 0):.2f}")
+                st.metric("PF Fase 3", f"{data.get('FP3', 0):.2f}")
 
-            with c3:
-                st.caption("🌪️ **THD V (%)**")
-                st.write(f"**L1:** {data.get('THDv1',0):.1f} | **L2:** {data.get('THDv2',0):.1f} | **L3:** {data.get('THDv3',0):.1f}")
+            with q3:
+                st.markdown("🌪️ **THD V (%)**")
+                st.metric("V1 THD", f"{data.get('THDv1', 0):.1f} %")
+                st.metric("V2 THD", f"{data.get('THDv2', 0):.1f} %")
+                st.metric("V3 THD", f"{data.get('THDv3', 0):.1f} %")
 
-            with c4:
-                st.caption("🌪️ **THD I (%)**")
-                st.write(f"**L1:** {data.get('THDi1',0):.1f} | **L2:** {data.get('THDi2',0):.1f} | **L3:** {data.get('THDi3',0):.1f}")
-            
-            # Agregamos una barra de progreso pequeña si el FP es bajo (opcional)
-            fp_promedio = (data.get('FP1',0) + data.get('FP2',0) + data.get('FP3',0)) / 3
-            if fp_promedio < 0.95:
-                st.warning(f"⚠️ Factor de Potencia Promedio Bajo: {fp_promedio:.2f}")
+            with q4:
+                st.markdown("🌪️ **THD I (%)**")
+                st.metric("I1 THD", f"{data.get('THDi1', 0):.1f} %")
+                st.metric("I2 THD", f"{data.get('THDi2', 0):.1f} %")
+                st.metric("I3 THD", f"{data.get('THDi3', 0):.1f} %")
+
+            # Alerta de FP dinámico
+            fp_prom = (data.get('FP1',0) + data.get('FP2',0) + data.get('FP3',0)) / 3
+            if fp_prom < 0.95 and fp_prom > 0.1: # Evitamos el aviso si no hay carga
+                st.warning(f"⚠️ Factor de Potencia Promedio Bajo: {fp_prom:.2f}")
+                
         except Exception as e:
             st.error(f"Error en la adquisición de datos: {e}")
 
