@@ -369,57 +369,57 @@ if df is not None:
             with st.spinner('Descargando y procesando historial completo desde InfluxDB... ⏳'):
                  df = obtener_datos_historicos()
 
-        energia_total = df['EA_imp_T1_kwh'].max() - df['EA_imp_T1_kwh'].min()
-        df['incremental_consumption'] = df['EA_imp_T1_kwh'].diff().clip(lower=0).fillna(0)
+            energia_total = df['EA_imp_T1_kwh'].max() - df['EA_imp_T1_kwh'].min()
+            df['incremental_consumption'] = df['EA_imp_T1_kwh'].diff().clip(lower=0).fillna(0)
 
-        energia_habil_raw = df[df['es_habil']]['incremental_consumption'].sum()
-        energia_feriado_raw = df[df['es_feriado']]['incremental_consumption'].sum()
-        energia_finde_raw = df[df['es_finde']]['incremental_consumption'].sum()
+            energia_habil_raw = df[df['es_habil']]['incremental_consumption'].sum()
+            energia_feriado_raw = df[df['es_feriado']]['incremental_consumption'].sum()
+            energia_finde_raw = df[df['es_finde']]['incremental_consumption'].sum()
 
-        raw_total_sum = energia_habil_raw + energia_feriado_raw + energia_finde_raw
+            raw_total_sum = energia_habil_raw + energia_feriado_raw + energia_finde_raw
 
-        if raw_total_sum > 0:
-            scaling_factor = energia_total / raw_total_sum
-            energia_habil = energia_habil_raw * scaling_factor
-            energia_feriado = energia_feriado_raw * scaling_factor
-            energia_finde = energia_finde_raw * scaling_factor
-        else:
-            energia_habil = energia_feriado = energia_finde = 0
-
-        col_torta, col_barras = st.columns([1, 2])
-
-        with col_torta:
-            st.markdown("#### 📅 Consumo por Tipo de Día")
-            
-            if raw_total_sum == 0:
-                st.warning("No se registró consumo de energía en el período.")
+            if raw_total_sum > 0:
+                scaling_factor = energia_total / raw_total_sum
+                energia_habil = energia_habil_raw * scaling_factor
+                energia_feriado = energia_feriado_raw * scaling_factor
+                energia_finde = energia_finde_raw * scaling_factor
             else:
-                labels = ['Días hábiles', 'Feriados', 'Fin de semana']
-                sizes = [energia_habil, energia_feriado, energia_finde]
-                colores = ['#66bb6a', '#ef5350', '#42a5f5']
+                energia_habil = energia_feriado = energia_finde = 0
 
-                fig_torta = go.Figure(data=[go.Pie(
-                    labels=labels,
-                    values=sizes,
-                    marker_colors=colores,
-                    pull=[0.05, 0.05, 0.05],
-                    textinfo='percent+label',
-                    hoverinfo='label+value+percent',
-                    hovertemplate="%{label}<br>%{value:,.1f} kWh<br>%{percent}<extra></extra>"
-                )])
+            col_torta, col_barras = st.columns([1, 2])
+
+            with col_torta:
+                st.markdown("#### 📅 Consumo por Tipo de Día")
+            
+                if raw_total_sum == 0:
+                    st.warning("No se registró consumo de energía en el período.")
+                else:
+                    labels = ['Días hábiles', 'Feriados', 'Fin de semana']
+                    sizes = [energia_habil, energia_feriado, energia_finde]
+                    colores = ['#66bb6a', '#ef5350', '#42a5f5']
+
+                    fig_torta = go.Figure(data=[go.Pie(
+                        labels=labels,
+                        values=sizes,
+                        marker_colors=colores,
+                        pull=[0.05, 0.05, 0.05],
+                        textinfo='percent+label',
+                        hoverinfo='label+value+percent',
+                        hovertemplate="%{label}<br>%{value:,.1f} kWh<br>%{percent}<extra></extra>"
+                    )])
                 
-                fig_torta.update_layout(
-                    margin=dict(t=20, b=20, l=10, r=10),
-                    showlegend=False,
-                    height=350,
-                    paper_bgcolor="rgba(0,0,0,0)"
-                )
-                st.plotly_chart(fig_torta, use_container_width=True)
-                st.caption(f"**Total real registrado:** {energia_total:,.1f} kWh")
+                    fig_torta.update_layout(
+                        margin=dict(t=20, b=20, l=10, r=10),
+                        showlegend=False,
+                        height=350,
+                        paper_bgcolor="rgba(0,0,0,0)"
+                    )
+                    st.plotly_chart(fig_torta, use_container_width=True)
+                    st.caption(f"**Total real registrado:** {energia_total:,.1f} kWh")
 
-        with col_barras:
-            st.markdown("#### 📊 Desglose de Consumo Diario")
-            st.info("💡 ¡Espacio reservado! Acá inyectamos el código del gráfico de barras.")
+            with col_barras:
+                st.markdown("#### 📊 Desglose de Consumo Diario")
+                st.info("💡 ¡Espacio reservado! Acá inyectamos el código del gráfico de barras.")
 
-    except Exception as e:
-        st.error(f"Error procesando la base de datos: {e}")
+        except Exception as e:
+            st.error(f"Error procesando la base de datos: {e}")
