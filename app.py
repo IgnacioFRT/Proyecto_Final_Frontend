@@ -106,24 +106,37 @@ if df is not None:
                 fig.update_layout(height=280, margin=dict(l=25, r=25, t=60, b=25), paper_bgcolor="rgba(0,0,0,0)", font={'family': "Source Sans Pro, sans-serif"})
                 return fig
 
-            # --- NUEVA FUNCIÓN: BARRAS COMPARATIVAS ---
+            # --- NUEVA FUNCIÓN: BARRAS COMPARATIVAS ENCERRADAS ---
             def crear_barras_corriente(il1, il2, il3):
                 fig = go.Figure(data=[
                     go.Bar(
                         x=['Fase L1', 'Fase L2', 'Fase L3'],
                         y=[il1, il2, il3],
                         marker_color=["#1f77b4", "#ff7f0e", "#2ca02c"], # Azul, Naranja, Verde
-                        text=[f"{il1:.2f} A", f"{il2:.2f} A", f"{il3:.2f} A"], # Texto sobre la barra
+                        text=[f"{il1:.2f} A", f"{il2:.2f} A", f"{il3:.2f} A"],
                         textposition='auto',
-                        textfont=dict(size=16, color="white")
+                        textfont=dict(size=16, color="white"),
+                        width=0.6 # Controla el grosor de la barra para que no se vea desproporcionada
                     )
                 ])
                 fig.update_layout(
                     height=280,
-                    margin=dict(l=20, r=20, t=40, b=20),
+                    margin=dict(l=50, r=20, t=30, b=30), # Ajustamos márgenes para que el borde se vea completo
                     paper_bgcolor="rgba(0,0,0,0)",
                     plot_bgcolor="rgba(0,0,0,0)",
-                    yaxis=dict(title="Corriente (A)", range=[0, 20], gridcolor="#e5e8e8"),
+                    # ENCERRANDO EL EJE X
+                    xaxis=dict(
+                        showline=True, linewidth=1.5, linecolor='#e5e8e8', mirror=True,
+                        tickfont=dict(size=14, color="#5d6d7e")
+                    ),
+                    # ENCERRANDO EL EJE Y
+                    yaxis=dict(
+                        title="Corriente (A)", 
+                        range=[0, 20], 
+                        gridcolor="#f2f4f4", # Cuadrícula de fondo muy suave
+                        showline=True, linewidth=1.5, linecolor='#e5e8e8', mirror=True,
+                        tickfont=dict(size=14, color="#5d6d7e")
+                    ),
                     font=dict(family="Source Sans Pro, sans-serif", size=14, color="#5d6d7e")
                 )
                 return fig
