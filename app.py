@@ -350,17 +350,66 @@ elif seccion == "📊 Consumo por Día":
             st.plotly_chart(fig_fases, use_container_width=True)
 
         with col_info_fases:
-            st.markdown("#### 📝 Resumen de Cargas por Línea")
-            # Presentamos la info de texto de una forma más estética usando st.metric
-            m1, m2, m3 = st.columns(3)
-            m1.metric("Línea 1 (L1)", f"{energia_p1:,.1f} kWh", f"{energia_p1/energia_total*100:.1f}%")
-            m2.metric("Línea 2 (L2)", f"{energia_p2:,.1f} kWh", f"{energia_p2/energia_total*100:.1f}%")
-            m3.metric("Línea 3 (L3)", f"{energia_p3:,.1f} kWh", f"{energia_p3/energia_total*100:.1f}%")
+            st.markdown("#### 📊 Desglose Diario por Fase")
             
-            st.info(f"""
-            **Análisis de Desequilibrio:** El consumo total de **{energia_total:,.1f} kWh** se distribuye según la potencia media registrada por el PAC3200. 
-            Esta visualización ayuda a identificar si alguna fase está sobrecargada respecto a las demás.
-            """)
+            # 1. PREPARACIÓN DE DATOS (Tu lógica de Colab)
+            df_diario_fases = df.resample('D').agg({
+                'P1': 'mean',
+                'P2': 'mean',
+                'P3': 'mean',
+                'EA_imp_T1_kwh': 'last'
+            })
+            
+            df_diario_fases['P_total_medio'] = df_diario_fases['P1'] + df_diario_fases['P2'] + df_diario_fases['P3']
+            df_diario_fases['consumo_diario_total_kWh'] = df_diario_fases['EA_imp_T1_kwh'].diff().clip(lower=0).fillna(0)
+
+            # Estimación por línea
+            df_diario_fases['P1_kWh'] = (df_diario_fases['P1'] / df_diario_fases['P_total_medio']) * df_diario_fases['consumo_diario_total_kWh']
+            df_diario_fases['P2_kWh'] = (df_diario_fases['P2'] / df_diario_fases['P_total_medio']) * df_diario_fases['consumo_diario_total_kWh']
+            df_diario_fases['P3_kWh'] = (df_diario_fases['P3'] / df_diario_fases['P_total_medio']) * df_diario_fases['consumo_diario_total_kWh']
+
+            dias_semana_es = {0: 'Lunes', 1: 'Martes', 2: 'Miércoles', 3: 'Jueves', 4: 'Viernes', 5: 'Sábado', 6: 'Domingo'}
+            df_diario_fases['nombre_dia'] = df_diario_fases.index.dayofweek.map(dias_semana_es)
+
+            # 2. CREACIÓN DEL GRÁFICO (Stacked Bar)
+            fig_stack = go.Figure()
+            
+            lineas_config = {
+                'P1_kWh': {'nombre': 'Línea 1', 'color': '#1f77b4'},
+                'P2_kWh': {'nombre': 'Línea 2', 'color': '#ff7f0e'},
+                'P3_kWh': {'nombre': 'Línea 3', 'color': '#2ca02c'}
+            }
+
+            for col, info in lineas_config.items():
+                fig_stack.add_trace(go.Bar(
+                    x=df_diario_fases.index,
+                    y=df_diario_fases[col],
+                    name=info['nombre'],
+                    marker_color=info['color'],
+                    customdata=df_diario_fases['nombre_dia'],
+                    hovertemplate="<b>%{customdata}</b>, %{x|%d de %b}<br><b>%{data.name}</b>: %{y:.2f} kWh<extra></extra>"
+                ))
+
+            fig_stack.update_layout(
+                barmode='stack', # APILADO
+                height=400,
+                margin=dict(l=40, r=10, t=20, b=40),
+                template='plotly_white',
+                hovermode='x unified',
+                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+                xaxis=dict(tickformat='%d %b', title=""),
+                yaxis=dict(title='Energía (kWh)', gridcolor='lightgrey'),
+                paper_bgcolor="rgba(0,0,0,0)",
+                plot_bgcolor="rgba(0,0,0,0)"
+            )
+
+            st.plotly_chart(fig_stack, use_container_width=True)
+            
+            # Resumen rápido de métricas abajo del gráfico
+            m1, m2, m3 = st.columns(3)
+            m1.metric("L1 (Azul)", f"{energia_p1:,.1f} kWh")
+            m2.metric("L2 (Naranja)", f"{energia_p2:,.1f} kWh")
+            m3.metric("L3 (Verde)", f"{energia_p3:,.1f} kWh")
 
     except Exception as e:
         st.error(f"Error en el análisis de datos: {e}")
