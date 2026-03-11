@@ -365,8 +365,8 @@ if df is not None:
     elif seccion == "📊 Consumo por Día":
         st.write("### 📊 Análisis de Consumo por Día y Fase")
     
-    try:
-        with st.spinner('Descargando y procesando historial completo desde InfluxDB... ⏳'):
+        try:
+            with st.spinner('Descargando y procesando historial completo desde InfluxDB... ⏳'):
             df = obtener_datos_historicos()
 
         energia_total = df['EA_imp_T1_kwh'].max() - df['EA_imp_T1_kwh'].min()
