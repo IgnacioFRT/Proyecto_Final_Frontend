@@ -72,53 +72,61 @@ if df is not None:
               |> range(start: -15m) 
               |> filter(fn: (r) => r._measurement == "pruebas_fn")
               |> filter(fn: (r) => r.deviceID == "08B764")
-              |> filter(fn: (r) => r._field == "temp" or r._field == "hum" or r._field == "wind")
+              |> filter(fn: (r) => r._field == "temp" or r._field == "hum" or r._field == "wind" or r._field == "IL1" or r._field == "IL2" or r._field == "IL3" or
+                                   r._field == "UL1N" or r._field == "UL2N" or r._field == "UL3N")
               |> last()
         '''
         
         try:
             result = query_api.query(org=org, query=query)
-            val_temp, val_hum, val_wind = 0.0, 0.0, 0.0
+            # Inicializamos todas las variables
+            data = {
+                "temp": 0.0, "hum": 0.0, "wind": 0.0,
+                "IL1": 0.0, "IL2": 0.0, "IL3": 0.0,
+                "UL1N": 0.0, "UL2N": 0.0, "UL3N": 0.0
+            }
             
             for table in result:
                 for record in table.records:
-                    campo = record.get_field()
-                    if campo == "temp": val_temp = record.get_value()
-                    elif campo == "hum": val_hum = record.get_value()
-                    elif campo == "wind": val_wind = record.get_value()
+                    data[record.get_field()] = record.get_value()
 
-            # 3. DIBUJAMOS LOS VELOCÍMETROS
+            # --- FILA 1: VARIABLES CLIMÁTICAS ---
+            st.write("### 🌤️ Clima")
             c1, c2, c3 = st.columns(3)
             
-            # --- Reloj de Temperatura ---
-            fig_t = go.Figure(go.Indicator(
-                mode = "gauge+number", value = val_temp, 
-                number = {'valueformat': ".2f"}, # <--- AQUÍ LOS DECIMALES
-                title = {'text': "Temperatura (°C)"},
-                gauge = {'axis': {'range': [0, 50]}, 'bar': {'color': "#4caf50"}}
-            ))
-            fig_t.update_layout(height=300, margin=dict(l=20, r=20, t=60, b=20))
-            c1.plotly_chart(fig_t, use_container_width=True)
+            def crear_gauge(valor, titulo, max_val, color, sufijo):
+                fig = go.Figure(go.Indicator(
+                    mode = "gauge+number", value = valor,
+                    number = {'valueformat': ".2f", 'suffix': sufijo},
+                    title = {'text': titulo, 'font': {'size': 18}},
+                    gauge = {'axis': {'range': [0, max_val]}, 'bar': {'color': color}}
+                ))
+                fig.update_layout(height=280, margin=dict(l=25, r=25, t=60, b=25))
+                return fig
 
-            # --- Reloj de Humedad ---
-            fig_h = go.Figure(go.Indicator(
-                mode = "gauge+number", value = val_hum,
-                number = {'valueformat': ".2f"}, # <--- AQUÍ LOS DECIMALES
-                title = {'text': "Humedad (%)"},
-                gauge = {'axis': {'range': [0, 100]}, 'bar': {'color': "#f44336"}}
-            ))
-            fig_h.update_layout(height=300, margin=dict(l=20, r=20, t=60, b=20))
-            c2.plotly_chart(fig_h, use_container_width=True)
+            c1.plotly_chart(crear_gauge(data["temp"], "Temperatura", 50, "#4caf50", "°C"), use_container_width=True)
+            c2.plotly_chart(crear_gauge(data["hum"], "Humedad", 100, "#f44336", "%"), use_container_width=True)
+            c3.plotly_chart(crear_gauge(data["wind"], "Viento", 100, "#8bc34a", " km/h"), use_container_width=True)
 
-            # --- Reloj de Viento ---
-            fig_v = go.Figure(go.Indicator(
-                mode = "gauge+number", value = val_wind,
-                number = {'valueformat': ".2f"}, # <--- AQUÍ LOS DECIMALES
-                title = {'text': "Viento (km/h)"},
-                gauge = {'axis': {'range': [0, 100]}, 'bar': {'color': "#8bc34a"}}
-            ))
-            fig_v.update_layout(height=300, margin=dict(l=20, r=20, t=60, b=20))
-            c3.plotly_chart(fig_v, use_container_width=True)
+            # --- FILA 2: CORRIENTES POR FASE ---
+            st.divider()
+            st.write("### ⚡ Corrientes por Línea (A)")
+            st.info("💡 Use estos relojes para identificar qué fase tiene cargas activas.")
+            i1, i2, i3 = st.columns(3)
+            
+            # Ajustamos el máximo a 15A o 20A según lo que suela manejar tu tablero
+            i1.plotly_chart(crear_gauge(data["IL1"], "Corriente L1", 20, "#1f77b4", " A"), use_container_width=True)
+            i2.plotly_chart(crear_gauge(data["IL2"], "Corriente L2", 20, "#ff7f0e", " A"), use_container_width=True)
+            i3.plotly_chart(crear_gauge(data["IL3"], "Corriente L3", 20, "#2ca02c", " A"), use_container_width=True)
+
+            # --- FILA 3: TENSIONES POR FASE ---
+            st.divider()
+            st.write("### 🔌 Tensiones de Fase (V)")
+            v1, v2, v3 = st.columns(3)
+            # Para la tensión usamos métricas simples ya que no varían tanto
+            v1.metric("Tensión L1-N", f"{data['UL1N']:.1f} V")
+            v2.metric("Tensión L2-N", f"{data['UL2N']:.1f} V")
+            v3.metric("Tensión L3-N", f"{data['UL3N']:.1f} V")
             
         except Exception as e:
             st.error(f"Error en tiempo real: {e}")
