@@ -25,7 +25,9 @@ df = load_data()
 
 # 3. INTERFAZ Y MENÚ LATERAL
 with st.sidebar:
-    st.image("imagen_secundaria.jpg", width=150)
+    # use_container_width=True hace que se adapte perfecto a los bordes
+    st.image("imagen_secundaria.jpg", use_container_width=True) 
+    st.divider() # Una línea finita para separar el logo del menú queda muy prolija
     st.title("Navegación")
     seccion = st.radio("Secciones:", ["🏠 Inicio", "🕒 Tiempo Real", "📶 Calidad (QoS)", "📊 Consumo por Día"])
     st.markdown("---")
@@ -36,22 +38,23 @@ if df is not None:
     st.title("⚡ Sistema de Gestión Energética - PAC3200")
     
     if seccion == "🏠 Inicio":
-        # --- 1. ENCABEZADO INSTITUCIONAL LIMPIO ---
-        col_logo, col_titulo = st.columns([1, 4])
         
-        with col_logo:
+        # --- 1. ENCABEZADO INSTITUCIONAL CENTRADO ---
+        # Usamos 3 columnas para atrapar el logo en el medio. 
+        # [1, 1.5, 1] significa que la columna central es un poco más ancha.
+        espacio1, col_logo_central, espacio3 = st.columns([1, 1.5, 1])
+        
+        with col_logo_central:
             try:
-                # Intenta cargar la imagen local que subiste a GitHub
-                st.image("logo_principal.jpg", use_container_width=True)
+                st.image("logo_utn.png", use_container_width=True)
             except:
-                # Si todavía no subiste la imagen, muestra este texto temporal para que no salga el error roto
                 st.error("Falta logo_utn.png")
-            
-        with col_titulo:
-            # Quitamos el st.title repetido y dejamos los datos de la facultad
-            st.markdown("## Facultad Regional Tucumán (UTN FRT)")
-            st.markdown("#### **Departamento de Ingeniería Electrónica**")
-            st.caption("Práctica Supervisada: Monitoreo IoT y Análisis de Calidad Eléctrica con analizador Siemens PAC3200")
+        
+        # Textos centrados usando HTML para darle formato de portada
+        st.markdown("<h1 style='text-align: center;'>⚡ Sistema de Gestión Energética - PAC3200</h1>", unsafe_allow_html=True)
+        st.markdown("<h2 style='text-align: center; color: #34495e;'>Facultad Regional Tucumán (UTN FRT)</h2>", unsafe_allow_html=True)
+        st.markdown("<h4 style='text-align: center; color: #7f8c8d;'>Departamento de Ingeniería Electrónica</h4>", unsafe_allow_html=True)
+        st.markdown("<p style='text-align: center; color: #95a5a6;'>Práctica Supervisada: Monitoreo IoT y Análisis de Calidad Eléctrica con analizador Siemens PAC3200</p>", unsafe_allow_html=True)
 
         st.divider()
 
