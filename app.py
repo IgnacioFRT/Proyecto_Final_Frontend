@@ -89,17 +89,19 @@ if df is not None:
                 for record in table.records:
                     data[record.get_field()] = record.get_value()
 
-            # --- FUNCIÓN GAUGE DOBLE ---
+            # --- FUNCIÓN GAUGE DOBLE SIMÉTRICA ---
             def crear_gauge_doble(val_v, val_i, titulo):
                 fig = go.Figure()
 
-                # 1. Anillo Exterior: TENSIÓN (Azul)
+                # Estilo de fuente para que sea igual a Clima
+                fuente_titulos = {'size': 16, 'color': "#5d6d7e", 'family': "Source Sans Pro"}
+
+                # 1. Anillo Exterior: TENSIÓN
                 fig.add_trace(go.Indicator(
                     mode = "gauge", 
                     value = val_v,
-                    title = {'text': titulo, 'font': {'size': 18, 'color': "#2c3e50"}},
-                    # Dominio completo para el exterior
-                    domain = {'x': [0, 1], 'y': [0, 1]},
+                    title = {'text': titulo, 'font': fuente_titulos},
+                    domain = {'x': [0, 1], 'y': [0.1, 1]}, # Subimos un poco el origen (0.1)
                     gauge = {
                         'axis': {'range': [0, 250], 'tickwidth': 1, 'tickcolor': "#5d6d7e", 'nticks': 6},
                         'bar': {'color': "#1f77b4", 'thickness': 0.5},
@@ -108,12 +110,12 @@ if df is not None:
                     }
                 ))
 
-                # 2. Anillo Interior: CORRIENTE (Rojo)
-                # ACHICAMOS EL DOMINIO: ahora va del 30% al 70% del espacio
+                # 2. Anillo Interior: CORRIENTE
                 fig.add_trace(go.Indicator(
                     mode = "gauge", 
                     value = val_i,
-                    domain = {'x': [0.3, 0.7], 'y': [0.1, 0.55]}, 
+                    # Ajustamos el dominio para que las bases coincidan visualmente
+                    domain = {'x': [0.25, 0.75], 'y': [0.1, 0.6]}, 
                     gauge = {
                         'axis': {'range': [0, 20], 'tickwidth': 1, 'tickcolor': "#5d6d7e", 'nticks': 4},
                         'bar': {'color': "#f44336", 'thickness': 0.7},
@@ -123,7 +125,8 @@ if df is not None:
 
                 fig.update_layout(
                     height=280, 
-                    margin=dict(l=10, r=10, t=50, b=0), # Reducimos margen inferior
+                    # Aumentamos el margen inferior (b) para que no se corten los números de la base
+                    margin=dict(l=25, r=25, t=50, b=40), 
                     paper_bgcolor="rgba(0,0,0,0)",
                     font={'family': "Source Sans Pro, sans-serif"}
                 )
