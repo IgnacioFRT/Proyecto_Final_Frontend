@@ -45,18 +45,17 @@ if df is not None:
         st.success("Sistema Operativo y conectado a la base de datos histórica.")
 
     elif seccion == "🕒 Tiempo Real":
+        from streamlit_autorefresh import st_autorefresh
+        import pytz
         
-        # --- CONFIGURACIÓN DE ACTUALIZACIÓN AUTOMÁTICA ---
-        # Refresca la app cada 30 segundos (30000 milisegundos)
-        count = st_autorefresh(interval=30000, key="datarefresh")
-
-        # --- AJUSTE DE HORA ARGENTINA ---
+        # 1. Configuración de Refresco y Hora
+        st_autorefresh(interval=30000, key="datarefresh")
         tz_ar = pytz.timezone("America/Argentina/Buenos_Aires")
         hora_actual = pd.Timestamp.now(tz=tz_ar).strftime('%H:%M:%S')
         
         st.caption(f"Última actualización (Hora Arg): {hora_actual}")
         
-        # 1. Credenciales y Conexión (Igual que antes)
+        # 2. Conexión a InfluxDB
         url = "https://influxdb.utn.xrob.com.ar"
         token = "VPJoZH--S2GGPNNhfmWVUsZEaHqV4h1wkOX235FSfhk6GkitChp2e-8DxQ7O1ns6s7VwpKnmE-Evj7KYhLcWJQ=="
         org = "ec1aafe9e31ba7af"
@@ -65,22 +64,20 @@ if df is not None:
         client = InfluxDBClient(url=url, token=token, org=org)
         query_api = client.query_api()
         
-        # 2. Consulta (Buscamos los últimos datos)
+        # --- QUERY CORREGIDA ---
+        # Se eliminaron errores de comillas y se simplificó el filtro de campos
         query = f'''
             from(bucket: "{bucket}")
               |> range(start: -15m) 
               |> filter(fn: (r) => r._measurement == "pruebas_fn")
               |> filter(fn: (r) => r.deviceID == "08B764")
-              |> filter(fn: (r) => r._field == "temp" or r._field == "hum" or r._field == "wind" or 
-                                   r._field == "IL1" or r._field == "IL2" or r._field == "IL3" or
-                                   r._field == "UL1N" or r._field == "UL2N" or r._field == "UL3N or"
-                                   r._field == "FP1" or r._field == "FP2" or r._field == "FP3" or
-                                   r._field == "THDv1" or r._field == "THDv2" or r._field == "THDv3" or
-                                   r._field == "THDi1" or r._field == "THDi2" or r._field == "THDi3")
               |> last()
         '''
         
-        # Inicializamos el diccionario con valores por defecto
+        try:
+            result = query_api.query(org=org, query=query)
+            
+            # Inicializamos el diccionario con valores por defecto
             data = {
                 "temp": 0.0, "hum": 0.0, "wind": 0.0,
                 "IL1": 0.0, "IL2": 0.0, "IL3": 0.0,
@@ -95,7 +92,7 @@ if df is not None:
                 for record in table.records:
                     data[record.get_field()] = record.get_value()
 
-        # --- FUNCIÓN ÚNICA DE DISEÑO (Gauges) ---
+            # --- FUNCIÓN DE DISEÑO (Gauges) ---
             def crear_gauge_pro(valor, titulo, max_val, color, sufijo):
                 fig = go.Figure(go.Indicator(
                     mode = "gauge+number", value = valor,
@@ -125,10 +122,9 @@ if df is not None:
             f2.plotly_chart(crear_gauge_pro(data.get("IL2",0), "Corriente L2", 20, "#ff7f0e", " A"), use_container_width=True)
             f3.plotly_chart(crear_gauge_pro(data.get("IL3",0), "Corriente L3", 20, "#2ca02c", " A"), use_container_width=True)
 
-            # --- NUEVA FILA 3: MATRIZ DE CALIDAD (Tensiones + PF + THD) ---
+            # --- FILA 3: MATRIZ DE CALIDAD ---
             st.divider()
             st.write("### 💎 Calidad de Energía y Parámetros de Red")
-            
             q1, q2, q3, q4 = st.columns(4)
             
             with q1:
@@ -139,7 +135,6 @@ if df is not None:
 
             with q2:
                 st.markdown("**📉 Factor Potencia**")
-                # El delta puede indicar si estás cerca del ideal (1.0)
                 st.metric("PF Fase 1", f"{data.get('FP1', 0):.2f}")
                 st.metric("PF Fase 2", f"{data.get('FP2', 0):.2f}")
                 st.metric("PF Fase 3", f"{data.get('FP3', 0):.2f}")
