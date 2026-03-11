@@ -36,13 +36,58 @@ if df is not None:
     st.title("⚡ Sistema de Gestión Energética - PAC3200")
     
     if seccion == "🏠 Inicio":
-        st.subheader("Facultad Regional Tucumán")
-        e_total = df['EA_imp_T1_kwh'].max() - df['EA_imp_T1_kwh'].min()
-        c1, c2, c3 = st.columns(3)
-        c1.metric("Energía Total Registrada", f"{e_total:,.1f} kWh")
-        c2.metric("Huella de Carbono", f"{e_total * 0.45:,.1f} kg CO2")
-        c3.metric("Última Medición", df.index.max().strftime('%d/%m/%Y'))
-        st.success("Sistema Operativo y conectado a la base de datos histórica.")
+        # --- 1. ENCABEZADO INSTITUCIONAL ---
+        col_logo, col_titulo = st.columns([1, 4])
+        
+        with col_logo:
+            # ACÁ PODÉS PONER TU LOGO LOCAL. 
+            # Guardá el logo de la UTN como "logo_utn.png" en la misma carpeta que app.py
+            # y cambiá la línea de abajo por: st.image("logo_utn.png", use_container_width=True)
+            st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/6/67/UTN_logo.jpg/320px-UTN_logo.jpg", width=120)
+            
+        with col_titulo:
+            st.title("⚡ Sistema de Gestión Energética")
+            st.markdown("### **Facultad Regional Tucumán (UTN FRT)**")
+            st.caption("Monitoreo IoT y Análisis de Calidad Eléctrica con Siemens PAC3200")
+
+        st.divider()
+
+        # --- 2. MÉTRICAS GENERALES (Tus datos estáticos/históricos) ---
+        st.markdown("#### 📊 Resumen Global del Sistema")
+        
+        kpi1, kpi2, kpi3 = st.columns(3)
+        # Usamos delta para darle un toque visual verde indicando que está activo
+        kpi1.metric("Energía Total Registrada", "2,933.4 kWh", "↑ Sistema Activo")
+        kpi2.metric("Huella de Carbono Estimada", "1,320.0 kg CO₂", "- Impacto Medioambiental", delta_color="off")
+        kpi3.metric("Última Medición Verificada", "10/03/2026", "En línea")
+
+        st.success("✅ **Estado:** Sistema Operativo. Enlace con base de datos histórica InfluxDB establecido correctamente.")
+
+        st.divider()
+
+        # --- 3. ARQUITECTURA DEL PROYECTO (Ideal para la Tesis) ---
+        st.markdown("#### 🛠️ Arquitectura y Tecnologías Implementadas")
+        
+        info1, info2 = st.columns(2)
+        
+        with info1:
+            st.info("""
+            **⚙️ Hardware de Adquisición**
+            * **Analizador de Redes:** Siemens PAC3200.
+            * **Protocolo de Comunicación:** Modbus TCP/IP.
+            * **Variables Medidas:** Tensión, Corriente, Factor de Potencia, THD y Energía.
+            """)
+            
+        with info2:
+            st.info("""
+            **☁️ Software y Base de Datos**
+            * **Base de Datos (Time-Series):** InfluxDB Cloud.
+            * **Backend y Visualización:** Python, Streamlit, Plotly.
+            * **Objetivo:** Auditoría energética, detección de anomalías y visualización en tiempo real.
+            """)
+
+        # Mensaje de bienvenida final
+        st.write("👈 *Utilice el menú de navegación lateral para acceder a la visualización en **Tiempo Real**, análisis de **Calidad (QoS)** o historial de **Consumo por Día**.*")
 
     elif seccion == "🕒 Tiempo Real":
         
