@@ -381,16 +381,12 @@ if df is not None:
         st.plotly_chart(fig_qos, use_container_width=True)
 
     elif seccion == "📊 Consumo por Día":
-        st.write("### 📊 Análisis de Consumo por Día y Fase")
+    st.write("### 📊 Análisis de Consumo por Día y Fase")
     
-        try:
-            # Esto invoca la función global y muestra un cartelito mientras descarga
-            with st.spinner('Descargando y procesando historial completo desde InfluxDB... ⏳'):
-                 df = obtener_datos_historicos()
+    try:
+        with st.spinner('Descargando y procesando historial completo desde InfluxDB... ⏳'):
+            df = obtener_datos_historicos()
 
-        # ==========================================
-        # MATEMÁTICA EXACTA DE TU COLAB
-        # ==========================================
         energia_total = df['EA_imp_T1_kwh'].max() - df['EA_imp_T1_kwh'].min()
         df['incremental_consumption'] = df['EA_imp_T1_kwh'].diff().clip(lower=0).fillna(0)
 
@@ -408,9 +404,6 @@ if df is not None:
         else:
             energia_habil = energia_feriado = energia_finde = 0
 
-        # ==========================================
-        # MAQUETADO: 1/3 TORTA | 2/3 BARRAS
-        # ==========================================
         col_torta, col_barras = st.columns([1, 2])
 
         with col_torta:
@@ -419,7 +412,6 @@ if df is not None:
             if raw_total_sum == 0:
                 st.warning("No se registró consumo de energía en el período.")
             else:
-                # Tu configuración de Matplotlib pasada a Plotly
                 labels = ['Días hábiles', 'Feriados', 'Fin de semana']
                 sizes = [energia_habil, energia_feriado, energia_finde]
                 colores = ['#66bb6a', '#ef5350', '#42a5f5']
@@ -428,10 +420,10 @@ if df is not None:
                     labels=labels,
                     values=sizes,
                     marker_colors=colores,
-                    pull=[0.05, 0.05, 0.05], # Reemplaza el 'explode' de Colab (separa las porciones)
+                    pull=[0.05, 0.05, 0.05],
                     textinfo='percent+label',
                     hoverinfo='label+value+percent',
-                    hovertemplate="%{label}<br>%{value:,.1f} kWh<br>%{percent}<extra></extra>" # Formato al pasar el mouse
+                    hovertemplate="%{label}<br>%{value:,.1f} kWh<br>%{percent}<extra></extra>"
                 )])
                 
                 fig_torta.update_layout(
@@ -441,8 +433,6 @@ if df is not None:
                     paper_bgcolor="rgba(0,0,0,0)"
                 )
                 st.plotly_chart(fig_torta, use_container_width=True)
-                
-                # Tu bloque de info convertido en un subtítulo limpio
                 st.caption(f"**Total real registrado:** {energia_total:,.1f} kWh")
 
         with col_barras:
