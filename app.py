@@ -42,7 +42,7 @@ if df is not None:
         with col_logo:
             try:
                 # Intenta cargar la imagen local que subiste a GitHub
-                st.image("logo_principal.jpg", width=300)
+                st.image("logo_principal.jpg", use_container_width=True)
             except:
                 # Si todavía no subiste la imagen, muestra este texto temporal para que no salga el error roto
                 st.error("Falta logo_utn.png")
