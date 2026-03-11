@@ -46,7 +46,7 @@ if df is not None:
         
         with col_logo_central:
             try:
-                st.image("logo_utn.jpg", use_container_width=True)
+                st.image("logo_principal.jpg", use_container_width=True)
             except:
                 st.error("Falta logo_utn.jpg")
         
