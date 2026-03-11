@@ -79,51 +79,27 @@ if df is not None:
         try:
             result = query_api.query(org=org, query=query)
             # Inicializamos todas las variables
-            data = {
-                "temp": 0.0, "hum": 0.0, "wind": 0.0,
-                "IL1": 0.0, "IL2": 0.0, "IL3": 0.0,
-                "UL1N": 0.0, "UL2N": 0.0, "UL3N": 0.0
-            }
+            data = {"temp": 0.0, "hum": 0.0, "wind": 0.0, "IL1": 0.0, "IL2": 0.0, "IL3": 0.0, "UL1N": 0.0, "UL2N": 0.0, "UL3N": 0.0}
             
             for table in result:
                 for record in table.records:
                     data[record.get_field()] = record.get_value()
 
-            def crear_gauge_doble(val_v, val_i, titulo):
-                fig = go.Figure()
-
-                # 1. Anillo Exterior: TENSIÓN (Azul)
-                fig.add_trace(go.Indicator(
-                    mode = "gauge", # Solo el aro, sin número central para no encimar
-                    value = val_v,
-                    title = {'text': f"{titulo}<br><span style='color:#1f77b4; font-size:0.8em'>{val_v:.1f} V</span>", 
-                             'font': {'size': 18}},
-                    domain = {'x': [0, 1], 'y': [0, 1]},
-                    gauge = {
-                        'axis': {'range': [0, 250], 'tickwidth': 1, 'tickcolor': "#5d6d7e"},
-                        'bar': {'color': "#1f77b4", 'thickness': 0.6},
-                        'bgcolor': "white",
-                        'borderwidth': 1, 'bordercolor': "#f2f4f4"
-                    }
-                ))
-
-                # 2. Anillo Interior + Número Principal: CORRIENTE (Rojo)
-                fig.add_trace(go.Indicator(
+        
+        # --- FUNCIÓN ÚNICA DE DISEÑO (IDÉNTICA PARA TODO) ---
+            def crear_gauge_pro(valor, titulo, max_val, color, sufijo):
+                fig = go.Figure(go.Indicator(
                     mode = "gauge+number", 
-                    value = val_i,
-                    number = {
-                        'valueformat': ".2f", 
-                        'suffix': "A", 
-                        'font': {'size': 35, 'color': "#5d6d7e"} # Misma fuente gris que Clima
-                    },
-                    domain = {'x': [0.25, 0.75], 'y': [0.1, 0.6]}, 
+                    value = valor,
+                    number = {'valueformat': ".2f", 'suffix': sufijo, 'font': {'size': 35, 'color': "#5d6d7e"}},
+                    title = {'text': titulo, 'font': {'size': 18, 'color': "#5d6d7e"}},
                     gauge = {
-                        'axis': {'range': [0, 20], 'tickwidth': 1, 'tickcolor': "#5d6d7e", 'nticks': 4},
-                        'bar': {'color': "#f44336", 'thickness': 0.8},
-                        'bgcolor': "white"
+                        'axis': {'range': [0, max_val], 'tickwidth': 1, 'tickcolor': "#5d6d7e"},
+                        'bar': {'color': color},
+                        'bgcolor': "white",
+                        'borderwidth': 1, 'bordercolor': "#e5e8e8"
                     }
                 ))
-
                 fig.update_layout(
                     height=280, 
                     margin=dict(l=25, r=25, t=60, b=25),
@@ -132,44 +108,29 @@ if df is not None:
                 )
                 return fig
 
-            # --- FILA 1: VARIABLES CLIMÁTICAS ---
-            st.write("### 🌤️ Clima")
+            # --- FILA 1: CLIMA ---
+            st.write("### 🌤️ Variables Climáticas")
             c1, c2, c3 = st.columns(3)
-            
-            def crear_gauge(valor, titulo, max_val, color, sufijo):
-                fig = go.Figure(go.Indicator(
-                    mode = "gauge+number", value = valor,
-                    number = {'valueformat': ".2f", 'suffix': sufijo},
-                    title = {'text': titulo, 'font': {'size': 18}},
-                    gauge = {'axis': {'range': [0, max_val]}, 'bar': {'color': color}}
-                ))
-                fig.update_layout(height=280, margin=dict(l=25, r=25, t=60, b=25))
-                return fig
+            c1.plotly_chart(crear_gauge_pro(data["temp"], "Temperatura", 50, "#4caf50", "°C"), use_container_width=True)
+            c2.plotly_chart(crear_gauge_pro(data["hum"], "Humedad", 100, "#f44336", "%"), use_container_width=True)
+            c3.plotly_chart(crear_gauge_pro(data["wind"], "Viento", 100, "#8bc34a", " km/h"), use_container_width=True)
 
-            c1.plotly_chart(crear_gauge(data["temp"], "Temperatura", 50, "#4caf50", "°C"), use_container_width=True)
-            c2.plotly_chart(crear_gauge(data["hum"], "Humedad", 100, "#f44336", "%"), use_container_width=True)
-            c3.plotly_chart(crear_gauge(data["wind"], "Viento", 100, "#8bc34a", " km/h"), use_container_width=True)
-
-            # --- FILA 2: CORRIENTES POR FASE ---
-            st.write("### 🔌 Análisis por Fase")
+            # --- FILA 2: CORRIENTES ---
+            st.write("### ⚡ Corrientes por Fase")
             f1, f2, f3 = st.columns(3)
-            
-            # Mostramos el gráfico y debajo los valores con st.columns para que sea legible en móvil
-            with f1:
-                st.plotly_chart(crear_gauge_doble(data["UL1N"], data["IL1"], "Fase L1"), use_container_width=True)
-                st.write(f"<p style='text-align: center; color: #1f77b4; font-size: 20px; font-weight: bold;'>{data['UL1N']:.1f}V <span style='color: #f44336;'> | {data['IL1']:.2f}A</span></p>", unsafe_allow_html=True)
-            
-            with f2:
-                st.plotly_chart(crear_gauge_doble(data["UL2N"], data["IL2"], "Fase L2"), use_container_width=True)
-                st.write(f"<p style='text-align: center; color: #1f77b4; font-size: 20px; font-weight: bold;'>{data['UL2N']:.1f}V <span style='color: #f44336;'> | {data['IL2']:.2f}A</span></p>", unsafe_allow_html=True)
-                
-            with f3:
-                st.plotly_chart(crear_gauge_doble(data["UL3N"], data["IL3"], "Fase L3"), use_container_width=True)
-                st.write(f"<p style='text-align: center; color: #1f77b4; font-size: 20px; font-weight: bold;'>{data['UL3N']:.1f}V <span style='color: #f44336;'> | {data['IL3']:.2f}A</span></p>", unsafe_allow_html=True)
+            f1.plotly_chart(crear_gauge_pro(data["IL1"], "Corriente L1", 20, "#1f77b4", " A"), use_container_width=True)
+            f2.plotly_chart(crear_gauge_pro(data["IL2"], "Corriente L2", 20, "#ff7f0e", " A"), use_container_width=True)
+            f3.plotly_chart(crear_gauge_pro(data["IL3"], "Corriente L3", 20, "#2ca02c", " A"), use_container_width=True)
+
+            # --- FILA 3: TENSIONES (Métricas compactas para no saturar) ---
+            st.write("### 🔌 Tensiones de Fase")
+            v1, v2, v3 = st.columns(3)
+            v1.metric("L1 - Neutro", f"{data['UL1N']:.1f} V")
+            v2.metric("L2 - Neutro", f"{data['UL2N']:.1f} V")
+            v3.metric("L3 - Neutro", f"{data['UL3N']:.1f} V")
 
         except Exception as e:
-            st.error(f"Error: {e}")
-        
+            st.error(f"Error en la adquisición de datos: {e}")
 
     elif seccion == "📶 Calidad (QoS)":
         st.subheader("📶 Calidad de Servicio (QoS) y Gaps de Red")
