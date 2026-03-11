@@ -80,7 +80,7 @@ if df is not None:
                     campo = record.get_field()
                     if campo == "temp": val_temp = record.get_value()
                     elif campo == "hum": val_hum = record.get_value()
-                    elif campo == "wind": val_viento = record.get_value()
+                    elif campo == "wind": val_wind = record.get_value()
 
             # 3. DIBUJAMOS LOS VELOCÍMETROS
             c1, c2, c3 = st.columns(3)
