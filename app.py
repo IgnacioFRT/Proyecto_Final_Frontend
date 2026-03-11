@@ -62,7 +62,7 @@ if df is not None:
         client = InfluxDBClient(url=url, token=token, org=org)
         query_api = client.query_api()
         
-        # --- QUERY CORREGIDA ---
+        # --- QUERY ---
         # Se eliminaron errores de comillas y se simplificó el filtro de campos
         query = f'''
             from(bucket: "{bucket}")
@@ -106,7 +106,7 @@ if df is not None:
                 fig.update_layout(height=280, margin=dict(l=25, r=25, t=60, b=25), paper_bgcolor="rgba(0,0,0,0)", font={'family': "Source Sans Pro, sans-serif"})
                 return fig
 
-            # --- NUEVA FUNCIÓN: BARRAS COMPARATIVAS ENCERRADAS ---
+            # --- FUNCIÓN: BARRAS COMPARATIVAS ENCERRADAS ---
             def crear_barras_corriente(il1, il2, il3):
                 fig = go.Figure(data=[
                     go.Bar(
@@ -152,7 +152,7 @@ if df is not None:
             st.write("### ⚡ Análisis de Carga y Red")
             
             # Dividimos en 2 columnas: la izquierda más grande (barras) y la derecha más chica (frecuencia)
-            col_barras, col_frec = st.columns([2, 1])
+            espacio_izq, col_barras, col_frec = st.columns([0.5, 1.5, 1])
             
             with col_barras:
                 st.plotly_chart(crear_barras_corriente(data.get("IL1",0), data.get("IL2",0), data.get("IL3",0)), use_container_width=True)
