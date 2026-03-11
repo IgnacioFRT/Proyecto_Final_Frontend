@@ -80,18 +80,17 @@ if df is not None:
               |> last()
         '''
         
-        try:
-            result = query_api.query(org=org, query=query)
-
-            # Inicializamos con valores seguros para que no se rompa nada
+        # Inicializamos el diccionario con valores por defecto
             data = {
                 "temp": 0.0, "hum": 0.0, "wind": 0.0,
                 "IL1": 0.0, "IL2": 0.0, "IL3": 0.0,
                 "UL1N": 0.0, "UL2N": 0.0, "UL3N": 0.0,
-                "Freq": 50.0 # Valor nominal
+                "FP1": 0.0, "FP2": 0.0, "FP3": 0.0,
+                "THDv1": 0.0, "THDv2": 0.0, "THDv3": 0.0,
+                "THDi1": 0.0, "THDi2": 0.0, "THDi3": 0.0
             }
             
-            # Llenamos data con TODO lo que venga de InfluxDB
+            # Llenamos el diccionario con lo que realmente venga de la base
             for table in result:
                 for record in table.records:
                     data[record.get_field()] = record.get_value()
