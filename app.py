@@ -6,22 +6,119 @@ from streamlit_autorefresh import st_autorefresh
 import os
 import pytz # Para la zona horaria
 
+
 # 1. CONFIGURACIÓN DE PÁGINA
+
 st.set_page_config(page_title="EMS - PAC3200 UTN", layout="wide")
 
-# 2. CARGA DE DATOS
-@st.cache_data
-def load_data():
-    # AQUÍ ESTÁ LA CORRECCIÓN CON TU NOMBRE EXACTO
-    archivo = "datos_energia_acumulada_liviano (6).xlsx"
-    if not os.path.exists(archivo):
-        return None
-    df = pd.read_excel(archivo)
-    df['fecha'] = pd.to_datetime(df['fecha'])
-    df.set_index('fecha', inplace=True)
-    return df
+# 2. ANALISIS REALIZADO EN COLAB
 
-df = load_data()
+@st.cache_data(ttl=3600) # Se actualiza automáticamente cada 1 hora
+def obtener_datos_historicos():
+    
+    # --- A. CONFIGURACIÓN ---
+    url    = "https://influxdb.utn.xrob.com.ar"
+    token  = "VPJoZH--S2GGPNNhfmWVUsZEaHqV4h1wkOX235FSfhk6GkitChp2e-8DxQ7O1ns6s7VwpKnmE-Evj7KYhLcWJQ=="
+    org    = "ec1aafe9e31ba7af"
+    bucket = "UTN FRT"
+    tz_local = pytz.timezone("America/Argentina/Buenos_Aires")
+
+    client = InfluxDBClient(url=url, token=token, org=org)
+    query_api = client.query_api()
+
+    # --- B. CONSULTA A INFLUXDB ---
+    variables_deseadas = ["UL1L2", "UL2L3", "UL3L1", "UL1N", "UL2N", "UL3N", "IL1", "IL2", "IL3", "freq", "P1", "P2", "P3", "Q1", "Q2", "Q3", "S1", "S2", "S3", "FP1", "FP2", "FP3", "THDv1", "THDv2", "THDv3", "THDi1", "THDi2", "THDi3", "Imed", "Vmed", "temp", "EA_imp_T1_kwh"]
+    filter_fields = " or ".join([f'r["_field"] == "{var}"' for var in variables_deseadas])
+
+    query = f'''
+    data_mean = from(bucket: "{bucket}")
+      |> range(start: -60d)
+      |> filter(fn: (r) => r._measurement == "pruebas_fn")
+      |> filter(fn: (r) => r.deviceID == "08B764")
+      |> filter(fn: (r) => r.proyecto == "siemens_Pac3200")
+      |> filter(fn: (r) => {filter_fields})
+      |> filter(fn: (r) => r._field != "EA_imp_T1_kwh")
+      |> aggregateWindow(every: 15m, fn: mean, createEmpty: false)
+
+    data_last = from(bucket: "{bucket}")
+      |> range(start: -60d)
+      |> filter(fn: (r) => r._measurement == "pruebas_fn")
+      |> filter(fn: (r) => r.deviceID == "08B764")
+      |> filter(fn: (r) => r.proyecto == "siemens_Pac3200")
+      |> filter(fn: (r) => r._field == "EA_imp_T1_kwh")
+      |> aggregateWindow(every: 15m, fn: last, createEmpty: false)
+
+    union(tables: [data_mean, data_last])
+      |> pivot(rowKey: ["_time"], columnKey: ["_field"], valueColumn: "_value")
+      |> sort(columns: ["_time"])
+    '''
+
+    df = query_api.query_data_frame(query)
+
+    df['_time'] = pd.to_datetime(df['_time']).dt.tz_convert(tz_local)
+    df = df.rename(columns={'_time': 'time'})
+    df = df.set_index('time')
+    df['P_tot_kW'] = df['P1'] + df['P2'] + df['P3']
+
+    # --- C. RESAMPLE A 15 MIN ---
+    df = df.resample('15T').agg({
+        'UL1L2': 'mean', 'UL2L3' : 'mean', 'UL3L1' : 'mean',
+        'UL1N' : 'mean', 'UL2N' : 'mean', 'UL3N' : 'mean',
+        'IL1': 'mean', 'IL2': 'mean', 'IL3': 'mean',
+        'freq' : 'mean',
+        'P1': 'mean', 'P2': 'mean', 'P3': 'mean',
+        'Q1': 'mean', 'Q2': 'mean', 'Q3': 'mean',
+        'S1': 'mean', 'S2': 'mean', 'S3': 'mean',
+        'FP1': 'mean', 'FP2': 'mean', 'FP3': 'mean',
+        'THDv1': 'mean', 'THDv2': 'mean', 'THDv3': 'mean',
+        'THDi1': 'mean', 'THDi2': 'mean', 'THDi3': 'mean',
+        'Imed': 'mean', 'Vmed': 'mean',
+        'EA_imp_T1_kwh': 'last',
+        'temp': 'mean', 'P_tot_kW': 'mean'
+    }).ffill()
+
+    # --- D. LIMPIEZA DE DATOS ---
+    limites = {
+        'P1': (-100, 2000), 'P2': (-100, 2000), 'P3': (-100, 2000),
+        'Q1': (-1500, 1500), 'Q2': (-1500, 1500), 'Q3': (-1500, 1500),
+        'temp': (-15, 50),
+        'THDi1': (0, 100), 'THDi2': (0, 100), 'THDi3': (0, 100),
+        'UL1N': (180, 260), 'UL2N': (180, 260), 'UL3N': (180, 260),
+        'freq': (48, 52),
+    }
+
+    mask = pd.Series([True] * len(df), index=df.index)
+    for col, (low, high) in limites.items():
+        if col in df.columns:
+            mask &= df[col].between(low, high)
+    df = df[mask].copy()
+
+    # --- E. CALENDARIO ARGENTINO ---
+    feriados_2025 = pd.to_datetime([
+        '2025-08-17', '2025-10-12', '2025-11-20', '2025-12-08', '2025-12-24', '2025-12-25',
+        '2026-01-01', '2026-02-16', '2026-02-17', '2026-03-23', '2026-03-24', '2026-04-02', 
+        '2026-04-03', '2026-05-01', '2026-05-25', '2026-06-15', '2026-06-20', '2026-07-09', 
+        '2026-07-10', '2026-08-17', '2026-10-12', '2026-11-23', '2026-12-07', '2026-12-08', '2026-12-25'
+    ]).date
+    
+    df['fecha'] = df.index.date
+    df['hora'] = df.index.hour
+    df['es_feriado'] = df['fecha'].isin(feriados_2025)
+    df['es_laborable'] = ~df['es_feriado']
+    df['es_finde'] = df.index.weekday.isin([5, 6])
+    df['es_habil'] = df['es_laborable'] & ~df['es_finde']
+
+    # Tipo de día para CAMMESA
+    def definir_tipo_cammesa(row):
+        if not row['es_habil']:
+            if row.name.weekday() == 6 or row['es_feriado']: return 'Domingo/Feriado'
+            else: return 'Sábado'
+        else: return 'Hábil'
+    
+    df['tipo_dia'] = df.apply(definir_tipo_cammesa, axis=1)
+
+    # Devolvemos el DataFrame listo y pulido
+    return df
 
 # 3. INTERFAZ Y MENÚ LATERAL
 
@@ -284,27 +381,76 @@ if df is not None:
         st.plotly_chart(fig_qos, use_container_width=True)
 
     elif seccion == "📊 Consumo por Día":
-        st.subheader("📊 Distribución del Consumo Real")
-        energia_total = df['EA_imp_T1_kwh'].max() - df['EA_imp_T1_kwh'].min()
-        df['inc_cons'] = df['EA_imp_T1_kwh'].diff().clip(lower=0).fillna(0)
-        
-        # Agrupación por tipo de día
-        e_habil_raw = df[df['tipo_dia'] == 'Día hábil']['inc_cons'].sum()
-        e_feriado_raw = df[df['tipo_dia'] == 'Feriado']['inc_cons'].sum()
-        e_finde_raw = df[df['tipo_dia'].isin(['Sábado', 'Domingo'])]['inc_cons'].sum()
-        
-        raw_sum = e_habil_raw + e_feriado_raw + e_finde_raw
-        factor = energia_total / raw_sum if raw_sum > 0 else 0
-        e_habil, e_feriado, e_finde = e_habil_raw * factor, e_feriado_raw * factor, e_finde_raw * factor
+    st.write("### 📊 Análisis de Consumo por Día y Fase")
+    
+    try:
+        # Esto invoca la función global y muestra un cartelito mientras descarga
+        with st.spinner('Descargando y procesando historial completo desde InfluxDB... ⏳'):
+            df = obtener_datos_historicos()
 
-        fig_dias = go.Figure(data=[go.Pie(
-            labels=['Días hábiles', 'Feriados', 'Fin de semana'], 
-            values=[e_habil, e_feriado, e_finde], 
-            marker_colors=['#66bb6a', '#ef5350', '#42a5f5'],
-            pull=[0.1, 0.1, 0.1], textinfo='percent+label'
-        )])
-        fig_dias.update_layout(title_text='<b>CONSUMO REAL POR TIPO DE DÍA</b>', title_x=0.5)
-        st.plotly_chart(fig_dias, use_container_width=True)
+        # ==========================================
+        # MATEMÁTICA EXACTA DE TU COLAB
+        # ==========================================
+        energia_total = df['EA_imp_T1_kwh'].max() - df['EA_imp_T1_kwh'].min()
+        df['incremental_consumption'] = df['EA_imp_T1_kwh'].diff().clip(lower=0).fillna(0)
+
+        energia_habil_raw = df[df['es_habil']]['incremental_consumption'].sum()
+        energia_feriado_raw = df[df['es_feriado']]['incremental_consumption'].sum()
+        energia_finde_raw = df[df['es_finde']]['incremental_consumption'].sum()
+
+        raw_total_sum = energia_habil_raw + energia_feriado_raw + energia_finde_raw
+
+        if raw_total_sum > 0:
+            scaling_factor = energia_total / raw_total_sum
+            energia_habil = energia_habil_raw * scaling_factor
+            energia_feriado = energia_feriado_raw * scaling_factor
+            energia_finde = energia_finde_raw * scaling_factor
+        else:
+            energia_habil = energia_feriado = energia_finde = 0
+
+        # ==========================================
+        # MAQUETADO: 1/3 TORTA | 2/3 BARRAS
+        # ==========================================
+        col_torta, col_barras = st.columns([1, 2])
+
+        with col_torta:
+            st.markdown("#### 📅 Consumo por Tipo de Día")
+            
+            if raw_total_sum == 0:
+                st.warning("No se registró consumo de energía en el período.")
+            else:
+                # Tu configuración de Matplotlib pasada a Plotly
+                labels = ['Días hábiles', 'Feriados', 'Fin de semana']
+                sizes = [energia_habil, energia_feriado, energia_finde]
+                colores = ['#66bb6a', '#ef5350', '#42a5f5']
+
+                fig_torta = go.Figure(data=[go.Pie(
+                    labels=labels,
+                    values=sizes,
+                    marker_colors=colores,
+                    pull=[0.05, 0.05, 0.05], # Reemplaza el 'explode' de Colab (separa las porciones)
+                    textinfo='percent+label',
+                    hoverinfo='label+value+percent',
+                    hovertemplate="%{label}<br>%{value:,.1f} kWh<br>%{percent}<extra></extra>" # Formato al pasar el mouse
+                )])
+                
+                fig_torta.update_layout(
+                    margin=dict(t=20, b=20, l=10, r=10),
+                    showlegend=False,
+                    height=350,
+                    paper_bgcolor="rgba(0,0,0,0)"
+                )
+                st.plotly_chart(fig_torta, use_container_width=True)
+                
+                # Tu bloque de info convertido en un subtítulo limpio
+                st.caption(f"**Total real registrado:** {energia_total:,.1f} kWh")
+
+        with col_barras:
+            st.markdown("#### 📊 Desglose de Consumo Diario")
+            st.info("💡 ¡Espacio reservado! Acá inyectamos el código del gráfico de barras.")
+
+    except Exception as e:
+        st.error(f"Error procesando la base de datos: {e}")
 
 else:
     st.error("❌ Archivo de datos no encontrado. Verifica el nombre exacto en GitHub.")
