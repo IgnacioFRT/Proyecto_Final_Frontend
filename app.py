@@ -270,9 +270,8 @@ elif seccion == "📊 Consumo por Día":
                     insidetextorientation='radial',
                     hovertemplate="%{label}<br>%{value:,.1f} kWh<br>%{percent}<extra></extra>"
                 )])
-                fig_torta.update_layout(margin=dict(t=20, b=20, l=10, r=10), showlegend=False, height=350, paper_bgcolor="rgba(0,0,0,0)", font=dict(color="black", size=14))
+                fig_torta.update_layout(margin=dict(t=80, b=20, l=10, r=10), showlegend=False, height=450, paper_bgcolor="rgba(0,0,0,0)", font=dict(color="black", size=14))
                 st.plotly_chart(fig_torta, use_container_width=True)
-                st.caption(f"**Total real registrado:** {energia_total:,.1f} kWh")
 
         with col_barras:
             st.markdown("#### 📊 Evolución de Consumo Diario") # Usamos H4 para igualar al resto
@@ -321,7 +320,7 @@ elif seccion == "📊 Consumo por Día":
                 textposition='outside',
                 hovertemplate="<b>%{label}</b><br>Estimado: %{value:,.1f} kWh<br>%{percent}<extra></extra>"
             )])
-            fig_fases.update_layout(margin=dict(t=20, b=20, l=10, r=10), showlegend=False, height=350, paper_bgcolor="rgba(0,0,0,0)", font=dict(color="black", size=14))
+            fig_fases.update_layout(margin=dict(t=80, b=20, l=10, r=10), showlegend=False, height=450, paper_bgcolor="rgba(0,0,0,0)", font=dict(color="black", size=14))
             st.plotly_chart(fig_fases, use_container_width=True)
 
         with col_info_fases:
