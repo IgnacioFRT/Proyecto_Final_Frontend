@@ -22,8 +22,8 @@ def obtener_datos_historicos():
     filter_fields = " or ".join([f'r["_field"] == "{var}"' for var in variables_deseadas])
 
     query = f'''
-    data_mean = from(bucket: "{bucket}") |> range(start: -60d) |> filter(fn: (r) => r._measurement == "pruebas_fn") |> filter(fn: (r) => r.deviceID == "08B764") |> filter(fn: (r) => r.proyecto == "siemens_Pac3200") |> filter(fn: (r) => {filter_fields}) |> filter(fn: (r) => r._field != "EA_imp_T1_kwh") |> aggregateWindow(every: 15m, fn: mean, createEmpty: false)
-    data_last = from(bucket: "{bucket}") |> range(start: -60d) |> filter(fn: (r) => r._measurement == "pruebas_fn") |> filter(fn: (r) => r.deviceID == "08B764") |> filter(fn: (r) => r.proyecto == "siemens_Pac3200") |> filter(fn: (r) => r._field == "EA_imp_T1_kwh") |> aggregateWindow(every: 15m, fn: last, createEmpty: false)
+    data_mean = from(bucket: "{bucket}") |> range(start: 0) |> filter(fn: (r) => r._measurement == "pruebas_fn") |> filter(fn: (r) => r.deviceID == "08B764") |> filter(fn: (r) => r.proyecto == "siemens_Pac3200") |> filter(fn: (r) => {filter_fields}) |> filter(fn: (r) => r._field != "EA_imp_T1_kwh") |> aggregateWindow(every: 15m, fn: mean, createEmpty: false)
+    data_last = from(bucket: "{bucket}") |> range(start: 0) |> filter(fn: (r) => r._measurement == "pruebas_fn") |> filter(fn: (r) => r.deviceID == "08B764") |> filter(fn: (r) => r.proyecto == "siemens_Pac3200") |> filter(fn: (r) => r._field == "EA_imp_T1_kwh") |> aggregateWindow(every: 15m, fn: last, createEmpty: false)
     union(tables: [data_mean, data_last]) |> pivot(rowKey: ["_time"], columnKey: ["_field"], valueColumn: "_value") |> sort(columns: ["_time"])
     '''
     
