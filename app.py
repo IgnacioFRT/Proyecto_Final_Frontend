@@ -159,11 +159,11 @@ if seccion == "🏠 Inicio":
     # [1, 1.5, 1] significa que la columna central es un poco más ancha.
      espacio1, col_logo_central, espacio3 = st.columns([1, 1.5, 1])
         
-    with col_logo_central:
-        try:
-            st.image("logo_principal.jpg", use_container_width=True)
-        except:
-            st.error("Falta logo_utn.jpg")
+     with col_logo_central:
+         try:
+             st.image("logo_principal.jpg", use_container_width=True)
+         except:
+             st.error("Falta logo_utn.jpg")
         
     # Textos centrados usando HTML para darle formato de portada
     #st.markdown("<h1 style='text-align: center;'>⚡ Sistema de Gestión Energética - PAC3200</h1>", unsafe_allow_html=True)
