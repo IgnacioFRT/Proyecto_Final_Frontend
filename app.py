@@ -82,10 +82,16 @@ if df is not None:
         
         try:
             result = query_api.query(org=org, query=query)
-            # Inicializamos con valores en 0.0 para evitar errores si falta algún dato
-            data = {record.get_field(): 0.0 for table in result for record in table.records}
+
+            # Inicializamos con valores seguros para que no se rompa nada
+            data = {
+                "temp": 0.0, "hum": 0.0, "wind": 0.0,
+                "IL1": 0.0, "IL2": 0.0, "IL3": 0.0,
+                "UL1N": 0.0, "UL2N": 0.0, "UL3N": 0.0,
+                "Freq": 50.0 # Valor nominal
+            }
             
-            # Re-llenamos con los datos reales obtenidos
+            # Llenamos data con TODO lo que venga de InfluxDB
             for table in result:
                 for record in table.records:
                     data[record.get_field()] = record.get_value()
