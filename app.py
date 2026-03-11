@@ -5,19 +5,25 @@ import plotly.graph_objects as go
 from streamlit_autorefresh import st_autorefresh
 import pytz
 
+# === 1. CONFIGURACIÓN DE PÁGINA ===
+
 st.set_page_config(page_title="EMS - PAC3200 UTN", layout="wide")
 
-@st.cache_data(ttl=3600)
+# === 2. FUNCION COLAB ===
+
+@st.cache_data(ttl=3600) #Se actualiza automáticamente cada 1 hora
 def obtener_datos_historicos():
+
+    # --- A. CONFIGURACIÓN ---
     url    = "https://influxdb.utn.xrob.com.ar"
     token  = "VPJoZH--S2GGPNNhfmWVUsZEaHqV4h1wkOX235FSfhk6GkitChp2e-8DxQ7O1ns6s7VwpKnmE-Evj7KYhLcWJQ=="
     org    = "ec1aafe9e31ba7af"
     bucket = "UTN FRT"
     tz_local = pytz.timezone("America/Argentina/Buenos_Aires")
-
     client = InfluxDBClient(url=url, token=token, org=org)
     query_api = client.query_api()
 
+    # --- B. CONSULTA A INFLUXDB ---
     variables_deseadas = ["UL1L2", "UL2L3", "UL3L1", "UL1N", "UL2N", "UL3N", "IL1", "IL2", "IL3", "freq", "P1", "P2", "P3", "Q1", "Q2", "Q3", "S1", "S2", "S3", "FP1", "FP2", "FP3", "THDv1", "THDv2", "THDv3", "THDi1", "THDi2", "THDi3", "Imed", "Vmed", "temp", "EA_imp_T1_kwh"]
     filter_fields = " or ".join([f'r["_field"] == "{var}"' for var in variables_deseadas])
 
@@ -34,6 +40,7 @@ def obtener_datos_historicos():
     df = df.set_index('time')
     df['P_tot_kW'] = df['P1'] + df['P2'] + df['P3']
 
+    # --- C. RESAMPLE A 15 MIN ---
     df = df.resample('15T').agg({
         'UL1L2': 'mean', 'UL2L3' : 'mean', 'UL3L1' : 'mean', 'UL1N' : 'mean', 'UL2N' : 'mean', 'UL3N' : 'mean',
         'IL1': 'mean', 'IL2': 'mean', 'IL3': 'mean', 'freq' : 'mean',
@@ -43,17 +50,16 @@ def obtener_datos_historicos():
         'Imed': 'mean', 'Vmed': 'mean', 'EA_imp_T1_kwh': 'last', 'temp': 'mean', 'P_tot_kW': 'mean'
     }).ffill()
 
+    # --- D. LIMPIEZA DE DATOS ---
     limites = {
-        'P1': (-100, 2000), 'P2': (-100, 2000), 'P3': (-100, 2000), 'Q1': (-1500, 1500), 'Q2': (-1500, 1500), 'Q3': (-1500, 1500),
-        'temp': (-15, 50), 'THDi1': (0, 100), 'THDi2': (0, 100), 'THDi3': (0, 100), 'UL1N': (180, 260), 'UL2N': (180, 260), 'UL3N': (180, 260),
-        'freq': (48, 52),
-    }
+        'P1': (-100, 2000), 'P2': (-100, 2000), 'P3': (-100, 2000), 'Q1': (-1500, 1500), 'Q2': (-1500, 1500), 'Q3': (-1500, 1500), 'temp': (-15, 50), 'THDi1': (0, 100), 'THDi2': (0, 100), 'THDi3': (0, 100), 'UL1N': (180, 260), 'UL2N': (180, 260), 'UL3N': (180, 260), 'freq': (48, 52),}
     mask = pd.Series([True] * len(df), index=df.index)
     for col, (low, high) in limites.items():
         if col in df.columns:
             mask &= df[col].between(low, high)
     df = df[mask].copy()
 
+    # --- E. CALENDARIO ARGENTINO ---
     feriados_2025 = pd.to_datetime(['2025-08-17', '2025-10-12', '2025-11-20', '2025-12-08', '2025-12-24', '2025-12-25', '2026-01-01', '2026-02-16', '2026-02-17', '2026-03-23', '2026-03-24', '2026-04-02', '2026-04-03', '2026-05-01', '2026-05-25', '2026-06-15', '2026-06-20', '2026-07-09', '2026-07-10', '2026-08-17', '2026-10-12', '2026-11-23', '2026-12-07', '2026-12-08', '2026-12-25']).date
     
     df['fecha'] = df.index.date
@@ -72,6 +78,8 @@ def obtener_datos_historicos():
     df['tipo_dia'] = df.apply(definir_tipo_cammesa, axis=1)
     return df
 
+# === 3. INTERFAZ Y MENÚ LATERAL ===
+
 st.markdown("""
     <style>
         [data-testid="stSidebar"] { background-color: #1a252c; }
@@ -89,6 +97,8 @@ with st.sidebar:
     seccion = st.radio("Secciones:", ["🏠 Inicio", "🕒 Tiempo Real", "📊 Consumo por Día"])
     st.markdown("---")
     st.info("Ingeniería Electrónica - UTN FRT")
+
+# === 4. LÓGICA DE LAS SECCIONES ===
 
 st.title("⚡ Sistema de Gestión Energética - PAC3200")
 
@@ -205,9 +215,11 @@ elif seccion == "📊 Consumo por Día":
     st.write("### 📊 Análisis de Consumo por Día y Fase")
     
     try:
+        # A. ADQUISICIÓN DE DATOS
         with st.spinner('Descargando y procesando historial completo desde InfluxDB... ⏳'):
             df = obtener_datos_historicos()
 
+        # B. CÁLCULOS PARA GRÁFICO DE TORTA
         energia_total = df['EA_imp_T1_kwh'].max() - df['EA_imp_T1_kwh'].min()
         df['incremental_consumption'] = df['EA_imp_T1_kwh'].diff().clip(lower=0).fillna(0)
 
@@ -225,67 +237,48 @@ elif seccion == "📊 Consumo por Día":
         else:
             energia_habil = energia_feriado = energia_finde = 0
 
+        # C. CÁLCULOS PARA GRÁFICO DE BARRAS (Lógica de Colab)
+        df_diario = df.resample('D').last()
+        df_diario['consumo_diario_kWh'] = df_diario['EA_imp_T1_kwh'].diff().clip(lower=0).fillna(0)
+        
+        dias_semana_es = {0: 'Lunes', 1: 'Martes', 2: 'Miércoles', 3: 'Jueves', 4: 'Viernes', 5: 'Sábado', 6: 'Domingo'}
+        df_diario['nombre_dia'] = df_diario.index.dayofweek.map(dias_semana_es)
+        
+        def categorizar(row):
+            if row['es_feriado']: return 'Feriado'
+            if row.name.weekday() == 6: return 'Domingo'
+            if row.name.weekday() == 5: return 'Sábado'
+            return 'Día hábil'
+        
+        df_diario['categoria'] = df_diario.apply(categorizar, axis=1)
+
+        # D. DISEÑO DE INTERFAZ (Layout)
         col_torta, col_barras = st.columns([1, 2])
 
+        # --- COLUMNA IZQUIERDA: TORTA ---
         with col_torta:
             st.markdown("#### 📅 Consumo por Tipo de Día")
-            
             if raw_total_sum == 0:
-                st.warning("No se registró consumo de energía en el período.")
+                st.warning("No se registró consumo.")
             else:
-                labels = ['Días hábiles', 'Feriados', 'Fin de semana']
-                sizes = [energia_habil, energia_feriado, energia_finde]
-                colores = ['#66bb6a', '#ef5350', '#42a5f5']
-
                 fig_torta = go.Figure(data=[go.Pie(
-                    labels=labels,
-                    values=sizes,
-                    marker_colors=colores,
+                    labels=['Días hábiles', 'Feriados', 'Fin de semana'],
+                    values=[energia_habil, energia_feriado, energia_finde],
+                    marker_colors=['#66bb6a', '#ef5350', '#42a5f5'],
                     pull=[0.05, 0.05, 0.05],
                     textinfo='percent+label',
-                    hoverinfo='label+value+percent',
                     hovertemplate="%{label}<br>%{value:,.1f} kWh<br>%{percent}<extra></extra>"
                 )])
-                
                 fig_torta.update_layout(
                     margin=dict(t=20, b=20, l=10, r=10),
-                    showlegend=False,
-                    height=350,
-                    paper_bgcolor="rgba(0,0,0,0)"
+                    showlegend=False, height=350, paper_bgcolor="rgba(0,0,0,0)"
                 )
                 st.plotly_chart(fig_torta, use_container_width=True)
                 st.caption(f"**Total real registrado:** {energia_total:,.1f} kWh")
 
+        # --- COLUMNA DERECHA: BARRAS ---
         with col_barras:
-            # 1. PREPARACIÓN DE DATOS (Siguiendo tu lógica de Colab)
-            # Agrupamos por día ('D') tomando el último valor de energía acumulada
-            df_diario = df.resample('D').last()
-            df_diario['consumo_diario_kWh'] = df_diario['EA_imp_T1_kwh'].diff().clip(lower=0).fillna(0)
-
-            # Mapeo de nombres de días (Tu diccionario)
-            dias_semana_es = {0: 'Lunes', 1: 'Martes', 2: 'Miércoles', 3: 'Jueves', 4: 'Viernes', 5: 'Sábado', 6: 'Domingo'}
-            
-            # Usamos las columnas que ya creó nuestra función obtener_datos_historicos
-            df_diario['nombre_dia'] = df_diario.index.dayofweek.map(dias_semana_es)
-            
-            # Definimos la categoría para los colores según tu lógica
-            def categorizar(row):
-                if row['es_feriado']: return 'Feriado'
-                if row.name.weekday() == 6: return 'Domingo'
-                if row.name.weekday() == 5: return 'Sábado'
-                return 'Día hábil'
-            
-            df_diario['categoria'] = df_diario.apply(categorizar, axis=1)
-
-            # Configuración de colores (Tus colores exactos)
-            color_map = {
-                'Día hábil': '#2ca02c', # Verde
-                'Sábado': '#1f77b4',    # Azul
-                'Domingo': '#ff7f0e',   # Naranja
-                'Feriado': 'red'        # Rojo
-            }
-
-            # 2. CREACIÓN DEL GRÁFICO OPTIMIZADO
+            color_map = {'Día hábil': '#2ca02c', 'Sábado': '#1f77b4', 'Domingo': '#ff7f0e', 'Feriado': 'red'}
             fig_barras = go.Figure()
 
             for tipo, color in color_map.items():
@@ -297,39 +290,22 @@ elif seccion == "📊 Consumo por Día":
                         name=tipo,
                         marker_color=color,
                         customdata=df_temp[['nombre_dia', 'categoria']],
-                        hovertemplate=(
-                            "<b>%{customdata[0]}</b>, %{x|%d de %b}<br>" +
-                            "<b>Consumo</b>: %{y:.2f} kWh<br>" +
-                            "<b>Tipo</b>: %{customdata[1]}" +
-                            "<extra></extra>"
-                        )
+                        hovertemplate="<b>%{customdata[0]}</b>, %{x|%d de %b}<br><b>Consumo</b>: %{y:.2f} kWh<br><b>Tipo</b>: %{customdata[1]}<extra></extra>"
                     ))
 
-            # Diseño final (Tu diseño de Colab adaptado a Streamlit)
             fig_barras.update_layout(
                 title='<b>Evolución de Consumo Diario de Energía</b>',
-                title_x=0.5,
-                margin=dict(l=50, r=20, t=80, b=50),
-                height=450, # Ajustado para que entre bien en la web
-                template='plotly_white',
-                hovermode='x unified',
+                title_x=0.5, margin=dict(l=50, r=20, t=80, b=50),
+                height=450, template='plotly_white', hovermode='x unified',
                 legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-                xaxis=dict(
-                    title='Fecha de Medición',
-                    tickformat='%d %b',
-                    tickangle=0,
-                    fixedrange=False 
-                ),
+                xaxis=dict(title='Fecha de Medición', tickformat='%d %b', fixedrange=False),
                 yaxis=dict(title='Energía Consumida (kWh)', gridcolor='lightgrey'),
-                paper_bgcolor="rgba(0,0,0,0)",
-                plot_bgcolor="rgba(0,0,0,0)"
+                paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)"
             )
-
             st.plotly_chart(fig_barras, use_container_width=True)
-            
-        with col_barras:
-            st.markdown("#### 📊 Desglose de Consumo Diario")
-            st.info("💡 ¡Espacio reservado! Acá inyectamos el código del gráfico de barras.")
+
+    except Exception as e:
+        st.error(f"Error en el análisis de datos: {e}")
 
     except Exception as e:
         st.error(f"Error procesando la base de datos: {e}")
