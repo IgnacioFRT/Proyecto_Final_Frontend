@@ -51,7 +51,7 @@ if df is not None:
                 
                 # 1. Tus credenciales
                 url = "https://influxdb.utn.xrob.com.ar"
-                token = "VPJoZH--S2GGPNNhfmWVUsZEaHqV4h1wkOX235FSfhk6GkitChp2e-8DxQ701ns6s7VwpKnmE-Evj7KYhLcWJQ=="
+                token = "VPJoZH--S2GGPNNhfmWVUsZEaHqV4h1wkOX235FSfhk6GkitChp2e-8DxQ7O1ns6s7VwpKnmE-Evj7KYhLcWJQ=="
                 org = "ec1aafe9e31ba7af"
                 bucket = "UTN FRT"
                 
