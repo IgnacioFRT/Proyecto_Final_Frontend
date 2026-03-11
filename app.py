@@ -125,7 +125,7 @@ if df is not None:
             st.markdown("### 💎 Calidad de Energía")
             
             # Usamos 4 columnas igual que antes
-            espacio_izq, q1, q2, q3, q4, espacio_der = st.columns([0.5, 1, 1, 1, 1, 0.5])
+            espacio_izq, q1, q2, q3, q4, espacio_der = st.columns([1, 1, 1, 1, 1, 0.5])
             
             with q1:
                 st.markdown("⚡ **Tensión (V)**")
