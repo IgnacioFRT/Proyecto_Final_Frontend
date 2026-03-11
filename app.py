@@ -304,6 +304,64 @@ elif seccion == "📊 Consumo por Día":
             )
             st.plotly_chart(fig_barras, use_container_width=True)
 
+    # ---------------------------------------------------------
+        # FILA 2: ANÁLISIS POR FASE (L1, L2, L3)
+        # ---------------------------------------------------------
+        st.divider() # Una línea sutil para separar las filas
+        
+        # 1. CÁLCULOS MATEMÁTICOS (Tu lógica de Colab)
+        p1_mean = df['P1'].mean()
+        p2_mean = df['P2'].mean()
+        p3_mean = df['P3'].mean()
+        p_total_mean = p1_mean + p2_mean + p3_mean
+
+        if p_total_mean > 0:
+            energia_p1 = (p1_mean / p_total_mean) * energia_total
+            energia_p2 = (p2_mean / p_total_mean) * energia_total
+            energia_p3 = (p3_mean / p_total_mean) * energia_total
+        else:
+            energia_p1 = energia_p2 = energia_p3 = 0
+
+        # 2. MAQUETADO DE LA SEGUNDA FILA
+        col_torta_fases, col_info_fases = st.columns([1, 2])
+
+        with col_torta_fases:
+            st.markdown("#### 📐 Distribución por Fase")
+            
+            labels_fase = ['Línea 1', 'Línea 2', 'Línea 3']
+            values_fase = [energia_p1, energia_p2, energia_p3]
+            colors_fase = ['#1f77b4', '#ff7f0e', '#2ca02c'] # Tus colores: Azul, Naranja, Verde
+
+            fig_fases = go.Figure(data=[go.Pie(
+                labels=labels_fase,
+                values=values_fase,
+                marker_colors=colors_fase,
+                pull=[0.05, 0.05, 0.05],
+                textinfo='percent+label',
+                hovertemplate="<b>%{label}</b><br>Estimado: %{value:,.1f} kWh<br>%{percent}<extra></extra>"
+            )])
+
+            fig_fases.update_layout(
+                margin=dict(t=20, b=20, l=10, r=10),
+                showlegend=False,
+                height=350,
+                paper_bgcolor="rgba(0,0,0,0)"
+            )
+            st.plotly_chart(fig_fases, use_container_width=True)
+
+        with col_info_fases:
+            st.markdown("#### 📝 Resumen de Cargas por Línea")
+            # Presentamos la info de texto de una forma más estética usando st.metric
+            m1, m2, m3 = st.columns(3)
+            m1.metric("Línea 1 (L1)", f"{energia_p1:,.1f} kWh", f"{energia_p1/energia_total*100:.1f}%")
+            m2.metric("Línea 2 (L2)", f"{energia_p2:,.1f} kWh", f"{energia_p2/energia_total*100:.1f}%")
+            m3.metric("Línea 3 (L3)", f"{energia_p3:,.1f} kWh", f"{energia_p3/energia_total*100:.1f}%")
+            
+            st.info(f"""
+            **Análisis de Desequilibrio:** El consumo total de **{energia_total:,.1f} kWh** se distribuye según la potencia media registrada por el PAC3200. 
+            Esta visualización ayuda a identificar si alguna fase está sobrecargada respecto a las demás.
+            """)
+
     except Exception as e:
         st.error(f"Error en el análisis de datos: {e}")
 
