@@ -89,36 +89,38 @@ if df is not None:
                 for record in table.records:
                     data[record.get_field()] = record.get_value()
 
-            # --- NUEVA FUNCIÓN GAUGE DOBLE ---
+            # --- FUNCIÓN GAUGE DOBLE CORREGIDA ---
             def crear_gauge_doble(val_v, val_i, titulo):
                 fig = go.Figure()
 
                 # Anillo Exterior: TENSIÓN (Azul)
                 fig.add_trace(go.Indicator(
                     mode = "gauge+number", value = val_v,
-                    number = {'valueformat': ".1f", 'font': {'color': "#1f77b4", 'size': 20}, 'suffix': 'V'},
+                    number = {'valueformat': ".1f", 'font': {'color': "#1f77b4", 'size': 22}, 'suffix': 'V'},
                     title = {'text': titulo, 'font': {'size': 18}},
                     domain = {'x': [0, 1], 'y': [0, 1]},
                     gauge = {
                         'axis': {'range': [0, 250], 'tickwidth': 1},
-                        'bar': {'color': "#1f77b4"},
-                        'thickness': 0.15 # Grosor del anillo exterior
+                        'bar': {'color': "#1f77b4", 'thickness': 0.6}, # Grosor corregido aquí
                     }
                 ))
 
-                # Anillo Interior: CORRIENTE (Rojo/Naranja)
+                # Anillo Interior: CORRIENTE (Rojo)
                 fig.add_trace(go.Indicator(
                     mode = "gauge+number", value = val_i,
-                    number = {'valueformat': ".2f", 'font': {'color': "#f44336", 'size': 30}, 'suffix': 'A'},
-                    domain = {'x': [0.15, 0.85], 'y': [0.15, 0.85]}, # Lo achicamos para que entre
+                    number = {'valueformat': ".2f", 'font': {'color': "#f44336", 'size': 35}, 'suffix': 'A'},
+                    domain = {'x': [0.2, 0.8], 'y': [0.2, 0.8]}, # Un poco más chico para que no choque
                     gauge = {
                         'axis': {'range': [0, 20], 'tickwidth': 1},
-                        'bar': {'color': "#f44336"},
-                        'thickness': 0.25 # Grosor del anillo interior
+                        'bar': {'color': "#f44336", 'thickness': 0.8}, # Grosor corregido aquí
                     }
                 ))
 
-                fig.update_layout(height=350, margin=dict(l=30, r=30, t=70, b=30))
+                fig.update_layout(
+                    height=350, 
+                    margin=dict(l=20, r=20, t=80, b=20),
+                    paper_bgcolor="rgba(0,0,0,0)"
+                )
                 return fig
 
             # --- FILA 1: VARIABLES CLIMÁTICAS ---
