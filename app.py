@@ -384,8 +384,8 @@ if df is not None:
         st.write("### 📊 Análisis de Consumo por Día y Fase")
     
         try:
-        # Esto invoca la función global y muestra un cartelito mientras descarga
-        with st.spinner('Descargando y procesando historial completo desde InfluxDB... ⏳'):
+            # Esto invoca la función global y muestra un cartelito mientras descarga
+            with st.spinner('Descargando y procesando historial completo desde InfluxDB... ⏳'):
             df = obtener_datos_historicos()
 
         # ==========================================
