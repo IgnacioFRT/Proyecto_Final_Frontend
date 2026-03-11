@@ -54,7 +54,6 @@ if df is not None:
         tz_ar = pytz.timezone("America/Argentina/Buenos_Aires")
         hora_actual = pd.Timestamp.now(tz=tz_ar).strftime('%H:%M:%S')
         
-        st.subheader("⛅ Condiciones en Tiempo Real (Actualización Automática)")
         st.caption(f"Última actualización (Hora Arg): {hora_actual}")
         
         # 1. Credenciales y Conexión (Igual que antes)
@@ -90,6 +89,38 @@ if df is not None:
                 for record in table.records:
                     data[record.get_field()] = record.get_value()
 
+            # --- NUEVA FUNCIÓN GAUGE DOBLE ---
+            def crear_gauge_doble(val_v, val_i, titulo):
+                fig = go.Figure()
+
+                # Anillo Exterior: TENSIÓN (Azul)
+                fig.add_trace(go.Indicator(
+                    mode = "gauge+number", value = val_v,
+                    number = {'valueformat': ".1f", 'font': {'color': "#1f77b4", 'size': 20}, 'suffix': 'V'},
+                    title = {'text': titulo, 'font': {'size': 18}},
+                    domain = {'x': [0, 1], 'y': [0, 1]},
+                    gauge = {
+                        'axis': {'range': [0, 250], 'tickwidth': 1},
+                        'bar': {'color': "#1f77b4"},
+                        'thickness': 0.15 # Grosor del anillo exterior
+                    }
+                ))
+
+                # Anillo Interior: CORRIENTE (Rojo/Naranja)
+                fig.add_trace(go.Indicator(
+                    mode = "gauge+number", value = val_i,
+                    number = {'valueformat': ".2f", 'font': {'color': "#f44336", 'size': 30}, 'suffix': 'A'},
+                    domain = {'x': [0.15, 0.85], 'y': [0.15, 0.85]}, # Lo achicamos para que entre
+                    gauge = {
+                        'axis': {'range': [0, 20], 'tickwidth': 1},
+                        'bar': {'color': "#f44336"},
+                        'thickness': 0.25 # Grosor del anillo interior
+                    }
+                ))
+
+                fig.update_layout(height=350, margin=dict(l=30, r=30, t=70, b=30))
+                return fig
+
             # --- FILA 1: VARIABLES CLIMÁTICAS ---
             st.write("### 🌤️ Clima")
             c1, c2, c3 = st.columns(3)
@@ -110,26 +141,15 @@ if df is not None:
 
             # --- FILA 2: CORRIENTES POR FASE ---
             st.divider()
-            st.write("### ⚡ Corrientes por Línea (A)")
-            st.info("💡 Use estos relojes para identificar qué fase tiene cargas activas.")
-            i1, i2, i3 = st.columns(3)
+            st.write("### 🔌 Análisis por Fase (V exterior | A interior)")
+            f1, f2, f3 = st.columns(3)
             
-            # Ajustamos el máximo a 15A o 20A según lo que suela manejar tu tablero
-            i1.plotly_chart(crear_gauge(data["IL1"], "Corriente L1", 20, "#1f77b4", " A"), use_container_width=True)
-            i2.plotly_chart(crear_gauge(data["IL2"], "Corriente L2", 20, "#ff7f0e", " A"), use_container_width=True)
-            i3.plotly_chart(crear_gauge(data["IL3"], "Corriente L3", 20, "#2ca02c", " A"), use_container_width=True)
+            f1.plotly_chart(crear_gauge_doble(data["UL1N"], data["IL1"], "Fase L1"), use_container_width=True)
+            f2.plotly_chart(crear_gauge_doble(data["UL2N"], data["IL2"], "Fase L2"), use_container_width=True)
+            f3.plotly_chart(crear_gauge_doble(data["UL3N"], data["IL3"], "Fase L3"), use_container_width=True)
 
-            # --- FILA 3: TENSIONES POR FASE ---
-            st.divider()
-            st.write("### 🔌 Tensiones de Fase (V)")
-            v1, v2, v3 = st.columns(3)
-            # Para la tensión usamos métricas simples ya que no varían tanto
-            v1.metric("Tensión L1-N", f"{data['UL1N']:.1f} V")
-            v2.metric("Tensión L2-N", f"{data['UL2N']:.1f} V")
-            v3.metric("Tensión L3-N", f"{data['UL3N']:.1f} V")
-            
         except Exception as e:
-            st.error(f"Error en tiempo real: {e}")
+            st.error(f"Error: {e}")
         
 
     elif seccion == "📶 Calidad (QoS)":
