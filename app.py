@@ -36,19 +36,22 @@ if df is not None:
     st.title("⚡ Sistema de Gestión Energética - PAC3200")
     
     if seccion == "🏠 Inicio":
-        # --- 1. ENCABEZADO INSTITUCIONAL ---
+        # --- 1. ENCABEZADO INSTITUCIONAL LIMPIO ---
         col_logo, col_titulo = st.columns([1, 4])
         
         with col_logo:
-            # ACÁ PODÉS PONER TU LOGO LOCAL. 
-            # Guardá el logo de la UTN como "logo_utn.png" en la misma carpeta que app.py
-            # y cambiá la línea de abajo por: st.image("logo_utn.png", use_container_width=True)
-            st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/6/67/UTN_logo.jpg/320px-UTN_logo.jpg", width=120)
+            try:
+                # Intenta cargar la imagen local que subiste a GitHub
+                st.image("logo_principal.jpg", width=150)
+            except:
+                # Si todavía no subiste la imagen, muestra este texto temporal para que no salga el error roto
+                st.error("Falta logo_utn.png")
             
         with col_titulo:
-            st.title("⚡ Sistema de Gestión Energética")
-            st.markdown("### **Facultad Regional Tucumán (UTN FRT)**")
-            st.caption("Monitoreo IoT y Análisis de Calidad Eléctrica con Siemens PAC3200")
+            # Quitamos el st.title repetido y dejamos los datos de la facultad
+            st.markdown("## Facultad Regional Tucumán (UTN FRT)")
+            st.markdown("#### **Departamento de Ingeniería Electrónica**")
+            st.caption("Práctica Supervisada: Monitoreo IoT y Análisis de Calidad Eléctrica con analizador Siemens PAC3200")
 
         st.divider()
 
