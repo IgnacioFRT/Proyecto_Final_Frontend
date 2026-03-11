@@ -219,7 +219,7 @@ elif seccion == "📊 Consumo por Día":
         with st.spinner('Descargando y procesando historial completo desde InfluxDB... ⏳'):
             df = obtener_datos_historicos()
 
-        # B. CÁLCULOS PARA GRÁFICO DE TORTA
+        # B. CÁLCULOS PARA LA FILA 1 (Tipo de Día)
         energia_total = df['EA_imp_T1_kwh'].max() - df['EA_imp_T1_kwh'].min()
         df['incremental_consumption'] = df['EA_imp_T1_kwh'].diff().clip(lower=0).fillna(0)
 
@@ -237,7 +237,7 @@ elif seccion == "📊 Consumo por Día":
         else:
             energia_habil = energia_feriado = energia_finde = 0
 
-        # C. CÁLCULOS PARA GRÁFICO DE BARRAS (Lógica de Colab)
+        # C. CÁLCULOS PARA BARRAS DIARIAS
         df_diario = df.resample('D').last()
         df_diario['consumo_diario_kWh'] = df_diario['EA_imp_T1_kwh'].diff().clip(lower=0).fillna(0)
         
@@ -252,10 +252,9 @@ elif seccion == "📊 Consumo por Día":
         
         df_diario['categoria'] = df_diario.apply(categorizar, axis=1)
 
-        # D. DISEÑO DE INTERFAZ (Layout)
+        # D. MAQUETADO FILA 1
         col_torta, col_barras = st.columns([1, 2])
 
-        # --- COLUMNA IZQUIERDA: TORTA ---
         with col_torta:
             st.markdown("#### 📅 Consumo por Tipo de Día")
             if raw_total_sum == 0:
@@ -269,47 +268,30 @@ elif seccion == "📊 Consumo por Día":
                     textinfo='percent+label',
                     hovertemplate="%{label}<br>%{value:,.1f} kWh<br>%{percent}<extra></extra>"
                 )])
-                fig_torta.update_layout(
-                    margin=dict(t=20, b=20, l=10, r=10),
-                    showlegend=False, height=350, paper_bgcolor="rgba(0,0,0,0)"
-                )
+                fig_torta.update_layout(margin=dict(t=20, b=20, l=10, r=10), showlegend=False, height=350, paper_bgcolor="rgba(0,0,0,0)")
                 st.plotly_chart(fig_torta, use_container_width=True)
                 st.caption(f"**Total real registrado:** {energia_total:,.1f} kWh")
 
-        # --- COLUMNA DERECHA: BARRAS ---
         with col_barras:
             color_map = {'Día hábil': '#2ca02c', 'Sábado': '#1f77b4', 'Domingo': '#ff7f0e', 'Feriado': 'red'}
             fig_barras = go.Figure()
-
             for tipo, color in color_map.items():
                 df_temp = df_diario[df_diario['categoria'] == tipo]
                 if not df_temp.empty:
                     fig_barras.add_trace(go.Bar(
-                        x=df_temp.index,
-                        y=df_temp['consumo_diario_kWh'],
-                        name=tipo,
-                        marker_color=color,
+                        x=df_temp.index, y=df_temp['consumo_diario_kWh'], name=tipo, marker_color=color,
                         customdata=df_temp[['nombre_dia', 'categoria']],
                         hovertemplate="<b>%{customdata[0]}</b>, %{x|%d de %b}<br><b>Consumo</b>: %{y:.2f} kWh<br><b>Tipo</b>: %{customdata[1]}<extra></extra>"
                     ))
-
-            fig_barras.update_layout(
-                title='<b>Evolución de Consumo Diario de Energía</b>',
-                title_x=0.5, margin=dict(l=50, r=20, t=80, b=50),
-                height=450, template='plotly_white', hovermode='x unified',
-                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-                xaxis=dict(title='Fecha de Medición', tickformat='%d %b', fixedrange=False),
-                yaxis=dict(title='Energía Consumida (kWh)', gridcolor='lightgrey'),
-                paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)"
-            )
+            fig_barras.update_layout(title='<b>Evolución de Consumo Diario</b>', title_x=0.5, height=450, template='plotly_white', hovermode='x unified', legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
             st.plotly_chart(fig_barras, use_container_width=True)
 
-    # ---------------------------------------------------------
+        # ---------------------------------------------------------
         # FILA 2: ANÁLISIS POR FASE (L1, L2, L3)
         # ---------------------------------------------------------
-        st.divider() # Una línea sutil para separar las filas
+        st.divider() 
         
-        # 1. CÁLCULOS MATEMÁTICOS (Tu lógica de Colab)
+        # 1. CÁLCULOS MATEMÁTICOS (Fases)
         p1_mean = df['P1'].mean()
         p2_mean = df['P2'].mean()
         p3_mean = df['P3'].mean()
@@ -322,97 +304,47 @@ elif seccion == "📊 Consumo por Día":
         else:
             energia_p1 = energia_p2 = energia_p3 = 0
 
-        # 2. MAQUETADO DE LA SEGUNDA FILA
+        # 2. MAQUETADO FILA 2
         col_torta_fases, col_info_fases = st.columns([1, 2])
 
         with col_torta_fases:
             st.markdown("#### 📐 Distribución por Fase")
-            
-            labels_fase = ['Línea 1', 'Línea 2', 'Línea 3']
-            values_fase = [energia_p1, energia_p2, energia_p3]
-            colors_fase = ['#1f77b4', '#ff7f0e', '#2ca02c'] # Tus colores: Azul, Naranja, Verde
-
             fig_fases = go.Figure(data=[go.Pie(
-                labels=labels_fase,
-                values=values_fase,
-                marker_colors=colors_fase,
-                pull=[0.05, 0.05, 0.05],
-                textinfo='percent+label',
+                labels=['Línea 1', 'Línea 2', 'Línea 3'],
+                values=[energia_p1, energia_p2, energia_p3],
+                marker_colors=['#1f77b4', '#ff7f0e', '#2ca02c'],
+                pull=[0.05, 0.05, 0.05], textinfo='percent+label',
                 hovertemplate="<b>%{label}</b><br>Estimado: %{value:,.1f} kWh<br>%{percent}<extra></extra>"
             )])
-
-            fig_fases.update_layout(
-                margin=dict(t=20, b=20, l=10, r=10),
-                showlegend=False,
-                height=350,
-                paper_bgcolor="rgba(0,0,0,0)"
-            )
+            fig_fases.update_layout(margin=dict(t=20, b=20, l=10, r=10), showlegend=False, height=350, paper_bgcolor="rgba(0,0,0,0)")
             st.plotly_chart(fig_fases, use_container_width=True)
 
         with col_info_fases:
             st.markdown("#### 📊 Desglose Diario por Fase")
-            
-            # 1. PREPARACIÓN DE DATOS (Tu lógica de Colab)
-            df_diario_fases = df.resample('D').agg({
-                'P1': 'mean',
-                'P2': 'mean',
-                'P3': 'mean',
-                'EA_imp_T1_kwh': 'last'
-            })
-            
+            df_diario_fases = df.resample('D').agg({'P1': 'mean', 'P2': 'mean', 'P3': 'mean', 'EA_imp_T1_kwh': 'last'})
             df_diario_fases['P_total_medio'] = df_diario_fases['P1'] + df_diario_fases['P2'] + df_diario_fases['P3']
             df_diario_fases['consumo_diario_total_kWh'] = df_diario_fases['EA_imp_T1_kwh'].diff().clip(lower=0).fillna(0)
 
-            # Estimación por línea
             df_diario_fases['P1_kWh'] = (df_diario_fases['P1'] / df_diario_fases['P_total_medio']) * df_diario_fases['consumo_diario_total_kWh']
             df_diario_fases['P2_kWh'] = (df_diario_fases['P2'] / df_diario_fases['P_total_medio']) * df_diario_fases['consumo_diario_total_kWh']
             df_diario_fases['P3_kWh'] = (df_diario_fases['P3'] / df_diario_fases['P_total_medio']) * df_diario_fases['consumo_diario_total_kWh']
-
-            dias_semana_es = {0: 'Lunes', 1: 'Martes', 2: 'Miércoles', 3: 'Jueves', 4: 'Viernes', 5: 'Sábado', 6: 'Domingo'}
             df_diario_fases['nombre_dia'] = df_diario_fases.index.dayofweek.map(dias_semana_es)
 
-            # 2. CREACIÓN DEL GRÁFICO (Stacked Bar)
             fig_stack = go.Figure()
-            
-            lineas_config = {
-                'P1_kWh': {'nombre': 'Línea 1', 'color': '#1f77b4'},
-                'P2_kWh': {'nombre': 'Línea 2', 'color': '#ff7f0e'},
-                'P3_kWh': {'nombre': 'Línea 3', 'color': '#2ca02c'}
-            }
-
+            lineas_config = {'P1_kWh': {'nombre': 'Línea 1', 'color': '#1f77b4'}, 'P2_kWh': {'nombre': 'Línea 2', 'color': '#ff7f0e'}, 'P3_kWh': {'nombre': 'Línea 3', 'color': '#2ca02c'}}
             for col, info in lineas_config.items():
                 fig_stack.add_trace(go.Bar(
-                    x=df_diario_fases.index,
-                    y=df_diario_fases[col],
-                    name=info['nombre'],
-                    marker_color=info['color'],
+                    x=df_diario_fases.index, y=df_diario_fases[col], name=info['nombre'], marker_color=info['color'],
                     customdata=df_diario_fases['nombre_dia'],
                     hovertemplate="<b>%{customdata}</b>, %{x|%d de %b}<br><b>%{data.name}</b>: %{y:.2f} kWh<extra></extra>"
                 ))
-
-            fig_stack.update_layout(
-                barmode='stack', # APILADO
-                height=400,
-                margin=dict(l=40, r=10, t=20, b=40),
-                template='plotly_white',
-                hovermode='x unified',
-                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-                xaxis=dict(tickformat='%d %b', title=""),
-                yaxis=dict(title='Energía (kWh)', gridcolor='lightgrey'),
-                paper_bgcolor="rgba(0,0,0,0)",
-                plot_bgcolor="rgba(0,0,0,0)"
-            )
-
+            fig_stack.update_layout(barmode='stack', height=400, template='plotly_white', hovermode='x unified', legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
             st.plotly_chart(fig_stack, use_container_width=True)
             
-            # Resumen rápido de métricas abajo del gráfico
             m1, m2, m3 = st.columns(3)
             m1.metric("L1 (Azul)", f"{energia_p1:,.1f} kWh")
             m2.metric("L2 (Naranja)", f"{energia_p2:,.1f} kWh")
             m3.metric("L3 (Verde)", f"{energia_p3:,.1f} kWh")
 
     except Exception as e:
-        st.error(f"Error en el análisis de datos: {e}")
-
-    except Exception as e:
-        st.error(f"Error procesando la base de datos: {e}")
+        st.error(f"Error en el procesamiento de datos: {e}")
