@@ -89,40 +89,41 @@ if df is not None:
                 for record in table.records:
                     data[record.get_field()] = record.get_value()
 
-            # --- FUNCIÓN GAUGE DOBLE RESPONSIVA (Mismo tamaño que clima) ---
+            # --- FUNCIÓN GAUGE DOBLE ---
             def crear_gauge_doble(val_v, val_i, titulo):
                 fig = go.Figure()
 
                 # 1. Anillo Exterior: TENSIÓN (Azul)
                 fig.add_trace(go.Indicator(
-                    mode = "gauge", # Quitamos el '+number' de adentro para que no se pise
+                    mode = "gauge", 
                     value = val_v,
                     title = {'text': titulo, 'font': {'size': 18, 'color': "#2c3e50"}},
+                    # Dominio completo para el exterior
                     domain = {'x': [0, 1], 'y': [0, 1]},
                     gauge = {
-                        'axis': {'range': [0, 250], 'tickwidth': 1, 'tickcolor': "#5d6d7e"},
-                        'bar': {'color': "#1f77b4", 'thickness': 0.6},
+                        'axis': {'range': [0, 250], 'tickwidth': 1, 'tickcolor': "#5d6d7e", 'nticks': 6},
+                        'bar': {'color': "#1f77b4", 'thickness': 0.5},
                         'bgcolor': "white",
-                        'borderwidth': 1, 'bordercolor': "#e5e8e8"
+                        'borderwidth': 1, 'bordercolor': "#f2f4f4"
                     }
                 ))
 
                 # 2. Anillo Interior: CORRIENTE (Rojo)
+                # ACHICAMOS EL DOMINIO: ahora va del 30% al 70% del espacio
                 fig.add_trace(go.Indicator(
-                    mode = "gauge", # Quitamos el '+number' de adentro
+                    mode = "gauge", 
                     value = val_i,
-                    domain = {'x': [0.2, 0.8], 'y': [0.15, 0.75]}, 
+                    domain = {'x': [0.3, 0.7], 'y': [0.1, 0.55]}, 
                     gauge = {
-                        'axis': {'range': [0, 20], 'tickwidth': 1, 'tickcolor': "#5d6d7e", 'nticks': 5},
-                        'bar': {'color': "#f44336", 'thickness': 0.8},
+                        'axis': {'range': [0, 20], 'tickwidth': 1, 'tickcolor': "#5d6d7e", 'nticks': 4},
+                        'bar': {'color': "#f44336", 'thickness': 0.7},
                         'bgcolor': "white"
                     }
                 ))
 
-                # Ajustamos el layout para que el tamaño sea idéntico al de clima
                 fig.update_layout(
-                    height=280, # Misma altura que definimos para los de clima
-                    margin=dict(l=20, r=20, t=60, b=20),
+                    height=280, 
+                    margin=dict(l=10, r=10, t=50, b=0), # Reducimos margen inferior
                     paper_bgcolor="rgba(0,0,0,0)",
                     font={'family': "Source Sans Pro, sans-serif"}
                 )
