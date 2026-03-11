@@ -100,7 +100,23 @@ with st.sidebar:
 
 # === 4. LÓGICA DE LAS SECCIONES ===
 
-st.title("⚡ Sistema de Gestión Energética - PAC3200")
+# --- TÍTULO PERSONALIZADO ---
+st.markdown("""
+    <style>
+        .titulo-personalizado {
+            font-size: 45px !important;
+            font-weight: 700 !important;
+            color: #31333F;
+            margin-top: -70px !important; /* Lo tira hacia arriba */
+            margin-left: -20px !important; /* Lo tira a la izquierda */
+            margin-bottom: 20px !important;
+            text-align: left;
+        }
+    </style>
+    <h1 class="titulo-personalizado">⚡ Sistema de Gestión Energética - PAC3200</h1>
+""", unsafe_allow_html=True)
+
+# --- VENTANA INICIO ---
 
 if seccion == "🏠 Inicio":
     espacio1, col_logo_central, espacio3 = st.columns([1, 1.5, 1])
@@ -130,6 +146,8 @@ if seccion == "🏠 Inicio":
     with info2:
         st.info("**☁️ Software y Base de Datos**\n* **Base de Datos:** InfluxDB Cloud.\n* **Backend y Visualización:** Python, Streamlit, Plotly.\n* **Objetivo:** Auditoría energética y detección de anomalías.")
     st.write("👈 *Utilice el menú de navegación lateral para acceder a la visualización.*")
+
+# --- VENTANA TIEMPO REAL ---
 
 elif seccion == "🕒 Tiempo Real":
     
@@ -211,6 +229,8 @@ elif seccion == "🕒 Tiempo Real":
             
     except Exception as e:
         st.error(f"Error en la adquisición de datos en vivo: {e}")
+
+# --- VENTANA CONSUMO POR DIA ---
 
 elif seccion == "📊 Consumo por Día":
     
