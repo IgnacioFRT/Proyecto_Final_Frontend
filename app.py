@@ -89,37 +89,54 @@ if df is not None:
                 for record in table.records:
                     data[record.get_field()] = record.get_value()
 
-            # --- FUNCIÓN GAUGE DOBLE CORREGIDA ---
+            # --- FUNCIÓN GAUGE DOBLE ESTILIZADA ---
             def crear_gauge_doble(val_v, val_i, titulo):
                 fig = go.Figure()
+
+                # Fuente común para que sea igual al de clima
+                fuente_comun = {'family': "Source Sans Pro, sans-serif", 'color': "#5d6d7e"}
 
                 # Anillo Exterior: TENSIÓN (Azul)
                 fig.add_trace(go.Indicator(
                     mode = "gauge+number", value = val_v,
-                    number = {'valueformat': ".1f", 'font': {'color': "#1f77b4", 'size': 22}, 'suffix': 'V'},
-                    title = {'text': titulo, 'font': {'size': 18}},
+                    number = {
+                        'valueformat': ".1f", 
+                        'font': {'size': 20, 'color': "#1f77b4"}, 
+                        'suffix': 'V'
+                    },
+                    title = {'text': titulo, 'font': {'size': 18, 'color': "#2c3e50"}},
                     domain = {'x': [0, 1], 'y': [0, 1]},
                     gauge = {
-                        'axis': {'range': [0, 250], 'tickwidth': 1},
-                        'bar': {'color': "#1f77b4", 'thickness': 0.6}, # Grosor corregido aquí
+                        'axis': {'range': [0, 250], 'tickwidth': 1, 'tickcolor': "#5d6d7e"},
+                        'bar': {'color': "#1f77b4", 'thickness': 0.6},
+                        'bgcolor': "white",
+                        'borderwidth': 1,
+                        'bordercolor': "#e5e8e8"
                     }
                 ))
 
                 # Anillo Interior: CORRIENTE (Rojo)
                 fig.add_trace(go.Indicator(
                     mode = "gauge+number", value = val_i,
-                    number = {'valueformat': ".2f", 'font': {'color': "#f44336", 'size': 35}, 'suffix': 'A'},
-                    domain = {'x': [0.2, 0.8], 'y': [0.2, 0.8]}, # Un poco más chico para que no choque
+                    number = {
+                        'valueformat': ".2f", 
+                        'font': {'size': 28, 'color': "#f44336"}, 
+                        'suffix': 'A'
+                    },
+                    # Achicamos el dominio para que haya "aire" entre los anillos
+                    domain = {'x': [0.25, 0.75], 'y': [0.1, 0.6]}, 
                     gauge = {
-                        'axis': {'range': [0, 20], 'tickwidth': 1},
-                        'bar': {'color': "#f44336", 'thickness': 0.8}, # Grosor corregido aquí
+                        'axis': {'range': [0, 20], 'tickwidth': 1, 'tickcolor': "#5d6d7e"},
+                        'bar': {'color': "#f44336", 'thickness': 0.8},
+                        'bgcolor': "white"
                     }
                 ))
 
                 fig.update_layout(
-                    height=350, 
-                    margin=dict(l=20, r=20, t=80, b=20),
-                    paper_bgcolor="rgba(0,0,0,0)"
+                    height=380, # Le damos más altura para evitar cortes
+                    margin=dict(l=10, r=10, t=100, b=10), # Más margen arriba para el título
+                    paper_bgcolor="rgba(0,0,0,0)",
+                    font=fuente_comun # Aplicamos la fuente a todo el gráfico
                 )
                 return fig
 
