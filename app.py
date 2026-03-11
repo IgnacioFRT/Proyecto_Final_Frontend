@@ -25,7 +25,7 @@ df = load_data()
 
 # 3. INTERFAZ Y MENÚ LATERAL
 with st.sidebar:
-    st.image("https://www.frt.utn.edu.ar/imagenes/logo_utn.png", width=150)
+    st.image("https://share.google/y6JeL3fEqC53COwpL", width=150)
     st.title("Navegación")
     seccion = st.radio("Secciones:", ["🏠 Inicio", "🕒 Tiempo Real", "📶 Calidad (QoS)", "📊 Consumo por Día"])
     st.markdown("---")
