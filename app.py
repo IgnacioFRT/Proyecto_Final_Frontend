@@ -46,9 +46,9 @@ if df is not None:
         
         with col_logo_central:
             try:
-                st.image("logo_utn.png", use_container_width=True)
+                st.image("logo_utn.jpg", use_container_width=True)
             except:
-                st.error("Falta logo_utn.png")
+                st.error("Falta logo_utn.jpg")
         
         # Textos centrados usando HTML para darle formato de portada
         st.markdown("<h1 style='text-align: center;'>⚡ Sistema de Gestión Energética - PAC3200</h1>", unsafe_allow_html=True)
