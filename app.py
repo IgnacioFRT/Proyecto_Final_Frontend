@@ -386,7 +386,7 @@ if df is not None:
         try:
             # Esto invoca la función global y muestra un cartelito mientras descarga
             with st.spinner('Descargando y procesando historial completo desde InfluxDB... ⏳'):
-            df = obtener_datos_historicos()
+                 df = obtener_datos_historicos()
 
         # ==========================================
         # MATEMÁTICA EXACTA DE TU COLAB
