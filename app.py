@@ -257,6 +257,77 @@ elif seccion == "📊 Consumo por Día":
                 st.caption(f"**Total real registrado:** {energia_total:,.1f} kWh")
 
         with col_barras:
+            # 1. PREPARACIÓN DE DATOS (Siguiendo tu lógica de Colab)
+            # Agrupamos por día ('D') tomando el último valor de energía acumulada
+            df_diario = df.resample('D').last()
+            df_diario['consumo_diario_kWh'] = df_diario['EA_imp_T1_kwh'].diff().clip(lower=0).fillna(0)
+
+            # Mapeo de nombres de días (Tu diccionario)
+            dias_semana_es = {0: 'Lunes', 1: 'Martes', 2: 'Miércoles', 3: 'Jueves', 4: 'Viernes', 5: 'Sábado', 6: 'Domingo'}
+            
+            # Usamos las columnas que ya creó nuestra función obtener_datos_historicos
+            df_diario['nombre_dia'] = df_diario.index.dayofweek.map(dias_semana_es)
+            
+            # Definimos la categoría para los colores según tu lógica
+            def categorizar(row):
+                if row['es_feriado']: return 'Feriado'
+                if row.name.weekday() == 6: return 'Domingo'
+                if row.name.weekday() == 5: return 'Sábado'
+                return 'Día hábil'
+            
+            df_diario['categoria'] = df_diario.apply(categorizar, axis=1)
+
+            # Configuración de colores (Tus colores exactos)
+            color_map = {
+                'Día hábil': '#2ca02c', # Verde
+                'Sábado': '#1f77b4',    # Azul
+                'Domingo': '#ff7f0e',   # Naranja
+                'Feriado': 'red'        # Rojo
+            }
+
+            # 2. CREACIÓN DEL GRÁFICO OPTIMIZADO
+            fig_barras = go.Figure()
+
+            for tipo, color in color_map.items():
+                df_temp = df_diario[df_diario['categoria'] == tipo]
+                if not df_temp.empty:
+                    fig_barras.add_trace(go.Bar(
+                        x=df_temp.index,
+                        y=df_temp['consumo_diario_kWh'],
+                        name=tipo,
+                        marker_color=color,
+                        customdata=df_temp[['nombre_dia', 'categoria']],
+                        hovertemplate=(
+                            "<b>%{customdata[0]}</b>, %{x|%d de %b}<br>" +
+                            "<b>Consumo</b>: %{y:.2f} kWh<br>" +
+                            "<b>Tipo</b>: %{customdata[1]}" +
+                            "<extra></extra>"
+                        )
+                    ))
+
+            # Diseño final (Tu diseño de Colab adaptado a Streamlit)
+            fig_barras.update_layout(
+                title='<b>Evolución de Consumo Diario de Energía</b>',
+                title_x=0.5,
+                margin=dict(l=50, r=20, t=80, b=50),
+                height=450, # Ajustado para que entre bien en la web
+                template='plotly_white',
+                hovermode='x unified',
+                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+                xaxis=dict(
+                    title='Fecha de Medición',
+                    tickformat='%d %b',
+                    tickangle=0,
+                    fixedrange=False 
+                ),
+                yaxis=dict(title='Energía Consumida (kWh)', gridcolor='lightgrey'),
+                paper_bgcolor="rgba(0,0,0,0)",
+                plot_bgcolor="rgba(0,0,0,0)"
+            )
+
+            st.plotly_chart(fig_barras, use_container_width=True)
+            
+        with col_barras:
             st.markdown("#### 📊 Desglose de Consumo Diario")
             st.info("💡 ¡Espacio reservado! Acá inyectamos el código del gráfico de barras.")
 
