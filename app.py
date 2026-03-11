@@ -266,9 +266,10 @@ elif seccion == "📊 Consumo por Día":
                     marker_colors=['#66bb6a', '#ef5350', '#42a5f5'],
                     pull=[0.05, 0.05, 0.05],
                     textinfo='percent+label',
+                    textposition='outside',
                     hovertemplate="%{label}<br>%{value:,.1f} kWh<br>%{percent}<extra></extra>"
                 )])
-                fig_torta.update_layout(margin=dict(t=20, b=20, l=10, r=10), showlegend=False, height=350, paper_bgcolor="rgba(0,0,0,0)")
+                fig_torta.update_layout(margin=dict(t=20, b=20, l=10, r=10), showlegend=False, height=350, paper_bgcolor="rgba(0,0,0,0), font=dict(color="black", size=14)")
                 st.plotly_chart(fig_torta, use_container_width=True)
                 st.caption(f"**Total real registrado:** {energia_total:,.1f} kWh")
 
