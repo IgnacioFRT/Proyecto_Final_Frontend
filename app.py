@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 from influxdb_client import InfluxDBClient
 import plotly.graph_objects as go
+from streamlit_autorefresh import st_autorefresh
 import os
 
 # 1. CONFIGURACIÓN DE PÁGINA
@@ -43,87 +44,79 @@ if df is not None:
         st.success("Sistema Operativo y conectado a la base de datos histórica.")
 
     elif seccion == "🕒 Tiempo Real":
-        st.subheader("⛅ Condiciones Climáticas y Eléctricas")
-        st.markdown("Datos instantáneos extraídos de InfluxDB Cloud.")
         
-        if st.button("🔄 Actualizar Mediciones Ahora", use_container_width=True):
-            with st.spinner('Consultando base de datos en la nube...'):
-                
-                # 1. Tus credenciales
-                url = "https://influxdb.utn.xrob.com.ar"
-                token = "VPJoZH--S2GGPNNhfmWVUsZEaHqV4h1wkOX235FSfhk6GkitChp2e-8DxQ7O1ns6s7VwpKnmE-Evj7KYhLcWJQ=="
-                org = "ec1aafe9e31ba7af"
-                bucket = "UTN FRT"
-                
-                client = InfluxDBClient(url=url, token=token, org=org)
-                query_api = client.query_api()
-                
-                # 2. LA CONSULTA: Pedimos Temperatura, Humedad y Viento
-                # IMPORTANTE: Revisá que "humedad" y "viento" se llamen exactamente así en tu base de datos
-                query = f'''
-                    from(bucket: "{bucket}")
-                      |> range(start: -15m) 
-                      |> filter(fn: (r) => r._measurement == "pruebas_fn")
-                      |> filter(fn: (r) => r.deviceID == "08B764")
-                      |> filter(fn: (r) => r._field == "temp" or r._field == "hum" or r._field == "wind")
-                      |> last()
-                '''
-                
-                try:
-                    result = query_api.query(org=org, query=query)
-                    
-                    # 3. Extraemos los valores (con un valor por defecto en 0 por si fallan)
-                    val_temp, val_hum, val_wind = 0.0, 0.0, 0.0
-                    
-                    for table in result:
-                        for record in table.records:
-                            campo = record.get_field()
-                            if campo == "temp": val_temp = record.get_value()
-                            elif campo == "hum": val_hum = record.get_value()
-                            elif campo == "wind": val_viento = record.get_value()
+        # --- CONFIGURACIÓN DE ACTUALIZACIÓN AUTOMÁTICA ---
+        # Refresca la app cada 30 segundos (30000 milisegundos)
+        count = st_autorefresh(interval=30000, key="datarefresh")
+        
+        st.subheader("⛅ Condiciones en Tiempo Real (Actualización Automática)")
+        st.caption(f"Última actualización: {pd.Timestamp.now().strftime('%H:%M:%S')}")
+        
+        # 1. Credenciales y Conexión (Igual que antes)
+        url = "https://influxdb.utn.xrob.com.ar"
+        token = "VPJoZH--S2GGPNNhfmWVUsZEaHqV4h1wkOX235FSfhk6GkitChp2e-8DxQ7O1ns6s7VwpKnmE-Evj7KYhLcWJQ=="
+        org = "ec1aafe9e31ba7af"
+        bucket = "UTN FRT"
+        
+        client = InfluxDBClient(url=url, token=token, org=org)
+        query_api = client.query_api()
+        
+        # 2. Consulta (Buscamos los últimos datos)
+        query = f'''
+            from(bucket: "{bucket}")
+              |> range(start: -15m) 
+              |> filter(fn: (r) => r._measurement == "pruebas_fn")
+              |> filter(fn: (r) => r.deviceID == "08B764")
+              |> filter(fn: (r) => r._field == "temp" or r._field == "hum" or r._field == "wind")
+              |> last()
+        '''
+        
+        try:
+            result = query_api.query(org=org, query=query)
+            val_temp, val_hum, val_wind = 0.0, 0.0, 0.0
+            
+            for table in result:
+                for record in table.records:
+                    campo = record.get_field()
+                    if campo == "temp": val_temp = record.get_value()
+                    elif campo == "hum": val_hum = record.get_value()
+                    elif campo == "wind": val_viento = record.get_value()
 
-                    # 4. DIBUJAMOS LOS VELOCÍMETROS CON PLOTLY
-                    c1, c2, c3 = st.columns(3)
-                    
-                    # --- Reloj de Temperatura ---
-                    fig_t = go.Figure(go.Indicator(
-                        mode = "gauge+number", value = val_temp, title = {'text': "Temperatura (°C)"},
-                        gauge = {
-                            'axis': {'range': [0, 50]},
-                            'bar': {'color': "#4caf50"}, # Verde
-                            'steps': [
-                                {'range': [0, 15], 'color': "lightblue"},
-                                {'range': [35, 50], 'color': "#ffcdd2"} # Rojo clarito si hace calor
-                            ]
-                        }
-                    ))
-                    fig_t.update_layout(height=250, margin=dict(l=10, r=10, t=30, b=10))
-                    c1.plotly_chart(fig_t, use_container_width=True)
+            # 3. DIBUJAMOS LOS VELOCÍMETROS
+            c1, c2, c3 = st.columns(3)
+            
+            # --- Reloj de Temperatura ---
+            fig_t = go.Figure(go.Indicator(
+                mode = "gauge+number", value = val_temp, 
+                number = {'valueformat': ".2f"}, # <--- AQUÍ LOS DECIMALES
+                title = {'text': "Temperatura (°C)"},
+                gauge = {'axis': {'range': [0, 50]}, 'bar': {'color': "#4caf50"}}
+            ))
+            fig_t.update_layout(height=250, margin=dict(l=10, r=10, t=30, b=10))
+            c1.plotly_chart(fig_t, use_container_width=True)
 
-                    # --- Reloj de Humedad ---
-                    fig_h = go.Figure(go.Indicator(
-                        mode = "gauge+number", value = val_hum, title = {'text': "Humedad (%)"},
-                        gauge = {
-                            'axis': {'range': [0, 100]}, 
-                            'bar': {'color': "#f44336"} # Rojo como en tu Grafana
-                        }
-                    ))
-                    fig_h.update_layout(height=250, margin=dict(l=10, r=10, t=30, b=10))
-                    c2.plotly_chart(fig_h, use_container_width=True)
+            # --- Reloj de Humedad ---
+            fig_h = go.Figure(go.Indicator(
+                mode = "gauge+number", value = val_hum,
+                number = {'valueformat': ".2f"}, # <--- AQUÍ LOS DECIMALES
+                title = {'text': "Humedad (%)"},
+                gauge = {'axis': {'range': [0, 100]}, 'bar': {'color': "#f44336"}}
+            ))
+            fig_h.update_layout(height=250, margin=dict(l=10, r=10, t=30, b=10))
+            c2.plotly_chart(fig_h, use_container_width=True)
 
-                    # --- Reloj de Viento ---
-                    fig_v = go.Figure(go.Indicator(
-                        mode = "gauge+number", value = val_wind, title = {'text': "Viento (km/h)"},
-                        gauge = {
-                            'axis': {'range': [0, 100]}, 
-                            'bar': {'color': "#8bc34a"} # Verde claro
-                        }
-                    ))
-                    fig_v.update_layout(height=250, margin=dict(l=10, r=10, t=30, b=10))
-                    c3.plotly_chart(fig_v, use_container_width=True)
-                    
-                except Exception as e:
-                    st.error(f"Error al traer datos del clima: {e}")
+            # --- Reloj de Viento ---
+            fig_v = go.Figure(go.Indicator(
+                mode = "gauge+number", value = val_wind,
+                number = {'valueformat': ".2f"}, # <--- AQUÍ LOS DECIMALES
+                title = {'text': "Viento (km/h)"},
+                gauge = {'axis': {'range': [0, 100]}, 'bar': {'color': "#8bc34a"}}
+            ))
+            fig_v.update_layout(height=250, margin=dict(l=10, r=10, t=30, b=10))
+            c3.plotly_chart(fig_v, use_container_width=True)
+            
+        except Exception as e:
+            st.error(f"Error en tiempo real: {e}")
         
 
     elif seccion == "📶 Calidad (QoS)":
