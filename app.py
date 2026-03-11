@@ -113,44 +113,52 @@ if df is not None:
             c2.plotly_chart(crear_gauge_pro(data.get("hum",0), "Humedad", 100, "#f44336", "%"), use_container_width=True)
             c3.plotly_chart(crear_gauge_pro(data.get("wind",0), "Viento", 100, "#8bc34a", " km/h"), use_container_width=True)
 
-            # --- FILA 2: CORRIENTES ---
-            st.write("### ⚡ Corrientes por Fase")
-            f1, f2, f3 = st.columns(3)
-            f1.plotly_chart(crear_gauge_pro(data.get("IL1",0), "Corriente L1", 20, "#1f77b4", " A"), use_container_width=True)
-            f2.plotly_chart(crear_gauge_pro(data.get("IL2",0), "Corriente L2", 20, "#ff7f0e", " A"), use_container_width=True)
-            f3.plotly_chart(crear_gauge_pro(data.get("IL3",0), "Corriente L3", 20, "#2ca02c", " A"), use_container_width=True)
-
-            # --- FILA 3: MATRIZ DE CALIDAD ESTILO "DASHBOARD" ---
+           # --- FILA 2: CORRIENTES (Izquierda) Y CALIDAD (Derecha) ---
             st.divider()
-            st.markdown("### 💎 Calidad de Energía")
             
-            # Usamos 4 columnas igual que antes
-            q1, q2, q3, q4 = st.columns(4)
+            # Dividimos la pantalla a la mitad (1.2 le da un poquitito más de espacio a los relojes)
+            col_izq, col_der = st.columns([1.2, 1])
             
-            with q1:
-                st.markdown("⚡ **Tensión (V)**")
-                # El componente metric es genial, pero vamos a agruparlos
-                st.metric("L1-N", f"{data.get('UL1N', 0):.1f} V")
-                st.metric("L2-N", f"{data.get('UL2N', 0):.1f} V", delta_color="off")
-                st.metric("L3-N", f"{data.get('UL3N', 0):.1f} V", delta_color="off")
+            # --- MITAD IZQUIERDA (Gauges de Corriente) ---
+            with col_izq:
+                st.write("### ⚡ Corrientes por Fase")
+                # Sub-columnas para los relojes
+                f1, f2, f3 = st.columns(3)
+                
+                # Le acorté un poco el título a "L1", "L2", "L3" para que entren mejor al achicarse
+                f1.plotly_chart(crear_gauge_pro(data.get("IL1",0), "Fase L1", 20, "#1f77b4", "A"), use_container_width=True)
+                f2.plotly_chart(crear_gauge_pro(data.get("IL2",0), "Fase L2", 20, "#ff7f0e", "A"), use_container_width=True)
+                f3.plotly_chart(crear_gauge_pro(data.get("IL3",0), "Fase L3", 20, "#2ca02c", "A"), use_container_width=True)
 
-            with q2:
-                st.markdown("📉 **Factor Potencia**")
-                st.metric("PF Fase 1", f"{data.get('FP1', 0):.2f}")
-                st.metric("PF Fase 2", f"{data.get('FP2', 0):.2f}")
-                st.metric("PF Fase 3", f"{data.get('FP3', 0):.2f}")
+            # --- MITAD DERECHA (Matriz de Calidad) ---
+            with col_der:
+                st.write("### 💎 Calidad de Energía")
+                # Sub-columnas para las métricas
+                q1, q2, q3, q4 = st.columns(4)
+                
+                with q1:
+                    st.caption("⚡ **Tensión**")
+                    st.metric("L1-N", f"{data.get('UL1N', 0):.1f} V")
+                    st.metric("L2-N", f"{data.get('UL2N', 0):.1f} V")
+                    st.metric("L3-N", f"{data.get('UL3N', 0):.1f} V")
 
-            with q3:
-                st.markdown("🌪️ **THD V (%)**")
-                st.metric("V1 THD", f"{data.get('THDv1', 0):.1f} %")
-                st.metric("V2 THD", f"{data.get('THDv2', 0):.1f} %")
-                st.metric("V3 THD", f"{data.get('THDv3', 0):.1f} %")
+                with q2:
+                    st.caption("📉 **FP**") # Abreviado para que entre bien
+                    st.metric("PF1", f"{data.get('FP1', 0):.2f}")
+                    st.metric("PF2", f"{data.get('FP2', 0):.2f}")
+                    st.metric("PF3", f"{data.get('FP3', 0):.2f}")
 
-            with q4:
-                st.markdown("🌪️ **THD I (%)**")
-                st.metric("I1 THD", f"{data.get('THDi1', 0):.1f} %")
-                st.metric("I2 THD", f"{data.get('THDi2', 0):.1f} %")
-                st.metric("I3 THD", f"{data.get('THDi3', 0):.1f} %")
+                with q3:
+                    st.caption("🌪️ **THD V**")
+                    st.metric("V1", f"{data.get('THDv1', 0):.1f} %")
+                    st.metric("V2", f"{data.get('THDv2', 0):.1f} %")
+                    st.metric("V3", f"{data.get('THDv3', 0):.1f} %")
+
+                with q4:
+                    st.caption("🌪️ **THD I**")
+                    st.metric("I1", f"{data.get('THDi1', 0):.1f} %")
+                    st.metric("I2", f"{data.get('THDi2', 0):.1f} %")
+                    st.metric("I3", f"{data.get('THDi3', 0):.1f} %")
                 
         except Exception as e:
             st.error(f"Error en la adquisición de datos: {e}")
