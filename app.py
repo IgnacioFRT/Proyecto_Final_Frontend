@@ -106,6 +106,28 @@ if df is not None:
                 fig.update_layout(height=280, margin=dict(l=25, r=25, t=60, b=25), paper_bgcolor="rgba(0,0,0,0)", font={'family': "Source Sans Pro, sans-serif"})
                 return fig
 
+            # --- NUEVA FUNCIÓN: BARRAS COMPARATIVAS ---
+            def crear_barras_corriente(il1, il2, il3):
+                fig = go.Figure(data=[
+                    go.Bar(
+                        x=['Fase L1', 'Fase L2', 'Fase L3'],
+                        y=[il1, il2, il3],
+                        marker_color=["#1f77b4", "#ff7f0e", "#2ca02c"], # Azul, Naranja, Verde
+                        text=[f"{il1:.2f} A", f"{il2:.2f} A", f"{il3:.2f} A"], # Texto sobre la barra
+                        textposition='auto',
+                        textfont=dict(size=16, color="white")
+                    )
+                ])
+                fig.update_layout(
+                    height=280,
+                    margin=dict(l=20, r=20, t=40, b=20),
+                    paper_bgcolor="rgba(0,0,0,0)",
+                    plot_bgcolor="rgba(0,0,0,0)",
+                    yaxis=dict(title="Corriente (A)", range=[0, 20], gridcolor="#e5e8e8"),
+                    font=dict(family="Source Sans Pro, sans-serif", size=14, color="#5d6d7e")
+                )
+                return fig
+
             # --- FILA 1: CLIMA ---
             st.write("### 🌤️ Variables Climáticas")
             c1, c2, c3 = st.columns(3)
@@ -113,13 +135,19 @@ if df is not None:
             c2.plotly_chart(crear_gauge_pro(data.get("hum",0), "Humedad", 100, "#f44336", "%"), use_container_width=True)
             c3.plotly_chart(crear_gauge_pro(data.get("wind",0), "Viento", 100, "#8bc34a", " km/h"), use_container_width=True)
 
-           # --- FILA 2: CORRIENTES ---
-            st.write("### ⚡ Corrientes por Fase")
-            f1, f2, f3 = st.columns(3)
-            f1.plotly_chart(crear_gauge_pro(data.get("IL1",0), "Corriente L1", 20, "#1f77b4", " A"), use_container_width=True)
-            f2.plotly_chart(crear_gauge_pro(data.get("IL2",0), "Corriente L2", 20, "#ff7f0e", " A"), use_container_width=True)
-            f3.plotly_chart(crear_gauge_pro(data.get("IL3",0), "Corriente L3", 20, "#2ca02c", " A"), use_container_width=True)
-
+           # --- FILA 2: CORRIENTES (Barras) + FRECUENCIA (Gauge) ---
+            st.write("### ⚡ Análisis de Carga y Red")
+            
+            # Dividimos en 2 columnas: la izquierda más grande (barras) y la derecha más chica (frecuencia)
+            col_barras, col_frec = st.columns([2, 1])
+            
+            with col_barras:
+                st.plotly_chart(crear_barras_corriente(data.get("IL1",0), data.get("IL2",0), data.get("IL3",0)), use_container_width=True)
+                
+            with col_frec:
+                # La frecuencia en Argentina es de 50 Hz. Rango visual de 45 a 55 para que el reloj se vea bien.
+                st.plotly_chart(crear_gauge_pro(data.get("Freq", 50.0), "Frecuencia", 60, "#9b59b6", " Hz"), use_container_width=True)
+                
             # --- FILA 3: MATRIZ DE CALIDAD ESTILO "DASHBOARD" ---
             st.divider()
             st.markdown("### 💎 Calidad de Energía")
