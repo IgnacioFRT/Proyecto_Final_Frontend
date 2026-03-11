@@ -362,24 +362,6 @@ if df is not None:
         except Exception as e:
             st.error(f"Error en la adquisición de datos: {e}")
 
-    elif seccion == "📶 Calidad (QoS)":
-        st.subheader("📶 Calidad de Servicio (QoS) y Gaps de Red")
-        start, end = df.index.min(), df.index.max()
-        esperados = len(pd.date_range(start, end, freq='15min'))
-        reales = len(df)
-        
-        c1, c2, c3 = st.columns(3)
-        c1.metric("Registros Reales", f"{reales:,}")
-        c2.metric("Esperados", f"{esperados:,}")
-        c3.metric("Disponibilidad", f"{(reales/esperados)*100:.1f}%")
-
-        fig_qos = go.Figure(data=[go.Pie(
-            labels=['Registrados', 'Gaps'], values=[reales, max(0, esperados - reales)],
-            marker_colors=['lightgreen', '#ef5350'], pull=[0.1, 0], textinfo='percent+label'
-        )])
-        fig_qos.update_layout(title_text='<b>INTEGRIDAD DE LA BASE DE DATOS</b>', title_x=0.5)
-        st.plotly_chart(fig_qos, use_container_width=True)
-
     elif seccion == "📊 Consumo por Día":
         st.write("### 📊 Análisis de Consumo por Día y Fase")
     
