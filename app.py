@@ -441,6 +441,3 @@ if df is not None:
 
     except Exception as e:
         st.error(f"Error procesando la base de datos: {e}")
-
-else:
-    st.error("❌ Archivo de datos no encontrado. Verifica el nombre exacto en GitHub.")
