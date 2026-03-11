@@ -367,7 +367,7 @@ if df is not None:
     
         try:
             with st.spinner('Descargando y procesando historial completo desde InfluxDB... ⏳'):
-            df = obtener_datos_historicos()
+                 df = obtener_datos_historicos()
 
         energia_total = df['EA_imp_T1_kwh'].max() - df['EA_imp_T1_kwh'].min()
         df['incremental_consumption'] = df['EA_imp_T1_kwh'].diff().clip(lower=0).fillna(0)
