@@ -25,7 +25,7 @@ df = load_data()
 
 # 3. INTERFAZ Y MENÚ LATERAL
 with st.sidebar:
-    st.image("https://share.google/y6JeL3fEqC53COwpL", width=150)
+    st.image("imagen_secundaria.jpg", width=150)
     st.title("Navegación")
     seccion = st.radio("Secciones:", ["🏠 Inicio", "🕒 Tiempo Real", "📶 Calidad (QoS)", "📊 Consumo por Día"])
     st.markdown("---")
@@ -42,7 +42,7 @@ if df is not None:
         with col_logo:
             try:
                 # Intenta cargar la imagen local que subiste a GitHub
-                st.image("logo_principal.jpg", width=150)
+                st.image("logo_principal.jpg", width=300)
             except:
                 # Si todavía no subiste la imagen, muestra este texto temporal para que no salga el error roto
                 st.error("Falta logo_utn.png")
