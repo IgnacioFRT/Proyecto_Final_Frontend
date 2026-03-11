@@ -152,7 +152,7 @@ if df is not None:
             st.write("### ⚡ Análisis de Carga y Red")
             
             # Dividimos en 2 columnas: la izquierda más grande (barras) y la derecha más chica (frecuencia)
-            espacio_izq, col_barras, col_frec = st.columns([0.5, 1.5, 1])
+            espacio_izq, col_barras, col_frec = st.columns([0.5, 2, 1])
             
             with col_barras:
                 st.plotly_chart(crear_barras_corriente(data.get("IL1",0), data.get("IL2",0), data.get("IL3",0)), use_container_width=True)
