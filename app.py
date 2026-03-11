@@ -89,54 +89,42 @@ if df is not None:
                 for record in table.records:
                     data[record.get_field()] = record.get_value()
 
-            # --- FUNCIÓN GAUGE DOBLE ESTILIZADA ---
+            # --- FUNCIÓN GAUGE DOBLE RESPONSIVA (Mismo tamaño que clima) ---
             def crear_gauge_doble(val_v, val_i, titulo):
                 fig = go.Figure()
 
-                # Fuente común para que sea igual al de clima
-                fuente_comun = {'family': "Source Sans Pro, sans-serif", 'color': "#5d6d7e"}
-
-                # Anillo Exterior: TENSIÓN (Azul)
+                # 1. Anillo Exterior: TENSIÓN (Azul)
                 fig.add_trace(go.Indicator(
-                    mode = "gauge+number", value = val_v,
-                    number = {
-                        'valueformat': ".1f", 
-                        'font': {'size': 20, 'color': "#1f77b4"}, 
-                        'suffix': 'V'
-                    },
+                    mode = "gauge", # Quitamos el '+number' de adentro para que no se pise
+                    value = val_v,
                     title = {'text': titulo, 'font': {'size': 18, 'color': "#2c3e50"}},
                     domain = {'x': [0, 1], 'y': [0, 1]},
                     gauge = {
                         'axis': {'range': [0, 250], 'tickwidth': 1, 'tickcolor': "#5d6d7e"},
                         'bar': {'color': "#1f77b4", 'thickness': 0.6},
                         'bgcolor': "white",
-                        'borderwidth': 1,
-                        'bordercolor': "#e5e8e8"
+                        'borderwidth': 1, 'bordercolor': "#e5e8e8"
                     }
                 ))
 
-                # Anillo Interior: CORRIENTE (Rojo)
+                # 2. Anillo Interior: CORRIENTE (Rojo)
                 fig.add_trace(go.Indicator(
-                    mode = "gauge+number", value = val_i,
-                    number = {
-                        'valueformat': ".2f", 
-                        'font': {'size': 28, 'color': "#f44336"}, 
-                        'suffix': 'A'
-                    },
-                    # Achicamos el dominio para que haya "aire" entre los anillos
-                    domain = {'x': [0.25, 0.75], 'y': [0.1, 0.6]}, 
+                    mode = "gauge", # Quitamos el '+number' de adentro
+                    value = val_i,
+                    domain = {'x': [0.2, 0.8], 'y': [0.15, 0.75]}, 
                     gauge = {
-                        'axis': {'range': [0, 20], 'tickwidth': 1, 'tickcolor': "#5d6d7e"},
+                        'axis': {'range': [0, 20], 'tickwidth': 1, 'tickcolor': "#5d6d7e", 'nticks': 5},
                         'bar': {'color': "#f44336", 'thickness': 0.8},
                         'bgcolor': "white"
                     }
                 ))
 
+                # Ajustamos el layout para que el tamaño sea idéntico al de clima
                 fig.update_layout(
-                    height=380, # Le damos más altura para evitar cortes
-                    margin=dict(l=10, r=10, t=100, b=10), # Más margen arriba para el título
+                    height=280, # Misma altura que definimos para los de clima
+                    margin=dict(l=20, r=20, t=60, b=20),
                     paper_bgcolor="rgba(0,0,0,0)",
-                    font=fuente_comun # Aplicamos la fuente a todo el gráfico
+                    font={'family': "Source Sans Pro, sans-serif"}
                 )
                 return fig
 
@@ -159,13 +147,21 @@ if df is not None:
             c3.plotly_chart(crear_gauge(data["wind"], "Viento", 100, "#8bc34a", " km/h"), use_container_width=True)
 
             # --- FILA 2: CORRIENTES POR FASE ---
-            st.divider()
             st.write("### 🔌 Análisis por Fase (V exterior | A interior)")
             f1, f2, f3 = st.columns(3)
             
-            f1.plotly_chart(crear_gauge_doble(data["UL1N"], data["IL1"], "Fase L1"), use_container_width=True)
-            f2.plotly_chart(crear_gauge_doble(data["UL2N"], data["IL2"], "Fase L2"), use_container_width=True)
-            f3.plotly_chart(crear_gauge_doble(data["UL3N"], data["IL3"], "Fase L3"), use_container_width=True)
+            # Mostramos el gráfico y debajo los valores con st.columns para que sea legible en móvil
+            with f1:
+                st.plotly_chart(crear_gauge_doble(data["UL1N"], data["IL1"], "Fase L1"), use_container_width=True)
+                st.write(f"<p style='text-align: center; color: #1f77b4; font-size: 20px; font-weight: bold;'>{data['UL1N']:.1f}V <span style='color: #f44336;'> | {data['IL1']:.2f}A</span></p>", unsafe_allow_html=True)
+            
+            with f2:
+                st.plotly_chart(crear_gauge_doble(data["UL2N"], data["IL2"], "Fase L2"), use_container_width=True)
+                st.write(f"<p style='text-align: center; color: #1f77b4; font-size: 20px; font-weight: bold;'>{data['UL2N']:.1f}V <span style='color: #f44336;'> | {data['IL2']:.2f}A</span></p>", unsafe_allow_html=True)
+                
+            with f3:
+                st.plotly_chart(crear_gauge_doble(data["UL3N"], data["IL3"], "Fase L3"), use_container_width=True)
+                st.write(f"<p style='text-align: center; color: #1f77b4; font-size: 20px; font-weight: bold;'>{data['UL3N']:.1f}V <span style='color: #f44336;'> | {data['IL3']:.2f}A</span></p>", unsafe_allow_html=True)
 
         except Exception as e:
             st.error(f"Error: {e}")
