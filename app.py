@@ -381,9 +381,9 @@ if df is not None:
         st.plotly_chart(fig_qos, use_container_width=True)
 
     elif seccion == "📊 Consumo por Día":
-    st.write("### 📊 Análisis de Consumo por Día y Fase")
+        st.write("### 📊 Análisis de Consumo por Día y Fase")
     
-    try:
+        try:
         # Esto invoca la función global y muestra un cartelito mientras descarga
         with st.spinner('Descargando y procesando historial completo desde InfluxDB... ⏳'):
             df = obtener_datos_historicos()
