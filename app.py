@@ -12,11 +12,13 @@ import pytz
 
 st.set_page_config(page_title="EMS - PAC3200 UTN", layout="wide")
 
+# --- OCULTAR MARCAS PERO MANTENER MENÚ (3 PUNTITOS) ---
 st.markdown("""
     <style>
-        #MainMenu {visibility: hidden;}
-        header {visibility: hidden;}
+        /* Ocultamos SOLO el pie de página predeterminado de Streamlit */
         footer {visibility: hidden;}
+        
+        /* Dejamos el #MainMenu y el header visibles para que puedas usar el Modo Oscuro */
     </style>
 """, unsafe_allow_html=True)
 
