@@ -433,25 +433,62 @@ elif seccion == "📈 Perfil de Carga Dinámico":
                 <div style="border-left: 2px solid #e6e9ef; height: 1000px; margin-left: 50%;"></div>
             """, unsafe_allow_html=True)
 
+        # ==========================================
+        # COLUMNA DERECHA: MAPA DE CALOR (HEATMAP) "PRO"
+        # ==========================================
         with col_der:
-            # --- GRÁFICO 3: MAPA DE CALOR ---
-            st.markdown("#### 🌡️ Mapa de Calor de Consumo (kWh)")
-            df_heat = df.groupby(['nombre_dia', 'hora'])['incremento_kWh'].mean().unstack().reindex(order_dias)
+            st.markdown("#### 🌡️ Diagnóstico Visual del Perfil de Carga (kWh)")
+            
+            # Pivotamos los datos para el Heatmap (Este cálculo ya lo tenés)
+            df_heat = df.groupby(['nombre_dia', 'hora'])['incremento_kWh'].mean().unstack()
+            df_heat = df_heat.reindex(order_dias)
+
+            # --- NUEVA VERSIÓN MEJORADA DEL HEATMAP ---
             fig_heat = go.Figure(data=go.Heatmap(
-                z=df_heat.values, x=[f"{h:02d}:00" for h in range(24)], y=df_heat.index,
-                colorscale='YlOrRd', hoverongaps=False,
-                hovertemplate='Día: %{y}<br>Hora: %{x}<br>Consumo: <b>%{z:.2f} kWh</b><extra></extra>'
+                z=df_heat.values,
+                x=[f"{h:02d}h" for h in range(24)], # Etiquetas más cortas (00h, 01h...)
+                y=df_heat.index,
+                
+                # CAMBIO 1: Escala Divergente Invertida (Verde=Bajo, Rojo=Alto)
+                colorscale='RdYlGn_r', 
+                
+                # CAMBIO 2: Líneas divisorias entre celdas
+                xgap=2, # Espacio horizontal entre celdas
+                ygap=2, # Espacio vertical entre celdas
+                
+                hoverongaps = False,
+                hovertemplate='<b>Día:</b> %{y}<br><b>Hora:</b> %{x}<br><b>Consumo Promedio:</b> <b>%{z:.2f} kWh</b><extra></extra>'
+            ))
+
+            fig_heat.update_layout(
+                height=840, # Mantenemos la simetría
+                margin=dict(t=30, b=20, l=10, r=10),
+                xaxis=dict(
+                    title="Hora del Día",
+                    tickmode='array',
+                    tickvals=[f"{h:02d}h" for h in range(0, 24, 2)], # Mostramos cada 2 horas para no amontonar
+                    side='bottom' # Eje X abajo
+                ),
+                yaxis=dict(
+                    autorange='reversed', # Lunes arriba
+                    dtick=1 # Forzamos a mostrar todos los días
+                ),
+                paper_bgcolor="rgba(0,0,0,0)",
+                plot_bgcolor="rgba(0,0,0,0)",
+                font=dict(color="#5d6d7e", size=12) # Fuente más profesional
+            )
+            
+            # Agregamos una barra de color más prolija con título
+            fig_heat.update_coloraxes(colorbar=dict(
+                title=dict(text="kWh", side="top", font=dict(size=14, color="#5d6d7e")),
+                thickness=15, # Más fina
+                len=0.7, # Más corta
+                ypad=10,
+                tickfont=dict(color="#5d6d7e")
             ))
             
-            # Alto total para que coincida con los dos de la izquierda (480 + 480 aprox)
-            fig_heat.update_layout(
-                height=960, 
-                margin=dict(t=40, b=40, l=20, r=10), 
-                yaxis_autorange='reversed', 
-                font=dict(color="black")
-            )
             st.plotly_chart(fig_heat, use_container_width=True)
-            st.info("💡 **Análisis:** Las zonas oscuras indican picos de demanda. Útil para auditoría de horarios.")
+            st.info("💡 **Análisis de Impacto:** La escala de colores Green-Yellow-Red permite una identificación instantánea de picos. Use esta herramienta para programar cargas pesadas en las zonas verdes (bajas) y evitar los horarios rojos (picos).")
 
     except Exception as e:
         st.error(f"Error al generar el perfil de carga: {e}")
