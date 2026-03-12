@@ -354,7 +354,7 @@ elif seccion == "📊 Resumen Histórico":
 
 # --- VENTANA PERFIL DE CARGA ---
 
-elif seccion == "📈 Perfil de Carga":
+elif seccion == "📈 Perfil de Carga Dinámico":
     st.markdown("""
         <style>
             .titulo-perfil {
