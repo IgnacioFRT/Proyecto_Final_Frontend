@@ -451,7 +451,7 @@ elif seccion == "📈 Perfil de Carga Dinámico":
                 font=dict(color="black")
             )
             st.plotly_chart(fig_heat, use_container_width=True)
-            st.info("💡 **Análisis:** Las zonas oscuras indican picos de demanda. Útil para auditoría de horarios.")
+            st.info("💡 **Análisis:** Las zonas oscuras indican picos de demanda.")
 
     except Exception as e:
         st.error(f"Error al generar el perfil de carga: {e}")
