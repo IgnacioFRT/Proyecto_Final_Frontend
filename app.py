@@ -4,6 +4,7 @@ from influxdb_client import InfluxDBClient
 import plotly.graph_objects as go
 from streamlit_autorefresh import st_autorefresh
 import pytz
+from plotly.subplots import make_subplots
 
 # === 1. CONFIGURACIÓN DE PÁGINA ===
 
@@ -94,7 +95,7 @@ with st.sidebar:
         st.warning("⚠️ Cargando logo...")
     st.divider() 
     st.title("Navegación")
-    seccion = st.radio("Secciones:", ["🏠 Inicio", "🕒 Tiempo Real", "📊 Resumen Histórico", "📈 Perfil de Carga Dinámico", "📶 Calidad (QoS)"])
+    seccion = st.radio("Secciones:", ["🏠 Inicio", "🕒 Tiempo Real", "📊 Resumen Histórico", "📈 Perfil de Carga Dinámico", "📶 Calidad (QoS)", "🌱 Huella de Carbono"])
     st.markdown("---")
     st.info("Ingeniería Electrónica - UTN FRT")
 
@@ -585,3 +586,111 @@ elif seccion == "📶 Calidad (QoS)": # Asegurate de agregar esto a tu st.radio 
 
     except Exception as e:
         st.error(f"Error al generar el análisis de calidad: {e}")
+
+# =====================================================================
+# --- NUEVA VENTANA: HUELLA DE CARBONO ---
+# =====================================================================
+
+elif seccion == "🌱 Huella de Carbono":
+    st.markdown("""
+        <style>
+            .titulo-carbono {
+                font-size: 45px !important;
+                font-weight: 700 !important;
+                color: #27ae60; /* Un verde ecológico */
+                margin-top: -70px !important;
+                margin-left: -20px !important;
+                margin-bottom: 20px !important;
+                text-align: left;
+            }
+        </style>
+        <h1 class="titulo-carbono">🌱 Análisis de Impacto Ambiental</h1>
+    """, unsafe_allow_html=True)
+    st.divider()
+
+    try:
+        with st.spinner('Calculando métricas de emisiones de gases de efecto invernadero... ⏳'):
+            df = obtener_datos_historicos()
+            
+            # --- 1. PARÁMETROS Y CÁLCULOS GLOBALES ---
+            FACTOR_EMISION_ARG = 0.45 # kg CO2 por kWh (Referencia CAMMESA)
+            total_kwh_real = df['EA_imp_T1_kwh'].max() - df['EA_imp_T1_kwh'].min()
+            total_co2_kg = total_kwh_real * FACTOR_EMISION_ARG
+            
+            # Equivalencias (Aproximaciones estándar de impacto ambiental)
+            arboles_equivalentes = total_co2_kg / 22 # 1 árbol maduro absorbe ~22kg CO2/año
+            km_auto_equivalente = total_co2_kg / 0.12 # Un auto promedio emite ~0.12 kg CO2/km
+
+            # --- 2. TARJETAS DE IMPACTO (KPIs) ---
+            st.markdown("#### 🌍 Métricas Globales de Emisión")
+            kpi1, kpi2, kpi3 = st.columns(3)
+            
+            kpi1.metric("Huella de Carbono Total", f"{total_co2_kg:,.1f} kg CO₂", "Factor: 0.45 kg/kWh", delta_color="inverse")
+            kpi2.metric("Equivalencia en Forestación", f"🌳 {int(arboles_equivalentes)} árboles", "Absorción estimada en 1 año", delta_color="off")
+            kpi3.metric("Equivalencia Vehicular", f"🚗 {km_auto_equivalente:,.0f} km", "Recorridos por un auto a combustión", delta_color="off")
+            
+            with st.expander("ℹ️ ¿De dónde sale este cálculo?"):
+                st.write("El cálculo se realiza multiplicando la energía activa total consumida por el factor de emisión de la red eléctrica nacional. Para Argentina, se estima un promedio de **0.45 kg de CO₂ por cada kWh** consumido, dependiendo de la participación térmica vs. renovable en la matriz de generación de CAMMESA en el período analizado.")
+
+            st.write("") # Espacio
+
+            # --- 3. PREPARACIÓN DE DATOS (Tu lógica de Colab) ---
+            df_ambiental = df.resample('D').last()[['EA_imp_T1_kwh']].copy()
+            df_ambiental['consumo_kWh'] = df_ambiental['EA_imp_T1_kwh'].diff().clip(lower=0).fillna(0)
+            df_ambiental['emisiones_diarias'] = df_ambiental['consumo_kWh'] * FACTOR_EMISION_ARG
+            df_ambiental['emisiones_acumuladas'] = df_ambiental['emisiones_diarias'].cumsum()
+            dias_map = {0:'Lunes', 1:'Martes', 2:'Miércoles', 3:'Jueves', 4:'Viernes', 5:'Sábado', 6:'Domingo'}
+            df_ambiental['nombre_dia'] = df_ambiental.index.dayofweek.map(dias_map)
+
+            # --- 4. GRÁFICO CON SUBPLOTS ---
+            st.markdown("#### 📊 Evolución de Emisiones Diarias y Acumuladas")
+            
+            fig = make_subplots(
+                rows=2, cols=1, 
+                shared_xaxes=True, 
+                vertical_spacing=0.1, 
+                subplot_titles=("Emisiones Diarias (kg CO₂)", "Huella Acumulada Total (kg CO₂)")
+            )
+
+            # Emisiones Diarias (Barras)
+            fig.add_trace(
+                go.Bar(
+                    x=df_ambiental.index, y=df_ambiental['emisiones_diarias'],
+                    name="Día", marker_color='#95a5a6', # Un gris elegante
+                    customdata=df_ambiental['nombre_dia'],
+                    hovertemplate="<b>%{x|%Y}, %{customdata} %{x|%d %b}</b><br>Emisión: <b>%{y:.2f} kg CO₂</b><extra></extra>"
+                ), row=1, col=1
+            )
+
+            # Acumulado (Área Roja/Naranja)
+            fig.add_trace(
+                go.Scatter(
+                    x=df_ambiental.index, y=df_ambiental['emisiones_acumuladas'],
+                    name="Acumulado", fill='tozeroy', fillcolor='rgba(211, 84, 0, 0.2)', # Naranja industrial
+                    line=dict(color='#d35400', width=3),
+                    customdata=df_ambiental['nombre_dia'],
+                    hovertemplate="<b>%{x|%Y}, %{customdata} %{x|%d %b}</b><br>Total Acumulado: <b>%{y:.2f} kg CO₂</b><extra></extra>"
+                ), row=2, col=1
+            )
+
+            # Diseño final
+            fig.update_layout(
+                template='plotly_white',
+                height=600, # Un poco más compacto que en Colab para que entre bien en pantalla
+                hovermode='x unified',
+                showlegend=False,
+                margin=dict(t=40, b=40, l=20, r=20),
+                font=dict(color="#5d6d7e")
+            )
+
+            fig.update_xaxes(
+                tickformat='%d %b\n%Y', 
+                gridcolor='#e5e8e8',
+                minor=dict(showgrid=True, gridcolor='whitesmoke')
+            )
+            fig.update_yaxes(gridcolor='#e5e8e8')
+
+            st.plotly_chart(fig, use_container_width=True)
+
+    except Exception as e:
+        st.error(f"Error al generar el análisis ambiental: {e}")
