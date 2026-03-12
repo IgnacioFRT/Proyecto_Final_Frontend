@@ -583,5 +583,5 @@ elif seccion == "📶 Calidad (QoS)": # Asegurate de agregar esto a tu st.radio 
     except Exception as e:
         st.error(f"Error al generar el análisis de calidad: {e}")
 
-    #except Exception as e:
-     #   st.error(f"Error al generar el perfil de carga: {e}")
+    except Exception as e:
+        st.error(f"Error al generar el perfil de carga: {e}")
