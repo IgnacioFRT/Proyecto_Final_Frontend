@@ -138,6 +138,10 @@ st.markdown("""
 # --- VENTANA INICIO ---
 
 if seccion == "🏠 Inicio":
+
+    # Refrescar automáticamente cada 5 minutos (300,000 milisegundos)
+    st_autorefresh(interval=300000, limit=None, key="refresh_inicio")
+    
     espacio1, col_logo_central, espacio3 = st.columns([1, 1.5, 1])
     with col_logo_central:
         try:
