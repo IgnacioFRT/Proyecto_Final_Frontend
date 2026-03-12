@@ -364,6 +364,7 @@ elif seccion == "📊 Resumen Histórico":
                 ))
             fig_stack.update_layout(barmode='stack', height=400, template='plotly_white', hovermode='x unified', legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
             st.plotly_chart(fig_stack, use_container_width=True)
+            
 elif seccion == "📈 Perfil de Carga":
     # --- TÍTULO PERSONALIZADO (Mismo estilo que el anterior) ---
     st.markdown("""
