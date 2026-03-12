@@ -14,7 +14,7 @@ st.set_page_config(page_title="EMS - PAC3200 UTN", layout="wide")
 
 # === 2. ESTRUCTURA COLAB ===
 
-@st.cache_data(ttl=3600) #Se actualiza automáticamente cada 1 hora
+@st.cache_data(ttl=300) #Se actualiza automáticamente cada 1 hora
 def obtener_datos_historicos():
 
     # --- A. CONFIGURACIÓN ---
@@ -137,8 +137,6 @@ st.markdown("""
 
 # --- VENTANA INICIO ---
 
-# --- VENTANA INICIO ---
-
 if seccion == "🏠 Inicio":
     espacio1, col_logo_central, espacio3 = st.columns([1, 1.5, 1])
     with col_logo_central:
@@ -154,7 +152,7 @@ if seccion == "🏠 Inicio":
 
     st.markdown("#### 📊 Resumen Global del Sistema")
 
-    # --- LÓGICA DE DATOS DINÁMICOS (Para que sea 100% real) ---
+    # --- LÓGICA DE DATOS DINÁMICOS ULTIMA MEDICIÓN Y HORA ---
     try:
         # Intentamos obtener los datos reales de tu función
         df_inicio = obtener_datos_historicos()
