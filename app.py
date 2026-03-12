@@ -569,22 +569,6 @@ elif seccion == "📈 Perfil de Carga Dinámico":
 # --- VENTANA CALIDAD DE SERVICIO (QoS) ---
 
 elif seccion == "📶 Calidad (QoS)": # Asegurate de agregar esto a tu st.radio del menú lateral
-    st.markdown("""
-        <style>
-            .titulo-qos {
-                font-size: 45px !important;
-                font-weight: 700 !important;
-                color: #31333F;
-                margin-top: -70px !important;
-                margin-left: -20px !important;
-                margin-bottom: 20px !important;
-                text-align: left;
-            }
-        </style>
-        <h1 class="titulo-qos">📶 Calidad de Servicio y Disponibilidad</h1>
-    """, unsafe_allow_html=True)
-    st.divider()
-
     try:
         with st.spinner('Evaluando disponibilidad y gaps de datos... ⏳'):
             df = obtener_datos_historicos()
