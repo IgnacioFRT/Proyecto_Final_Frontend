@@ -94,7 +94,7 @@ with st.sidebar:
         st.warning("⚠️ Cargando logo...")
     st.divider() 
     st.title("Navegación")
-    seccion = st.radio("Secciones:", ["🏠 Inicio", "🕒 Tiempo Real", "📊 Consumo por Día"])
+    seccion = st.radio("Secciones:", ["🏠 Inicio", "🕒 Tiempo Real", "📊 Resumen Histórico", "📈 Perfil de Carga Dinámico"])
     st.markdown("---")
     st.info("Ingeniería Electrónica - UTN FRT")
 
@@ -232,7 +232,7 @@ elif seccion == "🕒 Tiempo Real":
 
 # --- VENTANA CONSUMO POR DIA ---
 
-elif seccion == "📊 Consumo por Día":
+elif seccion == "📊 Resumen Histórico":
     
     try:
         # A. ADQUISICIÓN DE DATOS
