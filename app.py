@@ -94,7 +94,7 @@ with st.sidebar:
         st.warning("⚠️ Cargando logo...")
     st.divider() 
     st.title("Navegación")
-    seccion = st.radio("Secciones:", ["🏠 Inicio", "🕒 Tiempo Real", "📊 Resumen Histórico", "📈 Perfil de Carga Dinámico"])
+    seccion = st.radio("Secciones:", ["🏠 Inicio", "🕒 Tiempo Real", "📊 Resumen Histórico", "📈 Perfil de Carga Dinámico", "📶 Calidad (QoS)"])
     st.markdown("---")
     st.info("Ingeniería Electrónica - UTN FRT")
 
@@ -453,5 +453,135 @@ elif seccion == "📈 Perfil de Carga Dinámico":
             st.plotly_chart(fig_heat, use_container_width=True)
             st.info("💡 **Análisis:** Las zonas oscuras indican picos de demanda.")
 
+    # --- VENTANA CALIDAD DE SERVICIO (QoS) ---
+
+elif seccion == "📶 Calidad (QoS)": # Asegurate de agregar esto a tu st.radio del menú lateral
+    st.markdown("""
+        <style>
+            .titulo-qos {
+                font-size: 45px !important;
+                font-weight: 700 !important;
+                color: #31333F;
+                margin-top: -70px !important;
+                margin-left: -20px !important;
+                margin-bottom: 20px !important;
+                text-align: left;
+            }
+        </style>
+        <h1 class="titulo-qos">📶 Calidad de Servicio y Disponibilidad</h1>
+    """, unsafe_allow_html=True)
+    st.divider()
+
+    try:
+        with st.spinner('Evaluando disponibilidad y gaps de datos... ⏳'):
+            df = obtener_datos_historicos()
+
+            # ==========================================
+            # 1. CÁLCULO GLOBAL (Tu código de Colab)
+            # ==========================================
+            start = df.index.min()
+            end = df.index.max()
+            
+            # Intervalos esperados globales (cada 15 min)
+            esperados_global = len(pd.date_range(start, end, freq='15T'))
+            reales_global = len(df)
+            
+            registrado_global = (reales_global / esperados_global) * 100 if esperados_global > 0 else 0
+            no_registrado_global = 100 - registrado_global
+
+            # ==========================================
+            # 2. CÁLCULO MENSUAL (Tu idea de Tendencia)
+            # ==========================================
+            # Agrupamos los registros reales por inicio de mes ('MS' = Month Start)
+            df_reales_mes = df.resample('MS').size()
+            
+            meses_labels = []
+            porcentajes_mes = []
+            reales_lista = []
+            esperados_lista = []
+
+            for mes_start, count in df_reales_mes.items():
+                # Calculamos el fin de ese mes
+                from pandas.tseries.offsets import MonthEnd
+                mes_end = mes_start + MonthEnd(1) + pd.Timedelta(hours=23, minutes=45)
+                
+                # Ajustamos los límites por si el mes está incompleto (ej. el primer mes de instalación)
+                calc_start = max(mes_start, start.replace(second=0, microsecond=0))
+                calc_end = min(mes_end, end.replace(second=0, microsecond=0))
+                
+                if calc_start <= calc_end:
+                    esperados_m = len(pd.date_range(calc_start, calc_end, freq='15T'))
+                    porc = (count / esperados_m) * 100 if esperados_m > 0 else 0
+                    
+                    meses_labels.append(mes_start.strftime('%b %Y').capitalize())
+                    porcentajes_mes.append(porc)
+                    reales_lista.append(count)
+                    esperados_lista.append(esperados_m)
+
+        # ==========================================
+        # 3. INTERFAZ GRÁFICA (Dos Columnas)
+        # ==========================================
+        col_tendencia, col_espacio, col_torta = st.columns([1.5, 0.1, 1])
+
+        with col_tendencia:
+            st.markdown("#### 📈 Tendencia de Disponibilidad Mensual (Uptime)")
+            
+            fig_trend = go.Figure()
+            fig_trend.add_trace(go.Scatter(
+                x=meses_labels, 
+                y=porcentajes_mes,
+                mode='lines+markers+text',
+                marker=dict(size=14, color='#1f77b4', line=dict(width=2, color='white')),
+                line=dict(width=4, color='#1f77b4'),
+                text=[f"{p:.1f}%" for p in porcentajes_mes],
+                textposition='top center',
+                customdata=list(zip(reales_lista, esperados_lista)),
+                hovertemplate="<b>%{x}</b><br>Disponibilidad: <b>%{y:.2f}%</b><br>Registros: %{customdata[0]:,} / %{customdata[1]:,}<extra></extra>"
+            ))
+            
+            fig_trend.update_layout(
+                height=420, margin=dict(t=40, b=40, l=40, r=20),
+                yaxis=dict(title="Disponibilidad (%)", range=[max(0, min(porcentajes_mes)-10), 105], gridcolor='#e5e8e8'),
+                xaxis=dict(gridcolor='#e5e8e8'),
+                template='plotly_white',
+                font=dict(color="#5d6d7e")
+            )
+            st.plotly_chart(fig_trend, use_container_width=True)
+            st.info("💡 **Análisis:** La línea muestra el porcentaje de datos registrados frente a los esperados cada mes. Una caída indica cortes de luz o pérdida de conexión WiFi del PAC3200.")
+
+        with col_espacio:
+            st.markdown("""<div style="border-left: 2px solid #e6e9ef; height: 450px; margin-left: 50%;"></div>""", unsafe_allow_html=True)
+
+        with col_torta:
+            st.markdown("#### 🥧 Resumen Histórico Global")
+            
+            fig_pie = go.Figure(data=[go.Pie(
+                labels=['Datos Registrados', 'Gaps (Cortes/WiFi)'],
+                values=[registrado_global, no_registrado_global],
+                marker_colors=['#66bb6a', '#ef5350'], # Verde y Rojo
+                pull=[0.05, 0], # Efecto "explode" de tu Colab
+                textinfo='percent+label',
+                textposition='outside',
+                hovertemplate="<b>%{label}</b><br>%{value:.1f}%<extra></extra>"
+            )])
+            
+            fig_pie.update_layout(
+                height=380, margin=dict(t=40, b=20, l=20, r=20),
+                showlegend=False, template='plotly_white',
+                font=dict(color="#5d6d7e", size=14)
+            )
+            st.plotly_chart(fig_pie, use_container_width=True)
+            
+            # Recreamos el cartelito de "Comentarios" que tenías en Colab
+            st.markdown(f"""
+            <div style="background-color: #f8f9fa; padding: 15px; border-radius: 8px; text-align: center; border: 1px solid #e6e9ef;">
+                <b>Desde:</b> {start.strftime('%d/%m/%Y')} <b>Hasta:</b> {end.strftime('%d/%m/%Y')}<br>
+                <b>Esperados:</b> {esperados_global:,} | <b>Reales:</b> {reales_global:,}
+            </div>
+            """, unsafe_allow_html=True)
+
     except Exception as e:
-        st.error(f"Error al generar el perfil de carga: {e}")
+        st.error(f"Error al generar el análisis de calidad: {e}")
+
+    #except Exception as e:
+     #   st.error(f"Error al generar el perfil de carga: {e}")
