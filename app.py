@@ -352,12 +352,11 @@ elif seccion == "📊 Resumen Histórico":
     except Exception as e:
         st.error(f"Error en el Resumen Histórico: {e}")
 
-
 # --- VENTANA PERFIL DE CARGA ---
 
 elif seccion == "📈 Perfil de Carga Dinámico":
     try:
-        with st.spinner('Procesando perfiles de carga... ⏳'):
+        with st.spinner('Procesando perfiles de carga interactivos... ⏳'):
             df = obtener_datos_historicos() 
             df['incremento_kWh'] = df['EA_imp_T1_kwh'].diff().clip(lower=0).fillna(0)
             df['hora'] = df.index.hour
@@ -368,6 +367,7 @@ elif seccion == "📈 Perfil de Carga Dinámico":
         col_graficos, col_heatmap = st.columns([1, 1])
 
         with col_graficos:
+            # --- 1. GRÁFICO SEMANAL ---
             st.markdown("#### 📅 Promedio Diario por Semana")
             df_diario_sem = df.resample('D').agg({'P1': 'mean', 'P2': 'mean', 'P3': 'mean', 'EA_imp_T1_kwh': 'last'})
             df_diario_sem['P_total'] = df_diario_sem['P1'] + df_diario_sem['P2'] + df_diario_sem['P3']
@@ -377,23 +377,54 @@ elif seccion == "📈 Perfil de Carga Dinámico":
             df_diario_sem['L3'] = (df_diario_sem['P3'] / df_diario_sem['P_total']) * diff_en_sem
             df_diario_sem['nombre_dia'] = df_diario_sem.index.dayofweek.map(dias_map)
             df_semana_avg = df_diario_sem.groupby('nombre_dia')[['L1', 'L2', 'L3']].mean().reindex(order_dias)
+            df_semana_avg['Total'] = df_semana_avg.sum(axis=1)
 
             fig_sem = go.Figure()
             clrs = ['#1f77b4', '#ff7f0e', '#2ca02c']
             for i, l in enumerate(['L1', 'L2', 'L3']):
-                fig_sem.add_trace(go.Bar(x=df_semana_avg.index, y=df_semana_avg[l], name=f"L{i+1}", marker_color=clrs[i]))
-            fig_sem.update_layout(barmode='stack', height=350, margin=dict(t=20, b=20), template='plotly_white', showlegend=False)
+                fig_sem.add_trace(go.Bar(x=df_semana_avg.index, y=df_semana_avg[l], name=f"Línea {i+1}", marker_color=clrs[i], hovertemplate="Fase: Línea %{data.name}<br>Promedio: <b>%{y:.2f} kWh</b><extra></extra>"))
+            
+            # Traza del Total (Scatter texto)
+            fig_sem.add_trace(go.Scatter(x=df_semana_avg.index, y=df_semana_avg['Total'], mode='text', text=df_semana_avg['Total'].apply(lambda x: f'<b>{x:.1f}</b>'), textposition='top center', showlegend=False, hoverinfo='skip'))
+
+            fig_sem.update_layout(
+                barmode='stack', height=400, template='plotly_white', margin=dict(t=20, b=80),
+                updatemenus=[dict(type="buttons", direction="right", active=0, x=0.5, y=-0.2, xanchor='center',
+                    buttons=list([
+                        dict(label="Ver Todo", method="update", args=[{"visible": [True, True, True, True]}]),
+                        dict(label="Solo L1", method="update", args=[{"visible": [True, False, False, False]}]),
+                        dict(label="Solo L2", method="update", args=[{"visible": [False, True, False, False]}]),
+                        dict(label="Solo L3", method="update", args=[{"visible": [False, False, True, False]}]),
+                    ]))]
+            )
             st.plotly_chart(fig_sem, use_container_width=True)
 
+            # --- 2. GRÁFICO HORARIO ---
             st.markdown("#### ⌚ Perfil Típico de 24 Horas")
             df_hora_avg = df.groupby('hora').agg({'P1': 'mean', 'P2': 'mean', 'P3': 'mean', 'incremento_kWh': 'mean'})
             p_sum_h = df_hora_avg[['P1','P2','P3']].sum(axis=1)
             for i in range(1,4):
                 df_hora_avg[f'L{i}_kWh'] = (df_hora_avg[f'P{i}'] / p_sum_h) * df_hora_avg['incremento_kWh'] * 4 
+            df_hora_avg['Total'] = df_hora_avg[['L1_kWh', 'L2_kWh', 'L3_kWh']].sum(axis=1)
+            
+            horas_x = [f"{h:02d}:00" for h in range(24)]
             fig_hora = go.Figure()
             for i in range(1,4):
-                fig_hora.add_trace(go.Bar(x=[f"{h:02d}:00" for h in range(24)], y=df_hora_avg[f'L{i}_kWh'], name=f"L{i}", marker_color=clrs[i-1]))
-            fig_hora.update_layout(barmode='stack', height=350, margin=dict(t=20, b=20), template='plotly_white', showlegend=False)
+                fig_hora.add_trace(go.Bar(x=horas_x, y=df_hora_avg[f'L{i}_kWh'], name=f"Línea {i}", marker_color=clrs[i-1], hovertemplate="Fase: Línea %{data.name}<br>Promedio: <b>%{y:.2f} kWh</b><extra></extra>"))
+            
+            # Traza del Total (Scatter texto)
+            fig_hora.add_trace(go.Scatter(x=horas_x, y=df_hora_avg['Total'], mode='text', text=df_hora_avg['Total'].apply(lambda x: f'<b>{x:.1f}</b>'), textposition='top center', showlegend=False, hoverinfo='skip'))
+
+            fig_hora.update_layout(
+                barmode='stack', height=400, template='plotly_white', margin=dict(t=20, b=100),
+                updatemenus=[dict(type="buttons", direction="right", active=0, x=0.5, y=-0.3, xanchor='center',
+                    buttons=list([
+                        dict(label="Ver Todo", method="update", args=[{"visible": [True, True, True, True]}]),
+                        dict(label="Solo L1", method="update", args=[{"visible": [True, False, False, False]}]),
+                        dict(label="Solo L2", method="update", args=[{"visible": [False, True, False, False]}]),
+                        dict(label="Solo L3", method="update", args=[{"visible": [False, False, True, False]}]),
+                    ]))]
+            )
             st.plotly_chart(fig_hora, use_container_width=True)
 
         with col_heatmap:
@@ -404,7 +435,7 @@ elif seccion == "📈 Perfil de Carga Dinámico":
                 colorscale='YlOrRd', hoverongaps=False,
                 hovertemplate='Día: %{y}<br>Hora: %{x}<br>Consumo: <b>%{z:.2f} kWh</b><extra></extra>'
             ))
-            fig_heat.update_layout(height=740, margin=dict(t=20, b=20, l=10, r=10), xaxis_title="Hora del Día", yaxis_autorange='reversed', paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
+            fig_heat.update_layout(height=840, margin=dict(t=20, b=20, l=10, r=10), xaxis_title="Hora del Día", yaxis_autorange='reversed', paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
             st.plotly_chart(fig_heat, use_container_width=True)
 
     except Exception as e:
