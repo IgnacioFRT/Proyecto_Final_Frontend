@@ -355,20 +355,9 @@ elif seccion == "📊 Resumen Histórico":
 # --- VENTANA PERFIL DE CARGA ---
 
 elif seccion == "📈 Perfil de Carga Dinámico":
-    st.markdown("""
-        <style>
-            .titulo-perfil {
-                font-size: 45px !important;
-                font-weight: 700 !important;
-                color: #31333F;
-                margin-top: -70px !important;
-                margin-left: -20px !important;
-                margin-bottom: 20px !important;
-                text-align: left;
-            }
-        </style>
-        <h1 class="titulo-perfil">📈 Perfil de Carga Dinámico</h1>
-    """, unsafe_allow_html=True)
+    # 1. Título limpio sin que se amontone
+    st.markdown("### 📈 Análisis Dinámico y Perfil de Carga")
+    st.divider()
 
     try:
         with st.spinner('Procesando perfiles de carga interactivos... ⏳'):
@@ -379,11 +368,11 @@ elif seccion == "📈 Perfil de Carga Dinámico":
             df['nombre_dia'] = df.index.dayofweek.map(dias_map)
             order_dias = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
 
-        # --- DIVISION EN COLUMNAS CON LINEA VERTICAL ---
-        col_izq, col_espacio, col_der = st.columns([1, 0.05, 1])
+        # 2. COLUMNAS PERFECTAMENTE SIMÉTRICAS (1.2 : 0.1 : 1.2)
+        col_izq, col_espacio, col_der = st.columns([1.2, 0.1, 1.2])
 
         with col_izq:
-            # 1. GRÁFICO SEMANAL
+            # --- GRÁFICO 1: SEMANAL ---
             st.markdown("#### 📅 Promedio Diario por Semana")
             df_diario_sem = df.resample('D').agg({'P1': 'mean', 'P2': 'mean', 'P3': 'mean', 'EA_imp_T1_kwh': 'last'})
             df_diario_sem['P_total'] = df_diario_sem['P1'] + df_diario_sem['P2'] + df_diario_sem['P3']
@@ -402,9 +391,10 @@ elif seccion == "📈 Perfil de Carga Dinámico":
             
             fig_sem.add_trace(go.Scatter(x=df_semana_avg.index, y=df_semana_avg['Total'], mode='text', text=df_semana_avg['Total'].apply(lambda x: f'<b>{x:.1f}</b>'), textposition='top center', showlegend=False))
 
+            # Ajuste clave: height más grande (480) y margen inferior enorme (b=160)
             fig_sem.update_layout(
-                barmode='stack', height=380, template='plotly_white', margin=dict(t=10, b=100),
-                updatemenus=[dict(type="buttons", direction="right", active=0, x=0.5, y=-0.25, xanchor='center',
+                barmode='stack', height=480, template='plotly_white', margin=dict(t=20, b=160, l=40, r=20),
+                updatemenus=[dict(type="buttons", direction="right", active=0, x=0.5, y=-0.35, xanchor='center',
                     buttons=list([
                         dict(label="Ver Todo", method="update", args=[{"visible": [True, True, True, True]}]),
                         dict(label="Solo L1", method="update", args=[{"visible": [True, False, False, False]}]),
@@ -414,7 +404,7 @@ elif seccion == "📈 Perfil de Carga Dinámico":
             )
             st.plotly_chart(fig_sem, use_container_width=True)
 
-            # 2. GRÁFICO HORARIO
+            # --- GRÁFICO 2: HORARIO ---
             st.markdown("#### ⌚ Perfil Típico de 24 Horas")
             df_hora_avg = df.groupby('hora').agg({'P1': 'mean', 'P2': 'mean', 'P3': 'mean', 'incremento_kWh': 'mean'})
             p_sum_h = df_hora_avg[['P1','P2','P3']].sum(axis=1)
@@ -428,9 +418,10 @@ elif seccion == "📈 Perfil de Carga Dinámico":
             
             fig_hora.add_trace(go.Scatter(x=[f"{h:02d}:00" for h in range(24)], y=df_hora_avg['Total'], mode='text', text=df_hora_avg['Total'].apply(lambda x: f'<b>{x:.1f}</b>'), textposition='top center', showlegend=False))
 
+            # Ajuste clave: height=480 y b=160
             fig_hora.update_layout(
-                barmode='stack', height=380, template='plotly_white', margin=dict(t=10, b=120),
-                updatemenus=[dict(type="buttons", direction="right", active=0, x=0.5, y=-0.35, xanchor='center',
+                barmode='stack', height=480, template='plotly_white', margin=dict(t=20, b=160, l=40, r=20),
+                updatemenus=[dict(type="buttons", direction="right", active=0, x=0.5, y=-0.40, xanchor='center',
                     buttons=list([
                         dict(label="Ver Todo", method="update", args=[{"visible": [True, True, True, True]}]),
                         dict(label="Solo L1", method="update", args=[{"visible": [True, False, False, False]}]),
@@ -440,10 +431,14 @@ elif seccion == "📈 Perfil de Carga Dinámico":
             )
             st.plotly_chart(fig_hora, use_container_width=True)
 
+        # --- LÍNEA DIVISORIA CENTRAL ---
         with col_espacio:
-            st.markdown("""<div style="border-left: 2px solid #e6e9ef; height: 900px; margin-left: 50%;"></div>""", unsafe_allow_html=True)
+            st.markdown("""
+                <div style="border-left: 2px solid #e6e9ef; height: 1000px; margin-left: 50%;"></div>
+            """, unsafe_allow_html=True)
 
         with col_der:
+            # --- GRÁFICO 3: MAPA DE CALOR ---
             st.markdown("#### 🌡️ Mapa de Calor de Consumo (kWh)")
             df_heat = df.groupby(['nombre_dia', 'hora'])['incremento_kWh'].mean().unstack().reindex(order_dias)
             fig_heat = go.Figure(data=go.Heatmap(
@@ -451,7 +446,14 @@ elif seccion == "📈 Perfil de Carga Dinámico":
                 colorscale='YlOrRd', hoverongaps=False,
                 hovertemplate='Día: %{y}<br>Hora: %{x}<br>Consumo: <b>%{z:.2f} kWh</b><extra></extra>'
             ))
-            fig_heat.update_layout(height=850, margin=dict(t=50, b=20, l=10, r=10), yaxis_autorange='reversed', font=dict(color="black"))
+            
+            # Alto total para que coincida con los dos de la izquierda (480 + 480 aprox)
+            fig_heat.update_layout(
+                height=960, 
+                margin=dict(t=40, b=40, l=20, r=10), 
+                yaxis_autorange='reversed', 
+                font=dict(color="black")
+            )
             st.plotly_chart(fig_heat, use_container_width=True)
             st.info("💡 **Análisis:** Las zonas oscuras indican picos de demanda. Útil para auditoría de horarios.")
 
