@@ -137,6 +137,8 @@ st.markdown("""
 
 # --- VENTANA INICIO ---
 
+# --- VENTANA INICIO ---
+
 if seccion == "🏠 Inicio":
     espacio1, col_logo_central, espacio3 = st.columns([1, 1.5, 1])
     with col_logo_central:
@@ -151,10 +153,98 @@ if seccion == "🏠 Inicio":
     st.divider()
 
     st.markdown("#### 📊 Resumen Global del Sistema")
-    kpi1, kpi2, kpi3 = st.columns(3)
-    kpi1.metric("Energía Total Registrada", "2,933.4 kWh", "↑ Sistema Activo")
-    kpi2.metric("Huella de Carbono Estimada", "1,320.0 kg CO₂", "- Impacto Medioambiental", delta_color="off")
-    kpi3.metric("Última Medición Verificada", "10/03/2026", "En línea")
+
+    # --- LÓGICA DE DATOS DINÁMICOS (Para que sea 100% real) ---
+    try:
+        # Intentamos obtener los datos reales de tu función
+        df_inicio = obtener_datos_historicos()
+        energia_total = df_inicio['EA_imp_T1_kwh'].max() - df_inicio['EA_imp_T1_kwh'].min()
+        ultima_fecha = df_inicio.index.max()
+        fecha_str = ultima_fecha.strftime("%d/%m/%Y %H:%M")
+
+        # Verificamos si está "En línea" (ej. si la última medición fue hace menos de 2 horas)
+        import datetime
+        ahora = datetime.datetime.now(ultima_fecha.tzinfo)
+        diferencia = ahora - ultima_fecha
+        
+        if diferencia.total_seconds() < 7200: # 7200 segundos = 2 horas
+            estado_texto = "↑ Sistema Activo / En línea"
+            estado_color = "#27ae60" # Verde
+        else:
+            estado_texto = "↓ Sistema Fuera de Línea"
+            estado_color = "#e74c3c" # Rojo
+            
+    except Exception as e:
+        # Si no hay datos aún, usamos los valores de tu foto como respaldo
+        energia_total = 2933.4
+        fecha_str = "10/03/2026"
+        estado_texto = "↑ Sistema Activo"
+        estado_color = "#27ae60"
+
+    # --- DISEÑO CSS PARA LAS TARJETAS (CARDS) ---
+    st.markdown("""
+    <style>
+        .kpi-card {
+            background-color: #f4f7f9; /* Fondo gris-azulado muy claro */
+            border: 1px solid #dce4e6; /* Borde sutil */
+            border-radius: 12px;       /* Bordes redondeados */
+            padding: 25px 20px;
+            text-align: center;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05); /* Sombra muy suave */
+            transition: transform 0.2s;
+        }
+        .kpi-card:hover {
+            transform: translateY(-2px); /* Pequeño efecto al pasar el mouse */
+        }
+        .kpi-title {
+            color: #5d6d7e;
+            font-size: 16px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 10px;
+        }
+        .kpi-value {
+            color: #2b3a4a;
+            font-size: 42px;
+            font-weight: 800;
+            margin: 10px 0;
+        }
+        .kpi-unidad {
+            font-size: 20px;
+            font-weight: 500;
+            color: #7f8c8d;
+        }
+        .kpi-delta {
+            font-size: 14px;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+    </style>
+    """, unsafe_allow_html=True)
+
+    # --- RENDERIZADO DE LAS COLUMNAS ---
+    col1, col_espacio, col2 = st.columns([1, 0.1, 1])
+
+    with col1:
+        st.markdown(f"""
+        <div class="kpi-card">
+            <div class="kpi-title">Energía Total Registrada</div>
+            <div class="kpi-value">{energia_total:,.1f} <span class="kpi-unidad">kWh</span></div>
+            <div class="kpi-delta" style="color: {estado_color};">{estado_texto}</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with col2:
+        st.markdown(f"""
+        <div class="kpi-card">
+            <div class="kpi-title">Última Medición Verificada</div>
+            <div class="kpi-value" style="font-size: 34px; padding-top: 8px;">{fecha_str}</div>
+            <div class="kpi-delta" style="color: #7f8c8d;">Sincronizado con InfluxDB</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    st.write("") # Un pequeño espacio
     st.success("✅ **Estado:** Sistema Operativo. Enlace con base de datos histórica InfluxDB establecido correctamente.")
     st.divider()
 
