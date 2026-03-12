@@ -389,8 +389,8 @@ elif seccion == "📈 Perfil de Carga Dinámico":
             fig_sem.add_trace(go.Scatter(x=df_semana_avg.index, y=df_semana_avg['Total'], mode='text', text=df_semana_avg['Total'].apply(lambda x: f'<b>{x:.1f}</b>'), textposition='top center', showlegend=False, hoverinfo='skip'))
 
             fig_sem.update_layout(
-                barmode='stack', height=400, template='plotly_white', margin=dict(t=20, b=80),
-                updatemenus=[dict(type="buttons", direction="right", active=0, x=0.5, y=-0.5, xanchor='center',
+                barmode='stack', height=400, template='plotly_white', margin=dict(t=20, b=120),
+                updatemenus=[dict(type="buttons", direction="right", active=0, x=0.5, y=-0.3, xanchor='center',
                     buttons=list([
                         dict(label="Ver Todo", method="update", args=[{"visible": [True, True, True, True]}]),
                         dict(label="Solo L1", method="update", args=[{"visible": [True, False, False, False]}]),
@@ -417,8 +417,8 @@ elif seccion == "📈 Perfil de Carga Dinámico":
             fig_hora.add_trace(go.Scatter(x=horas_x, y=df_hora_avg['Total'], mode='text', text=df_hora_avg['Total'].apply(lambda x: f'<b>{x:.1f}</b>'), textposition='top center', showlegend=False, hoverinfo='skip'))
 
             fig_hora.update_layout(
-                barmode='stack', height=400, template='plotly_white', margin=dict(t=20, b=100),
-                updatemenus=[dict(type="buttons", direction="right", active=0, x=0.5, y=-0.6, xanchor='center',
+                barmode='stack', height=400, template='plotly_white', margin=dict(t=20, b=150),
+                updatemenus=[dict(type="buttons", direction="right", active=0, x=0.5, y=-0.4, xanchor='center',
                     buttons=list([
                         dict(label="Ver Todo", method="update", args=[{"visible": [True, True, True, True]}]),
                         dict(label="Solo L1", method="update", args=[{"visible": [True, False, False, False]}]),
