@@ -128,7 +128,7 @@ st.markdown("""
             color: #31333F;
             margin-top: -70px !important; /* Lo tira hacia arriba */
             margin-bottom: 20px !important;
-            text-align: center, !important;
+            text-align: center !important;
         }
     </style>
     <h1 class="titulo-personalizado">⚡ Sistema de Gestión Energética ⚡</h1>
