@@ -364,10 +364,10 @@ elif seccion == "📈 Perfil de Carga Dinámico":
             df['nombre_dia'] = df.index.dayofweek.map(dias_map)
             order_dias = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
 
-        col_graficos, col_heatmap = st.columns([1, 1])
+        # --- CREAMOS LAS DOS COLUMNAS COMO EN EL RESUMEN ---
+        col_izquierda, col_derecha = st.columns([1, 1])
 
-        with col_graficos:
-            
+        with col_izquierda:
             # --- 1. GRÁFICO SEMANAL ---
             st.markdown("#### 📅 Promedio Diario por Semana")
             df_diario_sem = df.resample('D').agg({'P1': 'mean', 'P2': 'mean', 'P3': 'mean', 'EA_imp_T1_kwh': 'last'})
@@ -385,12 +385,11 @@ elif seccion == "📈 Perfil de Carga Dinámico":
             for i, l in enumerate(['L1', 'L2', 'L3']):
                 fig_sem.add_trace(go.Bar(x=df_semana_avg.index, y=df_semana_avg[l], name=f"Línea {i+1}", marker_color=clrs[i], hovertemplate="Fase: Línea %{data.name}<br>Promedio: <b>%{y:.2f} kWh</b><extra></extra>"))
             
-            # Traza del Total (Scatter texto)
             fig_sem.add_trace(go.Scatter(x=df_semana_avg.index, y=df_semana_avg['Total'], mode='text', text=df_semana_avg['Total'].apply(lambda x: f'<b>{x:.1f}</b>'), textposition='top center', showlegend=False, hoverinfo='skip'))
 
             fig_sem.update_layout(
                 barmode='stack', height=400, template='plotly_white', margin=dict(t=20, b=120),
-                updatemenus=[dict(type="buttons", direction="right", active=0, x=0.5, y=-0.3, xanchor='center',
+                updatemenus=[dict(type="buttons", direction="right", active=0, x=0.5, y=-0.3, xanchor='center', yanchor='top',
                     buttons=list([
                         dict(label="Ver Todo", method="update", args=[{"visible": [True, True, True, True]}]),
                         dict(label="Solo L1", method="update", args=[{"visible": [True, False, False, False]}]),
@@ -408,35 +407,37 @@ elif seccion == "📈 Perfil de Carga Dinámico":
                 df_hora_avg[f'L{i}_kWh'] = (df_hora_avg[f'P{i}'] / p_sum_h) * df_hora_avg['incremento_kWh'] * 4 
             df_hora_avg['Total'] = df_hora_avg[['L1_kWh', 'L2_kWh', 'L3_kWh']].sum(axis=1)
             
-            horas_x = [f"{h:02d}:00" for h in range(24)]
             fig_hora = go.Figure()
             for i in range(1,4):
-                fig_hora.add_trace(go.Bar(x=horas_x, y=df_hora_avg[f'L{i}_kWh'], name=f"Línea {i}", marker_color=clrs[i-1], hovertemplate="Fase: Línea %{data.name}<br>Promedio: <b>%{y:.2f} kWh</b><extra></extra>"))
+                fig_hora.add_trace(go.Bar(x=[f"{h:02d}:00" for h in range(24)], y=df_hora_avg[f'L{i}_kWh'], name=f"Línea {i}", marker_color=clrs[i-1]))
             
-            # Traza del Total (Scatter texto)
-            fig_hora.add_trace(go.Scatter(x=horas_x, y=df_hora_avg['Total'], mode='text', text=df_hora_avg['Total'].apply(lambda x: f'<b>{x:.1f}</b>'), textposition='top center', showlegend=False, hoverinfo='skip'))
-
             fig_hora.update_layout(
                 barmode='stack', height=400, template='plotly_white', margin=dict(t=20, b=150),
-                updatemenus=[dict(type="buttons", direction="right", active=0, x=0.5, y=-0.4, xanchor='center',
+                updatemenus=[dict(type="buttons", direction="right", active=0, x=0.5, y=-0.4, xanchor='center', yanchor='top',
                     buttons=list([
-                        dict(label="Ver Todo", method="update", args=[{"visible": [True, True, True, True]}]),
-                        dict(label="Solo L1", method="update", args=[{"visible": [True, False, False, False]}]),
-                        dict(label="Solo L2", method="update", args=[{"visible": [False, True, False, False]}]),
-                        dict(label="Solo L3", method="update", args=[{"visible": [False, False, True, False]}]),
+                        dict(label="Ver Todo", method="update", args=[{"visible": [True, True, True]}]),
+                        dict(label="Solo L1", method="update", args=[{"visible": [True, False, False]}]),
+                        dict(label="Solo L2", method="update", args=[{"visible": [False, True, False]}]),
+                        dict(label="Solo L3", method="update", args=[{"visible": [False, False, True]}]),
                     ]))]
             )
             st.plotly_chart(fig_hora, use_container_width=True)
 
-        with col_heatmap:
+        with col_derecha:
+            # --- 3. MAPA DE CALOR ---
             st.markdown("#### 🌡️ Mapa de Calor de Consumo (kWh)")
             df_heat = df.groupby(['nombre_dia', 'hora'])['incremento_kWh'].mean().unstack().reindex(order_dias)
+            
             fig_heat = go.Figure(data=go.Heatmap(
                 z=df_heat.values, x=[f"{h:02d}:00" for h in range(24)], y=df_heat.index,
-                colorscale='YlOrRd', hoverongaps=False,
-                hovertemplate='Día: %{y}<br>Hora: %{x}<br>Consumo: <b>%{z:.2f} kWh</b><extra></extra>'
+                colorscale='YlOrRd', hovertemplate='Día: %{y}<br>Hora: %{x}<br>Consumo: <b>%{z:.2f} kWh</b><extra></extra>'
             ))
-            fig_heat.update_layout(height=840, margin=dict(t=20, b=20, l=10, r=10), xaxis_title="Hora del Día", yaxis_autorange='reversed', paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
+            
+            # Ajustamos el alto para que coincida con los dos gráficos de la izquierda
+            fig_heat.update_layout(
+                height=850, margin=dict(t=80, b=20, l=10, r=10), 
+                yaxis_autorange='reversed', paper_bgcolor="rgba(0,0,0,0)", font=dict(color="black", size=12)
+            )
             st.plotly_chart(fig_heat, use_container_width=True)
 
     except Exception as e:
