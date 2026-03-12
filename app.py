@@ -354,7 +354,22 @@ elif seccion == "📊 Resumen Histórico":
 
 # --- VENTANA PERFIL DE CARGA ---
 
-elif seccion == "📈 Perfil de Carga Dinámico":
+elif seccion == "📈 Perfil de Carga":
+    st.markdown("""
+        <style>
+            .titulo-perfil {
+                font-size: 45px !important;
+                font-weight: 700 !important;
+                color: #31333F;
+                margin-top: -70px !important;
+                margin-left: -20px !important;
+                margin-bottom: 20px !important;
+                text-align: left;
+            }
+        </style>
+        <h1 class="titulo-perfil">📈 Perfil de Carga Dinámico</h1>
+    """, unsafe_allow_html=True)
+
     try:
         with st.spinner('Procesando perfiles de carga interactivos... ⏳'):
             df = obtener_datos_historicos() 
@@ -364,15 +379,29 @@ elif seccion == "📈 Perfil de Carga Dinámico":
             df['nombre_dia'] = df.index.dayofweek.map(dias_map)
             order_dias = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
 
-        # --- CREAMOS LAS DOS COLUMNAS ---
-        col_izq, col_espacio, col_der = st.columns([1, 0.1, 1]) # El 0.1 es el espacio para la "línea"
+        # --- DIVISION EN COLUMNAS CON LINEA VERTICAL ---
+        col_izq, col_espacio, col_der = st.columns([1, 0.05, 1])
 
         with col_izq:
-            # --- 1. GRÁFICO SEMANAL ---
+            # 1. GRÁFICO SEMANAL
             st.markdown("#### 📅 Promedio Diario por Semana")
-            # ... (Tus cálculos de df_semana_avg aquí) ...
+            df_diario_sem = df.resample('D').agg({'P1': 'mean', 'P2': 'mean', 'P3': 'mean', 'EA_imp_T1_kwh': 'last'})
+            df_diario_sem['P_total'] = df_diario_sem['P1'] + df_diario_sem['P2'] + df_diario_sem['P3']
+            diff_en_sem = df_diario_sem['EA_imp_T1_kwh'].diff().clip(lower=0).fillna(0)
+            df_diario_sem['L1'] = (df_diario_sem['P1'] / df_diario_sem['P_total']) * diff_en_sem
+            df_diario_sem['L2'] = (df_diario_sem['P2'] / df_diario_sem['P_total']) * diff_en_sem
+            df_diario_sem['L3'] = (df_diario_sem['P3'] / df_diario_sem['P_total']) * diff_en_sem
+            df_diario_sem['nombre_dia'] = df_diario_sem.index.dayofweek.map(dias_map)
+            df_semana_avg = df_diario_sem.groupby('nombre_dia')[['L1', 'L2', 'L3']].mean().reindex(order_dias)
+            df_semana_avg['Total'] = df_semana_avg.sum(axis=1)
+
+            fig_sem = go.Figure()
+            clrs = ['#1f77b4', '#ff7f0e', '#2ca02c']
+            for i, l in enumerate(['L1', 'L2', 'L3']):
+                fig_sem.add_trace(go.Bar(x=df_semana_avg.index, y=df_semana_avg[l], name=f"Línea {i+1}", marker_color=clrs[i]))
             
-            # (El código de fig_sem que ya tenés)
+            fig_sem.add_trace(go.Scatter(x=df_semana_avg.index, y=df_semana_avg['Total'], mode='text', text=df_semana_avg['Total'].apply(lambda x: f'<b>{x:.1f}</b>'), textposition='top center', showlegend=False))
+
             fig_sem.update_layout(
                 barmode='stack', height=380, template='plotly_white', margin=dict(t=10, b=100),
                 updatemenus=[dict(type="buttons", direction="right", active=0, x=0.5, y=-0.25, xanchor='center',
@@ -385,13 +414,20 @@ elif seccion == "📈 Perfil de Carga Dinámico":
             )
             st.plotly_chart(fig_sem, use_container_width=True)
 
-            st.write("") # Espacio entre gráficos
-
-            # --- 2. GRÁFICO HORARIO ---
+            # 2. GRÁFICO HORARIO
             st.markdown("#### ⌚ Perfil Típico de 24 Horas")
-            # ... (Tus cálculos de df_hora_avg aquí) ...
+            df_hora_avg = df.groupby('hora').agg({'P1': 'mean', 'P2': 'mean', 'P3': 'mean', 'incremento_kWh': 'mean'})
+            p_sum_h = df_hora_avg[['P1','P2','P3']].sum(axis=1)
+            for i in range(1,4):
+                df_hora_avg[f'L{i}_kWh'] = (df_hora_avg[f'P{i}'] / p_sum_h) * df_hora_avg['incremento_kWh'] * 4 
+            df_hora_avg['Total'] = df_hora_avg[['L1_kWh', 'L2_kWh', 'L3_kWh']].sum(axis=1)
+            
+            fig_hora = go.Figure()
+            for i in range(1,4):
+                fig_hora.add_trace(go.Bar(x=[f"{h:02d}:00" for h in range(24)], y=df_hora_avg[f'L{i}_kWh'], name=f"Línea {i}", marker_color=clrs[i-1]))
+            
+            fig_hora.add_trace(go.Scatter(x=[f"{h:02d}:00" for h in range(24)], y=df_hora_avg['Total'], mode='text', text=df_hora_avg['Total'].apply(lambda x: f'<b>{x:.1f}</b>'), textposition='top center', showlegend=False))
 
-            # (El código de fig_hora que ya tenés)
             fig_hora.update_layout(
                 barmode='stack', height=380, template='plotly_white', margin=dict(t=10, b=120),
                 updatemenus=[dict(type="buttons", direction="right", active=0, x=0.5, y=-0.35, xanchor='center',
@@ -405,24 +441,19 @@ elif seccion == "📈 Perfil de Carga Dinámico":
             st.plotly_chart(fig_hora, use_container_width=True)
 
         with col_espacio:
-            # ESTA ES LA MAGIA: Una línea vertical sutil usando CSS
-            st.markdown("""
-                <div style="border-left: 2px solid #e6e9ef; height: 850px; margin-left: 50%;"></div>
-            """, unsafe_allow_html=True)
+            st.markdown("""<div style="border-left: 2px solid #e6e9ef; height: 900px; margin-left: 50%;"></div>""", unsafe_allow_html=True)
 
         with col_der:
-            # --- 3. MAPA DE CALOR ---
             st.markdown("#### 🌡️ Mapa de Calor de Consumo (kWh)")
-            # ... (Tus cálculos de df_heat aquí) ...
-
-            fig_heat.update_layout(
-                height=820, # Ajustado para que termine igual que los de la izquierda
-                margin=dict(t=50, b=20, l=10, r=10),
-                yaxis_autorange='reversed',
-                font=dict(color="black")
-            )
+            df_heat = df.groupby(['nombre_dia', 'hora'])['incremento_kWh'].mean().unstack().reindex(order_dias)
+            fig_heat = go.Figure(data=go.Heatmap(
+                z=df_heat.values, x=[f"{h:02d}:00" for h in range(24)], y=df_heat.index,
+                colorscale='YlOrRd', hoverongaps=False,
+                hovertemplate='Día: %{y}<br>Hora: %{x}<br>Consumo: <b>%{z:.2f} kWh</b><extra></extra>'
+            ))
+            fig_heat.update_layout(height=850, margin=dict(t=50, b=20, l=10, r=10), yaxis_autorange='reversed', font=dict(color="black"))
             st.plotly_chart(fig_heat, use_container_width=True)
-            st.info("💡 **Análisis:** Las zonas oscuras/rojas indican los picos de demanda horaria.")
+            st.info("💡 **Análisis:** Las zonas oscuras indican picos de demanda. Útil para auditoría de horarios.")
 
     except Exception as e:
         st.error(f"Error al generar el perfil de carga: {e}")
