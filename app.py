@@ -355,10 +355,6 @@ elif seccion == "📊 Resumen Histórico":
 # --- VENTANA PERFIL DE CARGA ---
 
 elif seccion == "📈 Perfil de Carga Dinámico":
-    # 1. Título limpio sin que se amontone
-    st.markdown("### 📈 Análisis Dinámico y Perfil de Carga")
-    st.divider()
-
     try:
         with st.spinner('Procesando perfiles de carga interactivos... ⏳'):
             df = obtener_datos_historicos() 
