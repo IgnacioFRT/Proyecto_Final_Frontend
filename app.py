@@ -12,13 +12,17 @@ import pytz
 
 st.set_page_config(page_title="EMS - PAC3200 UTN", layout="wide")
 
-# --- OCULTAR MARCAS PERO MANTENER MENÚ (3 PUNTITOS) ---
+# --- OCULTAR ELEMENTOS DE STREAMLIT (EXCEPTO MENÚ) ---
 st.markdown("""
     <style>
-        /* Ocultamos SOLO el pie de página predeterminado de Streamlit */
+        /* 1. Ocultar el pie de página ("Made with Streamlit") */
         footer {visibility: hidden;}
         
-        /* Dejamos el #MainMenu y el header visibles para que puedas usar el Modo Oscuro */
+        /* 2. Ocultar botones de Share, Star, GitHub, etc. */
+        [data-testid="stToolbar"] a {display: none;}
+        
+        /* 3. Ocultar cualquier otro botón en la barra superior que NO sea el menú principal */
+        [data-testid="stToolbar"] > div:not(:last-child) {display: none;}
     </style>
 """, unsafe_allow_html=True)
 
