@@ -40,8 +40,16 @@ def obtener_datos_historicos():
     |> filter(fn: (r) => r._field != "EA_imp_T1_kwh") 
     |> aggregateWindow(every: 15m, fn: mean, createEmpty: false)
     
-    data_last = from(bucket: "{bucket}") |> range(start: 0) |> filter(fn: (r) => r._measurement == "pruebas_fn") |> filter(fn: (r) => r.deviceID == "08B764") |> filter(fn: (r) => r.proyecto == "siemens_Pac3200") |> filter(fn: (r) => r._field == "EA_imp_T1_kwh") |> aggregateWindow(every: 15m, fn: last, createEmpty: false)
-    union(tables: [data_mean, data_last]) |> pivot(rowKey: ["_time"], columnKey: ["_field"], valueColumn: "_value") |> sort(columns: ["_time"])
+    data_last = from(bucket: "{bucket}") 
+    |> range(start: 0) 
+    |> filter(fn: (r) => r._measurement == "pruebas_fn") 
+    |> filter(fn: (r) => r.deviceID == "08B764") 
+    |> filter(fn: (r) => r.proyecto == "siemens_Pac3200") 
+    |> filter(fn: (r) => r._field == "EA_imp_T1_kwh") 
+    |> aggregateWindow(every: 15m, fn: last, createEmpty: false)
+    union(tables: [data_mean, data_last]) 
+    |> pivot(rowKey: ["_time"], columnKey: ["_field"], valueColumn: "_value") 
+    |> sort(columns: ["_time"])
     '''
     
     df = query_api.query_data_frame(query)
