@@ -12,17 +12,17 @@ import pytz
 
 st.set_page_config(page_title="EMS - PAC3200 UTN", layout="wide")
 
-# --- OCULTAR ELEMENTOS DE STREAMLIT (EXCEPTO MENÚ) ---
+# --- OCULTAR ELEMENTOS DE STREAMLIT CLOUD (MANTENIENDO 3 PUNTITOS) ---
 st.markdown("""
     <style>
         /* 1. Ocultar el pie de página ("Made with Streamlit") */
-        footer {visibility: hidden;}
+        footer {visibility: hidden !important;}
         
-        /* 2. Ocultar botones de Share, Star, GitHub, etc. */
-        [data-testid="stToolbar"] a {display: none;}
+        /* 2. Ocultar el botón de "Share" / Deploy */
+        .stAppDeployButton {display: none !important;}
         
-        /* 3. Ocultar cualquier otro botón en la barra superior que NO sea el menú principal */
-        [data-testid="stToolbar"] > div:not(:last-child) {display: none;}
+        /* 3. Ocultar los íconos de Star, GitHub, Edit, etc. */
+        [data-testid="stToolbarActions"] {display: none !important;}
     </style>
 """, unsafe_allow_html=True)
 
