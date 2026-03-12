@@ -604,7 +604,6 @@ elif seccion == "🌱 Huella de Carbono":
                 text-align: left;
             }
         </style>
-        <h1 class="titulo-carbono">🌱 Análisis de Impacto Ambiental</h1>
     """, unsafe_allow_html=True)
     st.divider()
 
