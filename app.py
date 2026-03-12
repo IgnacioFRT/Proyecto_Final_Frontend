@@ -1,3 +1,17 @@
+# --- OCULTAR MENÚS Y MARCAS DE STREAMLIT ---
+st.markdown("""
+    <style>
+        /* Oculta el menú principal de arriba a la derecha */
+        #MainMenu {visibility: hidden;}
+        
+        /* Oculta el encabezado flotante completo (Share, GitHub, etc.) */
+        header {visibility: hidden;}
+        
+        /* Oculta el pie de página predeterminado de Streamlit */
+        footer {visibility: hidden;}
+    </style>
+""", unsafe_allow_html=True)
+
 from influxdb_client import InfluxDBClient
 from streamlit_autorefresh import st_autorefresh
 from plotly.subplots import make_subplots
