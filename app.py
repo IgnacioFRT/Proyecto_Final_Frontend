@@ -127,12 +127,11 @@ st.markdown("""
             font-weight: 700 !important;
             color: #31333F;
             margin-top: -70px !important; /* Lo tira hacia arriba */
-            margin-left: -20px !important; /* Lo tira a la izquierda */
             margin-bottom: 20px !important;
-            text-align: left;
+            text-align: center, !important;
         }
     </style>
-    <h1 class="titulo-personalizado">⚡ Sistema de Gestión Energética - PAC3200</h1>
+    <h1 class="titulo-personalizado">⚡ Sistema de Gestión Energética ⚡</h1>
 """, unsafe_allow_html=True)
 
 # --- VENTANA INICIO ---
