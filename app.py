@@ -14,7 +14,7 @@ st.set_page_config(page_title="EMS - PAC3200 UTN", layout="wide")
 
 # === 2. ESTRUCTURA COLAB ===
 
-@st.cache_data(ttl=300) #Se actualiza automáticamente cada 1 hora
+@st.cache_data(ttl=300, show_spinner=false) #Se actualiza automáticamente cada 5 min
 def obtener_datos_historicos():
 
     # --- A. CONFIGURACIÓN ---
