@@ -367,6 +367,7 @@ elif seccion == "📈 Perfil de Carga Dinámico":
         col_graficos, col_heatmap = st.columns([1, 1])
 
         with col_graficos:
+            
             # --- 1. GRÁFICO SEMANAL ---
             st.markdown("#### 📅 Promedio Diario por Semana")
             df_diario_sem = df.resample('D').agg({'P1': 'mean', 'P2': 'mean', 'P3': 'mean', 'EA_imp_T1_kwh': 'last'})
@@ -389,7 +390,7 @@ elif seccion == "📈 Perfil de Carga Dinámico":
 
             fig_sem.update_layout(
                 barmode='stack', height=400, template='plotly_white', margin=dict(t=20, b=80),
-                updatemenus=[dict(type="buttons", direction="right", active=0, x=0.5, y=-0.2, xanchor='center',
+                updatemenus=[dict(type="buttons", direction="right", active=0, x=0.5, y=-0.5, xanchor='center',
                     buttons=list([
                         dict(label="Ver Todo", method="update", args=[{"visible": [True, True, True, True]}]),
                         dict(label="Solo L1", method="update", args=[{"visible": [True, False, False, False]}]),
@@ -417,7 +418,7 @@ elif seccion == "📈 Perfil de Carga Dinámico":
 
             fig_hora.update_layout(
                 barmode='stack', height=400, template='plotly_white', margin=dict(t=20, b=100),
-                updatemenus=[dict(type="buttons", direction="right", active=0, x=0.5, y=-0.3, xanchor='center',
+                updatemenus=[dict(type="buttons", direction="right", active=0, x=0.5, y=-0.6, xanchor='center',
                     buttons=list([
                         dict(label="Ver Todo", method="update", args=[{"visible": [True, True, True, True]}]),
                         dict(label="Solo L1", method="update", args=[{"visible": [True, False, False, False]}]),
