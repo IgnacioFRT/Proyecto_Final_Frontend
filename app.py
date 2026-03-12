@@ -453,7 +453,10 @@ elif seccion == "📈 Perfil de Carga Dinámico":
             st.plotly_chart(fig_heat, use_container_width=True)
             st.info("💡 **Análisis:** Las zonas oscuras indican picos de demanda.")
 
-    # --- VENTANA CALIDAD DE SERVICIO (QoS) ---
+    except Exception as e:
+        st.error(f"Error al generar el perfil de carga: {e}")
+
+# --- VENTANA CALIDAD DE SERVICIO (QoS) ---
 
 elif seccion == "📶 Calidad (QoS)": # Asegurate de agregar esto a tu st.radio del menú lateral
     st.markdown("""
@@ -582,6 +585,3 @@ elif seccion == "📶 Calidad (QoS)": # Asegurate de agregar esto a tu st.radio 
 
     except Exception as e:
         st.error(f"Error al generar el análisis de calidad: {e}")
-
-    except Exception as e:
-        st.error(f"Error al generar el perfil de carga: {e}")
