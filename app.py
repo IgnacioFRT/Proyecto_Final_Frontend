@@ -7,6 +7,7 @@ import pandas as pd
 import plotly.graph_objects as go
 
 import pytz
+import datetime
 
 # === 1. CONFIGURACIÓN DE PÁGINA ===
 
@@ -178,11 +179,10 @@ if seccion == "🏠 Inicio":
         fecha_str = ultima_fecha.strftime("%d/%m/%Y %H:%M")
 
         # Verificamos si está "En línea" (ej. si la última medición fue hace menos de 2 horas)
-        import datetime
         ahora = datetime.datetime.now(ultima_fecha.tzinfo)
         diferencia = ahora - ultima_fecha
         
-        if diferencia.total_seconds() < 7200: # 7200 segundos = 2 horas
+        if diferencia.total_seconds() < 1200: # 1200 segundos = 20min
             estado_texto = "↑ Sistema Activo / En línea"
             estado_color = "#27ae60" # Verde
         else:
