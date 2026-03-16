@@ -641,22 +641,21 @@ elif seccion == "📶 Calidad (QoS)":
             # C. DESHACER EL .FFILL Y CALCULAR GAPS
             # ==========================================
             # 1. Detectar filas "Fantasma": donde la Energía y Tensión son EXACTAMENTE iguales a la fila anterior
-            # (Esto significa que fueron copiadas artificialmente por el .ffill() de tu importación)
             filas_fantasma = (df['EA_imp_T1_kwh'] == df['EA_imp_T1_kwh'].shift(1)) & (df['UL1N'] == df['UL1N'].shift(1))
             
-            # 2. Arreglar el Gráfico: A las filas fantasma les clavamos 0V para que la línea se desplome como en InfluxDB
+            # 2. Arreglar el Gráfico: A las filas fantasma les clavamos 0V para que la línea se desplome
             df_grafico = df.copy()
             df_grafico.loc[filas_fantasma, ['UL1N', 'UL2N', 'UL3N']] = 0
             
-            # 3. Arreglar la Tabla: Eliminamos las filas fantasma para recuperar el hueco original que veías en tu Excel
+            # 3. Arreglar la Tabla: Eliminamos las filas fantasma para recuperar el hueco original
             df_real = df[~filas_fantasma].copy()
             
-            # 4. Ahora sí, calculamos el salto de tiempo original
+            # 4. Calculamos el salto de tiempo original
             df_real['time_diff'] = df_real.index.to_series().diff()
             df_real['energy_diff'] = df_real['EA_imp_T1_kwh'].diff()
             
-            # Buscamos saltos mayores a 60 minutos
-            cortes_graves = df_real[df_real['time_diff'] > pd.Timedelta(minutes=60)].copy()
+            # Buscamos saltos mayores a 30 MINUTOS (Ajustado)
+            cortes_graves = df_real[df_real['time_diff'] > pd.Timedelta(minutes=30)].copy()
             
             lista_cortes = []
             for idx, row in cortes_graves.iterrows():
@@ -667,7 +666,7 @@ elif seccion == "📶 Calidad (QoS)":
                 horas, remainder = divmod(duracion.total_seconds(), 3600)
                 minutos, _ = divmod(remainder, 60)
                 
-                # En lugar de ocultar, ahora mostramos TODO y clasificamos:
+                # ACÁ ESTÁ LA MAGIA: Clasificamos, pero anotamos TODO en la tabla
                 if energia_perdida < 1.0: 
                     diagnostico = "🔴 Apagón Real"
                 else:
@@ -763,7 +762,8 @@ elif seccion == "📶 Calidad (QoS)":
                 st.plotly_chart(fig_tension, use_container_width=True)
 
             with col_tabla:
-                st.markdown("**Registro de Apagones (Gaps > 1h)**")
+                # Actualizado el título de la tabla
+                st.markdown("**Registro de Apagones (Gaps > 30m)**")
                 if df_cortes_filtrado.empty:
                     st.success("✅ No se registraron apagones reales en el período seleccionado.")
                 else:
