@@ -358,7 +358,9 @@ elif seccion == "🕒 Tiempo Real":
 
 elif seccion == "📊 Resumen Histórico":
     try:
+        
         #BACKEND : CÁLCULOS Y PROCESAMIENDO
+        
         # A. ADQUISICIÓN DE DATOS
         with st.spinner('Descargando y procesando historial completo desde InfluxDB... ⏳'):
             df = obtener_datos_historicos()
@@ -395,41 +397,6 @@ elif seccion == "📊 Resumen Histórico":
             return 'Día hábil'
         
         df_diario['categoria'] = df_diario.apply(categorizar, axis=1)
-
-        #FRONTEND : DISEÑO VISUAL
-        # D. MAQUETADO FILA 1
-        col_torta, col_barras = st.columns([1, 2])
-
-        with col_torta:
-            st.markdown("#### 📅 Consumo por Tipo de Día")
-            fig_torta = go.Figure(data=[go.Pie(
-                labels=['Días hábiles', 'Feriados', 'Fin de semana'],
-                values=[energia_habil, energia_feriado, energia_finde],
-                marker_colors=['#66bb6a', '#ef5350', '#42a5f5'],
-                pull=[0.05, 0.05, 0.05],
-                textinfo='percent+label',
-                textposition='outside',
-                hovertemplate="%{label}<br>%{value:,.1f} kWh<br>%{percent}<extra></extra>"
-            )])
-            fig_torta.update_layout(margin=dict(t=80, b=20, l=10, r=10), showlegend=False, height=450, paper_bgcolor="rgba(0,0,0,0)", font=dict(color="black", size=14))
-            st.plotly_chart(fig_torta, use_container_width=True)
-
-        with col_barras:
-            st.markdown("#### 📊 Evolución de Consumo Diario")
-            color_map = {'Día hábil': '#2ca02c', 'Sábado': '#1f77b4', 'Domingo': '#ff7f0e', 'Feriado': 'red'}
-            fig_barras = go.Figure()
-            for tipo, color in color_map.items():
-                df_temp = df_diario[df_diario['categoria'] == tipo]
-                if not df_temp.empty:
-                    fig_barras.add_trace(go.Bar(
-                        x=df_temp.index, y=df_temp['consumo_diario_kWh'], name=tipo, marker_color=color,
-                        customdata=df_temp[['nombre_dia', 'categoria']],
-                        hovertemplate="<b>%{customdata[0]}</b>, %{x|%d de %b}<br><b>Consumo</b>: %{y:.2f} kWh<br><b>Tipo</b>: %{customdata[1]}<extra></extra>"
-                    ))
-            fig_barras.update_layout(height=450, template='plotly_white', hovermode='x unified', legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
-            st.plotly_chart(fig_barras, use_container_width=True)
-
-        st.divider() 
         
         # E. CÁLCULOS PARA GIAGRAMA DE TORTA (Fases)
         p1_mean = df['P1'].mean()
@@ -453,7 +420,43 @@ elif seccion == "📊 Resumen Histórico":
         df_diario_fases['nombre_dia'] = df_diario_fases.index.dayofweek.map(dias_semana_es)
 
         #FRONTEND : DISEÑO VISUAL
-        # G. MAQUETADO FILA 2
+
+        # --- GRÁFICO 1: TORTA CONSUMO POR TIPO DE DIA ---
+        col_torta, col_barras = st.columns([1, 2])
+
+        with col_torta:
+            st.markdown("#### 📅 Consumo por Tipo de Día")
+            fig_torta = go.Figure(data=[go.Pie(
+                labels=['Días hábiles', 'Feriados', 'Fin de semana'],
+                values=[energia_habil, energia_feriado, energia_finde],
+                marker_colors=['#66bb6a', '#ef5350', '#42a5f5'],
+                pull=[0.05, 0.05, 0.05],
+                textinfo='percent+label',
+                textposition='outside',
+                hovertemplate="%{label}<br>%{value:,.1f} kWh<br>%{percent}<extra></extra>"
+            )])
+            fig_torta.update_layout(margin=dict(t=80, b=20, l=10, r=10), showlegend=False, height=450, paper_bgcolor="rgba(0,0,0,0)", font=dict(color="black", size=14))
+            st.plotly_chart(fig_torta, use_container_width=True)
+
+        # --- GRÁFICO 2: BARRAS CONSUMO POR TIPO DE DIA ---
+        with col_barras:
+            st.markdown("#### 📊 Evolución de Consumo Diario")
+            color_map = {'Día hábil': '#2ca02c', 'Sábado': '#1f77b4', 'Domingo': '#ff7f0e', 'Feriado': 'red'}
+            fig_barras = go.Figure()
+            for tipo, color in color_map.items():
+                df_temp = df_diario[df_diario['categoria'] == tipo]
+                if not df_temp.empty:
+                    fig_barras.add_trace(go.Bar(
+                        x=df_temp.index, y=df_temp['consumo_diario_kWh'], name=tipo, marker_color=color,
+                        customdata=df_temp[['nombre_dia', 'categoria']],
+                        hovertemplate="<b>%{customdata[0]}</b>, %{x|%d de %b}<br><b>Consumo</b>: %{y:.2f} kWh<br><b>Tipo</b>: %{customdata[1]}<extra></extra>"
+                    ))
+            fig_barras.update_layout(height=450, template='plotly_white', hovermode='x unified', legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
+            st.plotly_chart(fig_barras, use_container_width=True)
+
+        st.divider() 
+
+        # --- GRÁFICO 3: TORTA CONSUMO POR FASE ---
         col_torta_fases, col_info_fases = st.columns([1, 2])
 
         with col_torta_fases:
@@ -468,6 +471,7 @@ elif seccion == "📊 Resumen Histórico":
             fig_fases.update_layout(margin=dict(t=80, b=20, l=10, r=10), showlegend=False, height=450, paper_bgcolor="rgba(0,0,0,0)", font=dict(color="black", size=14))
             st.plotly_chart(fig_fases, use_container_width=True)
 
+        # --- GRÁFICO 4: BARRAS CONSUMO POR FASE ---
         with col_info_fases:
             st.markdown("#### 📊 Desglose Diario por Fase")
             fig_stack = go.Figure()
@@ -484,7 +488,9 @@ elif seccion == "📊 Resumen Histórico":
 
 elif seccion == "📈 Perfil de Carga Dinámico":
     try:
+        
         #BACKEND : CÁLCULOS Y PROCESAMIENDO
+        
         # A. ADQUISICIÓN DE DATOS
         with st.spinner('Procesando perfiles de carga interactivos... ⏳'):
             df = obtener_datos_historicos() 
@@ -516,11 +522,12 @@ elif seccion == "📈 Perfil de Carga Dinámico":
         df_heat = df.groupby(['nombre_dia', 'hora'])['incremento_kWh'].mean().unstack().reindex(order_dias)
 
         #FRONTEND : DISEÑO VISUAL
-        # 2. COLUMNAS PERFECTAMENTE SIMÉTRICAS (1.2 : 0.1 : 1.2)
+        
+        # COLUMNAS PERFECTAMENTE SIMÉTRICAS (1.2 : 0.1 : 1.2)
         col_izq, col_espacio, col_der = st.columns([1.2, 0.1, 1.2])
-
+        
+        # --- GRÁFICO 1: SEMANAL ---
         with col_izq:
-            # --- GRÁFICO 1: SEMANAL ---
             st.markdown("#### 📅 Promedio Diario por Semana")
             fig_sem = go.Figure()
             clrs = ['#1f77b4', '#ff7f0e', '#2ca02c']
@@ -569,8 +576,8 @@ elif seccion == "📈 Perfil de Carga Dinámico":
                 <div style="border-left: 2px solid #e6e9ef; height: 1000px; margin-left: 50%;"></div>
             """, unsafe_allow_html=True)
 
+        # --- GRÁFICO 3: MAPA DE CALOR ---
         with col_der:
-            # --- GRÁFICO 3: MAPA DE CALOR ---
             st.markdown("#### 🌡️ Mapa de Calor de Consumo (kWh)")
             fig_heat = go.Figure(data=go.Heatmap(
                 z=df_heat.values, x=[f"{h:02d}:00" for h in range(24)], y=df_heat.index,
