@@ -600,41 +600,31 @@ elif seccion == "📈 Perfil de Carga Dinámico":
 
 # --- VENTANA CALIDAD DE SERVICIO (QoS) ---
 
-elif seccion == "📶 Calidad (QoS)": # Asegurate de agregar esto a tu st.radio del menú lateral
+elif seccion == "📶 Calidad (QoS)":
     try:
         with st.spinner('Evaluando disponibilidad y gaps de datos... ⏳'):
+            
+            # ==========================================
+            # 1. BACKEND: CÁLCULOS Y PROCESAMIENTO
+            # ==========================================
             df = obtener_datos_historicos()
 
-            # ==========================================
-            # 1. CÁLCULO GLOBAL (Tu código de Colab)
-            # ==========================================
             start = df.index.min()
             end = df.index.max()
             
-            # Intervalos esperados globales (cada 15 min)
+            # A. Cálculo Global
             esperados_global = len(pd.date_range(start, end, freq='15T'))
             reales_global = len(df)
-            
             registrado_global = (reales_global / esperados_global) * 100 if esperados_global > 0 else 0
             no_registrado_global = 100 - registrado_global
 
-            # ==========================================
-            # 2. CÁLCULO MENSUAL (Tu idea de Tendencia)
-            # ==========================================
-            # Agrupamos los registros reales por inicio de mes ('MS' = Month Start)
+            # B. Cálculo Mensual (Tendencia)
             df_reales_mes = df.resample('MS').size()
+            meses_labels, porcentajes_mes, reales_lista, esperados_lista = [], [], [], []
             
-            meses_labels = []
-            porcentajes_mes = []
-            reales_lista = []
-            esperados_lista = []
-
+            from pandas.tseries.offsets import MonthEnd
             for mes_start, count in df_reales_mes.items():
-                # Calculamos el fin de ese mes
-                from pandas.tseries.offsets import MonthEnd
                 mes_end = mes_start + MonthEnd(1) + pd.Timedelta(hours=23, minutes=45)
-                
-                # Ajustamos los límites por si el mes está incompleto (ej. el primer mes de instalación)
                 calc_start = max(mes_start, start.replace(second=0, microsecond=0))
                 calc_end = min(mes_end, end.replace(second=0, microsecond=0))
                 
@@ -647,67 +637,116 @@ elif seccion == "📶 Calidad (QoS)": # Asegurate de agregar esto a tu st.radio 
                     reales_lista.append(count)
                     esperados_lista.append(esperados_m)
 
-        # ==========================================
-        # 3. INTERFAZ GRÁFICA (Dos Columnas)
-        # ==========================================
-        col_tendencia, col_espacio, col_torta = st.columns([1.5, 0.1, 1])
+            # C. Cálculo de Gaps (Cortes)
+            # Buscamos la diferencia de tiempo entre cada fila y la anterior
+            df['time_diff'] = df.index.to_series().diff()
+            # Filtramos donde la diferencia es mayor a 16 minutos (tolerancia por latencia)
+            cortes = df[df['time_diff'] > pd.Timedelta(minutes=16)].copy()
+            
+            lista_cortes = []
+            for idx, row in cortes.iterrows():
+                fin_corte = idx
+                inicio_corte = idx - row['time_diff']
+                duracion = row['time_diff']
+                # Formatear la duración para que sea legible
+                horas, remainder = divmod(duracion.total_seconds(), 3600)
+                minutos, _ = divmod(remainder, 60)
+                duracion_str = f"{int(horas)}h {int(minutos)}m"
+                
+                lista_cortes.append({
+                    'Inicio del Corte': inicio_corte.strftime('%d/%m/%Y %H:%M'),
+                    'Fin del Corte': fin_corte.strftime('%d/%m/%Y %H:%M'),
+                    'Duración': duracion_str
+                })
+            df_cortes = pd.DataFrame(lista_cortes)
 
-        with col_tendencia:
-            st.markdown("#### 📈 Tendencia de Disponibilidad Mensual (Uptime)")
+            # ==========================================
+            # 2. FRONTEND: MAQUETADO Y DISEÑO VISUAL
+            # ==========================================
             
-            fig_trend = go.Figure()
-            fig_trend.add_trace(go.Scatter(
-                x=meses_labels, 
-                y=porcentajes_mes,
-                mode='lines+markers+text',
-                marker=dict(size=14, color='#1f77b4', line=dict(width=2, color='white')),
-                line=dict(width=4, color='#1f77b4'),
-                text=[f"{p:.1f}%" for p in porcentajes_mes],
-                textposition='top center',
-                customdata=list(zip(reales_lista, esperados_lista)),
-                hovertemplate="<b>%{x}</b><br>Disponibilidad: <b>%{y:.2f}%</b><br>Registros: %{customdata[0]:,} / %{customdata[1]:,}<extra></extra>"
-            ))
-            
-            fig_trend.update_layout(
-                height=420, margin=dict(t=40, b=40, l=40, r=20),
-                yaxis=dict(title="Disponibilidad (%)", range=[max(0, min(porcentajes_mes)-10), 105], gridcolor='#e5e8e8'),
-                xaxis=dict(gridcolor='#e5e8e8'),
-                template='plotly_white',
-                font=dict(color="#5d6d7e")
-            )
-            st.plotly_chart(fig_trend, use_container_width=True)
-            st.info("💡 **Análisis:** La línea muestra el porcentaje de datos registrados frente a los esperados cada mes. Una caída indica cortes de luz o pérdida de conexión WiFi del PAC3200.")
+            # --- FILA 1: ESTADÍSTICAS GLOBALES ---
+            col_tendencia, col_espacio, col_torta = st.columns([1.5, 0.1, 1])
 
-        with col_espacio:
-            st.markdown("""<div style="border-left: 2px solid #e6e9ef; height: 450px; margin-left: 50%;"></div>""", unsafe_allow_html=True)
+            with col_tendencia:
+                st.markdown("#### 📈 Tendencia de Disponibilidad Mensual")
+                fig_trend = go.Figure()
+                fig_trend.add_trace(go.Scatter(
+                    x=meses_labels, y=porcentajes_mes, mode='lines+markers+text',
+                    marker=dict(size=14, color='#1f77b4', line=dict(width=2, color='white')),
+                    line=dict(width=4, color='#1f77b4'), text=[f"{p:.1f}%" for p in porcentajes_mes],
+                    textposition='top center', customdata=list(zip(reales_lista, esperados_lista)),
+                    hovertemplate="<b>%{x}</b><br>Disponibilidad: <b>%{y:.2f}%</b><br>Registros: %{customdata[0]:,} / %{customdata[1]:,}<extra></extra>"
+                ))
+                fig_trend.update_layout(height=420, margin=dict(t=40, b=40, l=40, r=20),
+                    yaxis=dict(title="Disponibilidad (%)", range=[max(0, min(porcentajes_mes)-10), 105], gridcolor='#e5e8e8'),
+                    xaxis=dict(gridcolor='#e5e8e8'), template='plotly_white'
+                )
+                st.plotly_chart(fig_trend, use_container_width=True)
+                st.info("💡 **Análisis:** La línea muestra el porcentaje de datos registrados frente a los esperados cada mes.")
 
-        with col_torta:
-            st.markdown("#### 🥧 Resumen Histórico Global")
+            with col_espacio:
+                st.markdown("""<div style="border-left: 2px solid #e6e9ef; height: 450px; margin-left: 50%;"></div>""", unsafe_allow_html=True)
+
+            with col_torta:
+                st.markdown("#### 🥧 Resumen Histórico Global")
+                fig_pie = go.Figure(data=[go.Pie(
+                    labels=['Datos Registrados', 'Gaps (Cortes/WiFi)'], values=[registrado_global, no_registrado_global],
+                    marker_colors=['#66bb6a', '#ef5350'], pull=[0.05, 0], textinfo='percent+label', textposition='outside'
+                )])
+                fig_pie.update_layout(height=380, margin=dict(t=40, b=20, l=20, r=20), showlegend=False, template='plotly_white')
+                st.plotly_chart(fig_pie, use_container_width=True)
+                
+                st.markdown(f"""
+                <div style="background-color: #f8f9fa; padding: 15px; border-radius: 8px; text-align: center; border: 1px solid #e6e9ef;">
+                    <b>Desde:</b> {start.strftime('%d/%m/%Y')} <b>Hasta:</b> {end.strftime('%d/%m/%Y')}<br>
+                    <b>Esperados:</b> {esperados_global:,} | <b>Reales:</b> {reales_global:,}
+                </div>
+                """, unsafe_allow_html=True)
+
+            st.divider()
+
+            # --- FILA 2: ANÁLISIS FÍSICO Y CORTES ---
+            st.markdown("#### ⚡ Análisis Físico de Caídas de Tensión")
             
-            fig_pie = go.Figure(data=[go.Pie(
-                labels=['Datos Registrados', 'Gaps (Cortes/WiFi)'],
-                values=[registrado_global, no_registrado_global],
-                marker_colors=['#66bb6a', '#ef5350'], # Verde y Rojo
-                pull=[0.05, 0], # Efecto "explode" de tu Colab
-                textinfo='percent+label',
-                textposition='outside',
-                hovertemplate="<b>%{label}</b><br>%{value:.1f}%<extra></extra>"
-            )])
-            
-            fig_pie.update_layout(
-                height=380, margin=dict(t=40, b=20, l=20, r=20),
-                showlegend=False, template='plotly_white',
-                font=dict(color="#5d6d7e", size=14)
-            )
-            st.plotly_chart(fig_pie, use_container_width=True)
-            
-            # Recreamos el cartelito de "Comentarios" que tenías en Colab
-            st.markdown(f"""
-            <div style="background-color: #f8f9fa; padding: 15px; border-radius: 8px; text-align: center; border: 1px solid #e6e9ef;">
-                <b>Desde:</b> {start.strftime('%d/%m/%Y')} <b>Hasta:</b> {end.strftime('%d/%m/%Y')}<br>
-                <b>Esperados:</b> {esperados_global:,} | <b>Reales:</b> {reales_global:,}
-            </div>
-            """, unsafe_allow_html=True)
+            # Filtro Mensual Interactivo
+            meses_disponibles = ["Todos los meses"] + meses_labels
+            mes_seleccionado = st.selectbox("📅 Filtrar análisis por mes:", meses_disponibles)
+
+            # Aplicar filtro al DataFrame
+            if mes_seleccionado != "Todos los meses":
+                df_filtrado = df[df.index.strftime('%b %Y').str.capitalize() == mes_seleccionado]
+                if not df_cortes.empty:
+                    # Filtramos la tabla de cortes usando la misma lógica de texto
+                    df_cortes_filtrado = df_cortes[df_cortes['Inicio del Corte'].str.contains(mes_seleccionado.split()[1]) & df_cortes['Inicio del Corte'].str.contains(mes_seleccionado.split()[0].lower(), case=False)]
+                else:
+                    df_cortes_filtrado = df_cortes
+            else:
+                df_filtrado = df
+                df_cortes_filtrado = df_cortes
+
+            col_grafico, col_tabla = st.columns([2, 1])
+
+            with col_grafico:
+                # Gráfico de Tensión con RangeSlider
+                fig_tension = go.Figure()
+                fig_tension.add_trace(go.Scatter(x=df_filtrado.index, y=df_filtrado['UL1N'], name='Línea 1', line=dict(color='#1f77b4', width=1)))
+                fig_tension.add_trace(go.Scatter(x=df_filtrado.index, y=df_filtrado['UL2N'], name='Línea 2', line=dict(color='#ff7f0e', width=1)))
+                fig_tension.add_trace(go.Scatter(x=df_filtrado.index, y=df_filtrado['UL3N'], name='Línea 3', line=dict(color='#2ca02c', width=1)))
+                
+                fig_tension.update_layout(
+                    height=400, margin=dict(t=20, b=20, l=20, r=20),
+                    yaxis_title="Tensión (V)", template='plotly_dark',
+                    xaxis=dict(rangeslider=dict(visible=True), type="date"), # RANGESLIDER ACTIVO
+                    legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+                )
+                st.plotly_chart(fig_tension, use_container_width=True)
+
+            with col_tabla:
+                st.markdown("**Registro de Caídas (Gaps > 15m)**")
+                if df_cortes_filtrado.empty:
+                    st.success("✅ No se registraron caídas en el período seleccionado.")
+                else:
+                    st.dataframe(df_cortes_filtrado, use_container_width=True, hide_index=True)
 
     except Exception as e:
         st.error(f"Error al generar el análisis de calidad: {e}")
