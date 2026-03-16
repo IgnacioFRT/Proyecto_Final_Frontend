@@ -638,48 +638,57 @@ elif seccion == "📶 Calidad (QoS)":
                     esperados_lista.append(esperados_m)
 
             # ==========================================
-            # C. DESHACER EL .FFILL Y CALCULAR GAPS
+            # C. DETECCIÓN VISUAL (Gráfico y Tabla 1 a 1)
             # ==========================================
-            # 1. Detectar filas "Fantasma": donde la Energía y Tensión son EXACTAMENTE iguales a la fila anterior
+            # 1. Identificamos las filas rellenadas artificialmente (Las que van a caer a 0V)
             filas_fantasma = (df['EA_imp_T1_kwh'] == df['EA_imp_T1_kwh'].shift(1)) & (df['UL1N'] == df['UL1N'].shift(1))
             
-            # 2. Arreglar el Gráfico: A las filas fantasma les clavamos 0V para que la línea se desplome
+            # 2. Arreglamos el Gráfico: Todo lo que es fantasma, lo hundimos a 0V
             df_grafico = df.copy()
             df_grafico.loc[filas_fantasma, ['UL1N', 'UL2N', 'UL3N']] = 0
             
-            # 3. Arreglar la Tabla: Eliminamos las filas fantasma para recuperar el hueco original
-            df_real = df[~filas_fantasma].copy()
-            
-            # 4. Calculamos el salto de tiempo original
-            df_real['time_diff'] = df_real.index.to_series().diff()
-            df_real['energy_diff'] = df_real['EA_imp_T1_kwh'].diff()
-            
-            # Buscamos saltos mayores a 30 MINUTOS (Ajustado)
-            cortes_graves = df_real[df_real['time_diff'] > pd.Timedelta(minutes=30)].copy()
-            
+            # 3. Armamos la tabla LEYENDO exactamente las mismas caídas del gráfico
             lista_cortes = []
-            for idx, row in cortes_graves.iterrows():
-                duracion = row['time_diff']
-                energia_perdida = row['energy_diff']
-                
-                inicio_corte = idx - duracion
-                horas, remainder = divmod(duracion.total_seconds(), 3600)
-                minutos, _ = divmod(remainder, 60)
-                
-                # ACÁ ESTÁ LA MAGIA: Clasificamos, pero anotamos TODO en la tabla
-                if energia_perdida < 1.0: 
-                    diagnostico = "🔴 Apagón Real"
-                else:
-                    diagnostico = f"🟠 Corte de Red ({energia_perdida:.1f} kWh)"
+            en_corte = False
+            inicio_corte = None
+            
+            for idx, is_fantasma in filas_fantasma.items():
+                if is_fantasma and not en_corte:
+                    en_corte = True
+                    inicio_corte = idx
+                elif not is_fantasma and en_corte:
+                    en_corte = False
+                    fin_corte = idx
+                    duracion = fin_corte - inicio_corte
                     
-                lista_cortes.append({
-                    'Inicio_dt': inicio_corte, 
-                    'Fecha y Hora': inicio_corte.strftime('%d/%m/%Y %H:%M'),
-                    'Hora de Reconexión': idx.strftime('%d/%m/%Y %H:%M'),
-                    'Duración': f"{int(horas)}h {int(minutos)}m",
-                    'Diagnóstico': diagnostico
-                })
-                
+                    # Filtramos: Solo anotamos si la caída a 0V dura más de 30 min
+                    if duracion >= pd.Timedelta(minutes=30):
+                        horas, remainder = divmod(duracion.total_seconds(), 3600)
+                        minutos, _ = divmod(remainder, 60)
+                        
+                        lista_cortes.append({
+                            'Inicio_dt': inicio_corte, 
+                            'Fecha y Hora': inicio_corte.strftime('%d/%m/%Y %H:%M'),
+                            'Hora de Reconexión': fin_corte.strftime('%d/%m/%Y %H:%M'),
+                            'Duración': f"{int(horas)}h {int(minutos)}m",
+                            'Diagnóstico': "🔴 Caída a 0V"
+                        })
+            
+            # Por si el mes termina justo durante una caída a 0V
+            if en_corte:
+                fin_corte = df.index[-1]
+                duracion = fin_corte - inicio_corte
+                if duracion >= pd.Timedelta(minutes=30):
+                    horas, remainder = divmod(duracion.total_seconds(), 3600)
+                    minutos, _ = divmod(remainder, 60)
+                    lista_cortes.append({
+                        'Inicio_dt': inicio_corte, 
+                        'Fecha y Hora': inicio_corte.strftime('%d/%m/%Y %H:%M'),
+                        'Hora de Reconexión': "En curso",
+                        'Duración': f"{int(horas)}h {int(minutos)}m",
+                        'Diagnóstico': "🔴 Caída a 0V"
+                    })
+                    
             df_cortes = pd.DataFrame(lista_cortes)
             
             # ==========================================
@@ -733,7 +742,6 @@ elif seccion == "📶 Calidad (QoS)":
             meses_disponibles = ["Todos los meses"] + meses_labels
             mes_seleccionado = st.selectbox("📅 Filtrar análisis por mes:", meses_disponibles)
 
-            # Usamos df_grafico para el filtro visual (que tiene los ceros)
             if mes_seleccionado != "Todos los meses":
                 df_filtrado = df_grafico[df_grafico.index.strftime('%b %Y').str.capitalize() == mes_seleccionado]
                 if not df_cortes.empty:
@@ -747,7 +755,6 @@ elif seccion == "📶 Calidad (QoS)":
             col_grafico, col_tabla = st.columns([2, 1])
 
             with col_grafico:
-                # El gráfico ahora se alimenta de df_filtrado que tiene las líneas cayendo a 0V
                 fig_tension = go.Figure()
                 fig_tension.add_trace(go.Scatter(x=df_filtrado.index, y=df_filtrado['UL1N'], name='Línea 1', line=dict(color='#1f77b4', width=1)))
                 fig_tension.add_trace(go.Scatter(x=df_filtrado.index, y=df_filtrado['UL2N'], name='Línea 2', line=dict(color='#ff7f0e', width=1)))
@@ -762,7 +769,6 @@ elif seccion == "📶 Calidad (QoS)":
                 st.plotly_chart(fig_tension, use_container_width=True)
 
             with col_tabla:
-                # Actualizado el título de la tabla
                 st.markdown("**Registro de Apagones (Gaps > 30m)**")
                 if df_cortes_filtrado.empty:
                     st.success("✅ No se registraron apagones reales en el período seleccionado.")
