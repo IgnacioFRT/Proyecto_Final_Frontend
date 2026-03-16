@@ -638,57 +638,54 @@ elif seccion == "📶 Calidad (QoS)":
                     esperados_lista.append(esperados_m)
 
             # ==========================================
-            # C. DETECCIÓN VISUAL (Gráfico y Tabla 1 a 1)
+            # C. DETECCIÓN DE GAPS (SINCRONIZACIÓN TOTAL)
             # ==========================================
-            # 1. Identificamos las filas rellenadas artificialmente (Las que van a caer a 0V)
+            # 1. Identificamos si hay filas rellenadas artificialmente (ffill)
             filas_fantasma = (df['EA_imp_T1_kwh'] == df['EA_imp_T1_kwh'].shift(1)) & (df['UL1N'] == df['UL1N'].shift(1))
             
-            # 2. Arreglamos el Gráfico: Todo lo que es fantasma, lo hundimos a 0V
+            # Creamos un df "limpio" para poder ver los saltos de tiempo reales
+            df_real = df[~filas_fantasma].copy()
+            df_real['time_diff'] = df_real.index.to_series().diff()
+            
+            # Buscamos TODOS los huecos mayores a 30 minutos sin excepción
+            cortes_graves = df_real[df_real['time_diff'] > pd.Timedelta(minutes=30)].copy()
+            
             df_grafico = df.copy()
-            df_grafico.loc[filas_fantasma, ['UL1N', 'UL2N', 'UL3N']] = 0
-            
-            # 3. Armamos la tabla LEYENDO exactamente las mismas caídas del gráfico
             lista_cortes = []
-            en_corte = False
-            inicio_corte = None
+            nuevos_puntos_0v = []
             
-            for idx, is_fantasma in filas_fantasma.items():
-                if is_fantasma and not en_corte:
-                    en_corte = True
-                    inicio_corte = idx
-                elif not is_fantasma and en_corte:
-                    en_corte = False
-                    fin_corte = idx
-                    duracion = fin_corte - inicio_corte
-                    
-                    # Filtramos: Solo anotamos si la caída a 0V dura más de 30 min
-                    if duracion >= pd.Timedelta(minutes=30):
-                        horas, remainder = divmod(duracion.total_seconds(), 3600)
-                        minutos, _ = divmod(remainder, 60)
-                        
-                        lista_cortes.append({
-                            'Inicio_dt': inicio_corte, 
-                            'Fecha y Hora': inicio_corte.strftime('%d/%m/%Y %H:%M'),
-                            'Hora de Reconexión': fin_corte.strftime('%d/%m/%Y %H:%M'),
-                            'Duración': f"{int(horas)}h {int(minutos)}m",
-                            'Diagnóstico': "🔴 Caída a 0V"
-                        })
+            for idx, row in cortes_graves.iterrows():
+                duracion = row['time_diff']
+                fin_corte = idx
+                inicio_corte = idx - duracion
+                
+                # 2. ANOTAMOS EN LA TABLA (Sin filtros extra, entra todo gap > 30m)
+                horas, remainder = divmod(duracion.total_seconds(), 3600)
+                minutos, _ = divmod(remainder, 60)
+                
+                lista_cortes.append({
+                    'Inicio_dt': inicio_corte, 
+                    'Fecha y Hora': inicio_corte.strftime('%d/%m/%Y %H:%M'),
+                    'Hora de Reconexión': fin_corte.strftime('%d/%m/%Y %H:%M'),
+                    'Duración': f"{int(horas)}h {int(minutos)}m",
+                    'Diagnóstico': "🔴 Caída / Gap de Datos"
+                })
+                
+                # 3. FORZAMOS EL GRÁFICO A 0V PARA QUE SEA IDÉNTICO A INFLUXDB
+                mask = (df_grafico.index > inicio_corte) & (df_grafico.index < fin_corte)
+                if mask.any():
+                    # Si había datos de relleno en el medio, los aplastamos a 0V
+                    df_grafico.loc[mask, ['UL1N', 'UL2N', 'UL3N']] = 0
+                else:
+                    # Si era un salto vacío (como el 03/03), inyectamos 0V para obligar a Plotly a dibujar el pozo
+                    nuevos_puntos_0v.append({'index': inicio_corte + pd.Timedelta(seconds=1), 'UL1N': 0, 'UL2N': 0, 'UL3N': 0})
+                    nuevos_puntos_0v.append({'index': fin_corte - pd.Timedelta(seconds=1), 'UL1N': 0, 'UL2N': 0, 'UL3N': 0})
             
-            # Por si el mes termina justo durante una caída a 0V
-            if en_corte:
-                fin_corte = df.index[-1]
-                duracion = fin_corte - inicio_corte
-                if duracion >= pd.Timedelta(minutes=30):
-                    horas, remainder = divmod(duracion.total_seconds(), 3600)
-                    minutos, _ = divmod(remainder, 60)
-                    lista_cortes.append({
-                        'Inicio_dt': inicio_corte, 
-                        'Fecha y Hora': inicio_corte.strftime('%d/%m/%Y %H:%M'),
-                        'Hora de Reconexión': "En curso",
-                        'Duración': f"{int(horas)}h {int(minutos)}m",
-                        'Diagnóstico': "🔴 Caída a 0V"
-                    })
-                    
+            # Si inyectamos puntos de 0V, los sumamos a la gráfica
+            if nuevos_puntos_0v:
+                df_inyectado = pd.DataFrame(nuevos_puntos_0v).set_index('index')
+                df_grafico = pd.concat([df_grafico, df_inyectado]).sort_index()
+                
             df_cortes = pd.DataFrame(lista_cortes)
             
             # ==========================================
