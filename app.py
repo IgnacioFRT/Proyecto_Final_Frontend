@@ -429,7 +429,7 @@ elif seccion == "📊 Resumen Histórico":
 
         st.divider() 
         
-        # E. CÁLCULOS MATEMÁTICOS (Fases)
+        # E. CÁLCULOS PARA GIAGRAMA DE TORTA (Fases)
         p1_mean = df['P1'].mean()
         p2_mean = df['P2'].mean()
         p3_mean = df['P3'].mean()
@@ -441,6 +441,15 @@ elif seccion == "📊 Resumen Histórico":
         else:
             energia_p1 = energia_p2 = energia_p3 = 0
 
+        # E. CÁLCULOS PARA BARRAS POR FASE (Fases)
+        df_diario_fases = df.resample('D').agg({'P1': 'mean', 'P2': 'mean', 'P3': 'mean', 'EA_imp_T1_kwh': 'last'})
+        df_diario_fases['P_total_medio'] = df_diario_fases['P1'] + df_diario_fases['P2'] + df_diario_fases['P3']
+        df_diario_fases['consumo_diario_total_kWh'] = df_diario_fases['EA_imp_T1_kwh'].diff().clip(lower=0).fillna(0)
+        df_diario_fases['P1_kWh'] = (df_diario_fases['P1'] / df_diario_fases['P_total_medio']) * df_diario_fases['consumo_diario_total_kWh']
+        df_diario_fases['P2_kWh'] = (df_diario_fases['P2'] / df_diario_fases['P_total_medio']) * df_diario_fases['consumo_diario_total_kWh']
+        df_diario_fases['P3_kWh'] = (df_diario_fases['P3'] / df_diario_fases['P_total_medio']) * df_diario_fases['consumo_diario_total_kWh']
+        df_diario_fases['nombre_dia'] = df_diario_fases.index.dayofweek.map(dias_semana_es)
+        
         # F. MAQUETADO FILA 2
         col_torta_fases, col_info_fases = st.columns([1, 2])
 
@@ -458,14 +467,6 @@ elif seccion == "📊 Resumen Histórico":
 
         with col_info_fases:
             st.markdown("#### 📊 Desglose Diario por Fase")
-            df_diario_fases = df.resample('D').agg({'P1': 'mean', 'P2': 'mean', 'P3': 'mean', 'EA_imp_T1_kwh': 'last'})
-            df_diario_fases['P_total_medio'] = df_diario_fases['P1'] + df_diario_fases['P2'] + df_diario_fases['P3']
-            df_diario_fases['consumo_diario_total_kWh'] = df_diario_fases['EA_imp_T1_kwh'].diff().clip(lower=0).fillna(0)
-            df_diario_fases['P1_kWh'] = (df_diario_fases['P1'] / df_diario_fases['P_total_medio']) * df_diario_fases['consumo_diario_total_kWh']
-            df_diario_fases['P2_kWh'] = (df_diario_fases['P2'] / df_diario_fases['P_total_medio']) * df_diario_fases['consumo_diario_total_kWh']
-            df_diario_fases['P3_kWh'] = (df_diario_fases['P3'] / df_diario_fases['P_total_medio']) * df_diario_fases['consumo_diario_total_kWh']
-            df_diario_fases['nombre_dia'] = df_diario_fases.index.dayofweek.map(dias_semana_es)
-
             fig_stack = go.Figure()
             lineas_config = {'P1_kWh': {'nombre': 'Línea 1', 'color': '#1f77b4'}, 'P2_kWh': {'nombre': 'Línea 2', 'color': '#ff7f0e'}, 'P3_kWh': {'nombre': 'Línea 3', 'color': '#2ca02c'}}
             for col, info in lineas_config.items():
