@@ -663,19 +663,23 @@ elif seccion == "📶 Calidad (QoS)":
                 duracion = row['time_diff']
                 energia_perdida = row['energy_diff']
                 
-                # Si durante ese mega-hueco el consumo fue menor a 1 kWh, ¡fue un apagón!
+                inicio_corte = idx - duracion
+                horas, remainder = divmod(duracion.total_seconds(), 3600)
+                minutos, _ = divmod(remainder, 60)
+                
+                # En lugar de ocultar, ahora mostramos TODO y clasificamos:
                 if energia_perdida < 1.0: 
-                    inicio_corte = idx - duracion
-                    horas, remainder = divmod(duracion.total_seconds(), 3600)
-                    minutos, _ = divmod(remainder, 60)
+                    diagnostico = "🔴 Apagón Real"
+                else:
+                    diagnostico = f"🟠 Corte de Red ({energia_perdida:.1f} kWh)"
                     
-                    lista_cortes.append({
-                        'Inicio_dt': inicio_corte, 
-                        'Fecha y Hora': inicio_corte.strftime('%d/%m/%Y %H:%M'),
-                        'Hora de Reconexión': idx.strftime('%d/%m/%Y %H:%M'),
-                        'Duración': f"{int(horas)}h {int(minutos)}m",
-                        'Diagnóstico': "🔴 Falla de Alimentación (Sin Datos)"
-                    })
+                lista_cortes.append({
+                    'Inicio_dt': inicio_corte, 
+                    'Fecha y Hora': inicio_corte.strftime('%d/%m/%Y %H:%M'),
+                    'Hora de Reconexión': idx.strftime('%d/%m/%Y %H:%M'),
+                    'Duración': f"{int(horas)}h {int(minutos)}m",
+                    'Diagnóstico': diagnostico
+                })
                 
             df_cortes = pd.DataFrame(lista_cortes)
             
