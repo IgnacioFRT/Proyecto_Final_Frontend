@@ -612,13 +612,11 @@ elif seccion == "📶 Calidad (QoS)":
             start = df.index.min()
             end = df.index.max()
             
-            # A. Cálculo Global
             esperados_global = len(pd.date_range(start, end, freq='15T'))
             reales_global = len(df)
             registrado_global = (reales_global / esperados_global) * 100 if esperados_global > 0 else 0
             no_registrado_global = 100 - registrado_global
 
-            # B. Cálculo Mensual (Tendencia)
             df_reales_mes = df.resample('MS').size()
             meses_labels, porcentajes_mes, reales_lista, esperados_lista = [], [], [], []
             
@@ -638,64 +636,46 @@ elif seccion == "📶 Calidad (QoS)":
                     esperados_lista.append(esperados_m)
 
             # ==========================================
-            # C. DETECCIÓN VISUAL (Gráfico y Tabla 1 a 1)
+            # C. DETECCIÓN DE APAGONES Y CORRECCIÓN GRÁFICA 1 A 1
             # ==========================================
-            # 1. Identificamos las filas rellenadas artificialmente (Las que van a caer a 0V)
+            # 1. Encontramos la "basura" del relleno automático
             filas_fantasma = (df['EA_imp_T1_kwh'] == df['EA_imp_T1_kwh'].shift(1)) & (df['UL1N'] == df['UL1N'].shift(1))
             
-            # 2. Arreglamos el Gráfico: Todo lo que es fantasma, lo hundimos a 0V
+            # 2. Creamos un DF limpio y medimos los saltos de tiempo crudos
+            df_real = df[~filas_fantasma].copy()
+            df_real['time_diff'] = df_real.index.to_series().diff()
+            
+            # Buscamos TODOS los huecos > 30 mins
+            cortes_graves = df_real[df_real['time_diff'] > pd.Timedelta(minutes=30)].copy()
+            
             df_grafico = df.copy()
-            df_grafico.loc[filas_fantasma, ['UL1N', 'UL2N', 'UL3N']] = 0
-            
-            # 3. Armamos la tabla LEYENDO exactamente las mismas caídas del gráfico
             lista_cortes = []
-            en_corte = False
-            inicio_corte = None
             
-            for idx, is_fantasma in filas_fantasma.items():
-                if is_fantasma and not en_corte:
-                    en_corte = True
-                    inicio_corte = idx
-                elif not is_fantasma and en_corte:
-                    en_corte = False
-                    fin_corte = idx
-                    duracion = fin_corte - inicio_corte
-                    
-                    # Filtramos: Solo anotamos si la caída a 0V dura más de 30 min
-                    if duracion >= pd.Timedelta(minutes=30):
-                        horas, remainder = divmod(duracion.total_seconds(), 3600)
-                        minutos, _ = divmod(remainder, 60)
-                        
-                        lista_cortes.append({
-                            'Inicio_dt': inicio_corte, 
-                            'Fecha y Hora': inicio_corte.strftime('%d/%m/%Y %H:%M'),
-                            'Hora de Reconexión': fin_corte.strftime('%d/%m/%Y %H:%M'),
-                            'Duración': f"{int(horas)}h {int(minutos)}m",
-                            'Diagnóstico': "🔴 Caída a 0V"
-                        })
-            
-            # Por si el mes termina justo durante una caída a 0V
-            if en_corte:
-                fin_corte = df.index[-1]
-                duracion = fin_corte - inicio_corte
-                if duracion >= pd.Timedelta(minutes=30):
-                    horas, remainder = divmod(duracion.total_seconds(), 3600)
-                    minutos, _ = divmod(remainder, 60)
-                    lista_cortes.append({
-                        'Inicio_dt': inicio_corte, 
-                        'Fecha y Hora': inicio_corte.strftime('%d/%m/%Y %H:%M'),
-                        'Hora de Reconexión': "En curso",
-                        'Duración': f"{int(horas)}h {int(minutos)}m",
-                        'Diagnóstico': "🔴 Caída a 0V"
-                    })
-                    
+            for idx, row in cortes_graves.iterrows():
+                duracion = row['time_diff']
+                inicio_corte = idx - duracion
+                
+                # A. Registramos en la tabla
+                horas, remainder = divmod(duracion.total_seconds(), 3600)
+                minutos, _ = divmod(remainder, 60)
+                
+                lista_cortes.append({
+                    'Inicio_dt': inicio_corte, 
+                    'Fecha y Hora': inicio_corte.strftime('%d/%m/%Y %H:%M'),
+                    'Hora de Reconexión': idx.strftime('%d/%m/%Y %H:%M'),
+                    'Duración': f"{int(horas)}h {int(minutos)}m",
+                    'Diagnóstico': "🔴 Caída a 0V"
+                })
+                
+                # B. Obligamos al gráfico a mostrar el pozo en 0V exactamente en ese rango
+                mask = (df_grafico.index > inicio_corte) & (df_grafico.index < idx)
+                df_grafico.loc[mask, ['UL1N', 'UL2N', 'UL3N']] = 0
+                
             df_cortes = pd.DataFrame(lista_cortes)
             
             # ==========================================
             # 2. FRONTEND: MAQUETADO Y DISEÑO VISUAL
             # ==========================================
-            
-            # --- FILA 1: ESTADÍSTICAS GLOBALES ---
             col_tendencia, col_espacio, col_torta = st.columns([1.5, 0.1, 1])
 
             with col_tendencia:
@@ -713,7 +693,6 @@ elif seccion == "📶 Calidad (QoS)":
                     xaxis=dict(gridcolor='#e5e8e8'), template='plotly_white'
                 )
                 st.plotly_chart(fig_trend, use_container_width=True)
-                st.info("💡 **Análisis:** La línea muestra el porcentaje de datos registrados frente a los esperados cada mes.")
 
             with col_espacio:
                 st.markdown("""<div style="border-left: 2px solid #e6e9ef; height: 450px; margin-left: 50%;"></div>""", unsafe_allow_html=True)
