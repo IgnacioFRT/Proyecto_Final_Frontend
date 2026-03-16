@@ -638,35 +638,34 @@ elif seccion == "📶 Calidad (QoS)":
                     esperados_lista.append(esperados_m)
 
            # ==========================================
-            # C. Cálculo de Cortes Reales (Por Ausencia de Datos)
+            # C. Cálculo de Cortes Reales (Tiempo + Energía)
             # ==========================================
-            # 1. Calculamos la diferencia de tiempo entre cada registro y el anterior
             df['time_diff'] = df.index.to_series().diff()
+            df['energy_diff'] = df['EA_imp_T1_kwh'].diff()
             
-            # 2. FILTRO CLAVE: ¿A partir de cuántos minutos consideramos que es un corte relevante?
-            # Si le ponés 60, va a ignorar los microcortes de WiFi y solo atrapar los apagones largos (como el del 3 de marzo).
-            minutos_tolerancia = 60 
-            
-            # 3. Filtramos solo los saltos de tiempo que superen nuestra tolerancia
-            cortes_graves = df[df['time_diff'] > pd.Timedelta(minutes=minutos_tolerancia)].copy()
+            # 1. Buscamos saltos de tiempo (Tolerancia: 60 minutos)
+            cortes_graves = df[df['time_diff'] > pd.Timedelta(minutes=60)].copy()
             
             lista_cortes = []
             for idx, row in cortes_graves.iterrows():
-                fin_corte = idx
-                inicio_corte = idx - row['time_diff']
                 duracion = row['time_diff']
+                energia_perdida = row['energy_diff']
                 
-                # Formateo de la duración
-                horas, remainder = divmod(duracion.total_seconds(), 3600)
-                minutos, _ = divmod(remainder, 60)
-                duracion_str = f"{int(horas)}h {int(minutos)}m"
-                
-                lista_cortes.append({
-                    'Fecha y Hora': inicio_corte.strftime('%d/%m/%Y %H:%M'),
-                    'Hora de Reconexión': fin_corte.strftime('%d/%m/%Y %H:%M'),
-                    'Duración': duracion_str,
-                    'Diagnóstico': "🔴 Sin registro de datos"
-                })
+                # 2. EL FILTRO MAESTRO: ¿Fue un apagón real o solo se cayó el WiFi?
+                # Si consumió menos de 1 kWh durante ese salto de tiempo, el tablero estuvo apagado.
+                if energia_perdida < 1.0: 
+                    inicio_corte = idx - duracion
+                    horas, remainder = divmod(duracion.total_seconds(), 3600)
+                    minutos, _ = divmod(remainder, 60)
+                    
+                    lista_cortes.append({
+                        'Inicio_dt': inicio_corte, # Columna oculta para que el filtro de meses funcione bien
+                        'Fecha y Hora': inicio_corte.strftime('%d/%m/%Y %H:%M'),
+                        'Hora de Reconexión': idx.strftime('%d/%m/%Y %H:%M'),
+                        'Duración': f"{int(horas)}h {int(minutos)}m",
+                        'Diagnóstico': "🔴 Apagón Real"
+                    })
+                # Si la energía fue mayor a 1.0, fue un corte de WiFi (como el 13/03) y lo ignoramos por completo.
                 
             df_cortes = pd.DataFrame(lista_cortes)
             
@@ -718,16 +717,15 @@ elif seccion == "📶 Calidad (QoS)":
             # --- FILA 2: ANÁLISIS FÍSICO Y CORTES ---
             st.markdown("#### ⚡ Análisis Físico de Caídas de Tensión")
             
-            # Filtro Mensual Interactivo
             meses_disponibles = ["Todos los meses"] + meses_labels
             mes_seleccionado = st.selectbox("📅 Filtrar análisis por mes:", meses_disponibles)
 
-            # Aplicar filtro al DataFrame
+            # Aplicar filtro al DataFrame arreglado
             if mes_seleccionado != "Todos los meses":
                 df_filtrado = df[df.index.strftime('%b %Y').str.capitalize() == mes_seleccionado]
                 if not df_cortes.empty:
-                    # Filtramos la tabla de cortes usando la misma lógica de texto
-                    df_cortes_filtrado = df_cortes[df_cortes['Fecha y Hora'].str.contains(mes_seleccionado.split()[1]) & df_cortes['Fecha y Hora'].str.contains(mes_seleccionado.split()[0].lower(), case=False)]
+                    # Usamos la columna oculta de fecha real para filtrar exacto
+                    df_cortes_filtrado = df_cortes[df_cortes['Inicio_dt'].dt.strftime('%b %Y').str.capitalize() == mes_seleccionado]
                 else:
                     df_cortes_filtrado = df_cortes
             else:
@@ -737,7 +735,6 @@ elif seccion == "📶 Calidad (QoS)":
             col_grafico, col_tabla = st.columns([2, 1])
 
             with col_grafico:
-                # Gráfico de Tensión con RangeSlider
                 fig_tension = go.Figure()
                 fig_tension.add_trace(go.Scatter(x=df_filtrado.index, y=df_filtrado['UL1N'], name='Línea 1', line=dict(color='#1f77b4', width=1)))
                 fig_tension.add_trace(go.Scatter(x=df_filtrado.index, y=df_filtrado['UL2N'], name='Línea 2', line=dict(color='#ff7f0e', width=1)))
@@ -746,20 +743,23 @@ elif seccion == "📶 Calidad (QoS)":
                 fig_tension.update_layout(
                     height=400, margin=dict(t=20, b=20, l=20, r=20),
                     yaxis_title="Tensión (V)", template='plotly_dark',
-                    xaxis=dict(rangeslider=dict(visible=True), type="date"), # RANGESLIDER ACTIVO
+                    xaxis=dict(rangeslider=dict(visible=True), type="date"),
                     legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
                 )
                 st.plotly_chart(fig_tension, use_container_width=True)
 
             with col_tabla:
-                st.markdown("**Registro de Caídas (Gaps > 15m)**")
+                st.markdown("**Registro de Apagones (Gaps > 1h)**")
                 if df_cortes_filtrado.empty:
-                    st.success("✅ No se registraron caídas en el período seleccionado.")
+                    st.success("✅ No se registraron apagones reales en el período seleccionado.")
                 else:
-                    st.dataframe(df_cortes_filtrado, use_container_width=True, hide_index=True)
-
-    except Exception as e:
-        st.error(f"Error al generar el análisis de calidad: {e}")
+                    # Borramos la columna auxiliar 'Inicio_dt' antes de mostrar la tabla al usuario
+                    if 'Inicio_dt' in df_cortes_filtrado.columns:
+                        df_mostrar = df_cortes_filtrado.drop(columns=['Inicio_dt'])
+                    else:
+                        df_mostrar = df_cortes_filtrado
+                        
+                    st.dataframe(df_mostrar, use_container_width=True, hide_index=True)
 
 # =====================================================================
 # --- NUEVA VENTANA: HUELLA DE CARBONO ---
