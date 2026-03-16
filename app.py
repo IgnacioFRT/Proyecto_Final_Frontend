@@ -358,6 +358,7 @@ elif seccion == "🕒 Tiempo Real":
 
 elif seccion == "📊 Resumen Histórico":
     try:
+        #BACKEND : CÁLCULOS Y PROCESAMIENDO
         # A. ADQUISICIÓN DE DATOS
         with st.spinner('Descargando y procesando historial completo desde InfluxDB... ⏳'):
             df = obtener_datos_historicos()
@@ -395,6 +396,7 @@ elif seccion == "📊 Resumen Histórico":
         
         df_diario['categoria'] = df_diario.apply(categorizar, axis=1)
 
+        #FRONTEND : DISEÑO VISUAL
         # D. MAQUETADO FILA 1
         col_torta, col_barras = st.columns([1, 2])
 
@@ -441,7 +443,7 @@ elif seccion == "📊 Resumen Histórico":
         else:
             energia_p1 = energia_p2 = energia_p3 = 0
 
-        # E. CÁLCULOS PARA BARRAS POR FASE (Fases)
+        # F. CÁLCULOS PARA BARRAS POR FASE (Fases)
         df_diario_fases = df.resample('D').agg({'P1': 'mean', 'P2': 'mean', 'P3': 'mean', 'EA_imp_T1_kwh': 'last'})
         df_diario_fases['P_total_medio'] = df_diario_fases['P1'] + df_diario_fases['P2'] + df_diario_fases['P3']
         df_diario_fases['consumo_diario_total_kWh'] = df_diario_fases['EA_imp_T1_kwh'].diff().clip(lower=0).fillna(0)
@@ -449,8 +451,9 @@ elif seccion == "📊 Resumen Histórico":
         df_diario_fases['P2_kWh'] = (df_diario_fases['P2'] / df_diario_fases['P_total_medio']) * df_diario_fases['consumo_diario_total_kWh']
         df_diario_fases['P3_kWh'] = (df_diario_fases['P3'] / df_diario_fases['P_total_medio']) * df_diario_fases['consumo_diario_total_kWh']
         df_diario_fases['nombre_dia'] = df_diario_fases.index.dayofweek.map(dias_semana_es)
-        
-        # F. MAQUETADO FILA 2
+
+        #FRONTEND : DISEÑO VISUAL
+        # G. MAQUETADO FILA 2
         col_torta_fases, col_info_fases = st.columns([1, 2])
 
         with col_torta_fases:
@@ -481,6 +484,8 @@ elif seccion == "📊 Resumen Histórico":
 
 elif seccion == "📈 Perfil de Carga Dinámico":
     try:
+        #BACKEND : CÁLCULOS Y PROCESAMIENDO
+        # A. ADQUISICIÓN DE DATOS
         with st.spinner('Procesando perfiles de carga interactivos... ⏳'):
             df = obtener_datos_historicos() 
             df['incremento_kWh'] = df['EA_imp_T1_kwh'].diff().clip(lower=0).fillna(0)
@@ -489,22 +494,34 @@ elif seccion == "📈 Perfil de Carga Dinámico":
             df['nombre_dia'] = df.index.dayofweek.map(dias_map)
             order_dias = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
 
+        # B. CALCULOS PARA GRAFICO DE CONSUMO PROMEDIO EN LA SEMANA
+        df_diario_sem = df.resample('D').agg({'P1': 'mean', 'P2': 'mean', 'P3': 'mean', 'EA_imp_T1_kwh': 'last'})
+        df_diario_sem['P_total'] = df_diario_sem['P1'] + df_diario_sem['P2'] + df_diario_sem['P3']
+        diff_en_sem = df_diario_sem['EA_imp_T1_kwh'].diff().clip(lower=0).fillna(0)
+        df_diario_sem['L1'] = (df_diario_sem['P1'] / df_diario_sem['P_total']) * diff_en_sem
+        df_diario_sem['L2'] = (df_diario_sem['P2'] / df_diario_sem['P_total']) * diff_en_sem
+        df_diario_sem['L3'] = (df_diario_sem['P3'] / df_diario_sem['P_total']) * diff_en_sem
+        df_diario_sem['nombre_dia'] = df_diario_sem.index.dayofweek.map(dias_map)
+        df_semana_avg = df_diario_sem.groupby('nombre_dia')[['L1', 'L2', 'L3']].mean().reindex(order_dias)
+        df_semana_avg['Total'] = df_semana_avg.sum(axis=1)
+
+        # C. CALCULOS PARA GRAFICO DE CONSUMO PROMEDIO POR HORA
+        df_hora_avg = df.groupby('hora').agg({'P1': 'mean', 'P2': 'mean', 'P3': 'mean', 'incremento_kWh': 'mean'})
+        p_sum_h = df_hora_avg[['P1','P2','P3']].sum(axis=1)
+        for i in range(1,4):
+            df_hora_avg[f'L{i}_kWh'] = (df_hora_avg[f'P{i}'] / p_sum_h) * df_hora_avg['incremento_kWh'] * 4 
+        df_hora_avg['Total'] = df_hora_avg[['L1_kWh', 'L2_kWh', 'L3_kWh']].sum(axis=1)
+
+        # D. CALCULOS PARA MAPA DE CALOR
+        df_heat = df.groupby(['nombre_dia', 'hora'])['incremento_kWh'].mean().unstack().reindex(order_dias)
+
+        #FRONTEND : DISEÑO VISUAL
         # 2. COLUMNAS PERFECTAMENTE SIMÉTRICAS (1.2 : 0.1 : 1.2)
         col_izq, col_espacio, col_der = st.columns([1.2, 0.1, 1.2])
 
         with col_izq:
             # --- GRÁFICO 1: SEMANAL ---
             st.markdown("#### 📅 Promedio Diario por Semana")
-            df_diario_sem = df.resample('D').agg({'P1': 'mean', 'P2': 'mean', 'P3': 'mean', 'EA_imp_T1_kwh': 'last'})
-            df_diario_sem['P_total'] = df_diario_sem['P1'] + df_diario_sem['P2'] + df_diario_sem['P3']
-            diff_en_sem = df_diario_sem['EA_imp_T1_kwh'].diff().clip(lower=0).fillna(0)
-            df_diario_sem['L1'] = (df_diario_sem['P1'] / df_diario_sem['P_total']) * diff_en_sem
-            df_diario_sem['L2'] = (df_diario_sem['P2'] / df_diario_sem['P_total']) * diff_en_sem
-            df_diario_sem['L3'] = (df_diario_sem['P3'] / df_diario_sem['P_total']) * diff_en_sem
-            df_diario_sem['nombre_dia'] = df_diario_sem.index.dayofweek.map(dias_map)
-            df_semana_avg = df_diario_sem.groupby('nombre_dia')[['L1', 'L2', 'L3']].mean().reindex(order_dias)
-            df_semana_avg['Total'] = df_semana_avg.sum(axis=1)
-
             fig_sem = go.Figure()
             clrs = ['#1f77b4', '#ff7f0e', '#2ca02c']
             for i, l in enumerate(['L1', 'L2', 'L3']):
@@ -527,12 +544,6 @@ elif seccion == "📈 Perfil de Carga Dinámico":
 
             # --- GRÁFICO 2: HORARIO ---
             st.markdown("#### ⌚ Perfil Típico de 24 Horas")
-            df_hora_avg = df.groupby('hora').agg({'P1': 'mean', 'P2': 'mean', 'P3': 'mean', 'incremento_kWh': 'mean'})
-            p_sum_h = df_hora_avg[['P1','P2','P3']].sum(axis=1)
-            for i in range(1,4):
-                df_hora_avg[f'L{i}_kWh'] = (df_hora_avg[f'P{i}'] / p_sum_h) * df_hora_avg['incremento_kWh'] * 4 
-            df_hora_avg['Total'] = df_hora_avg[['L1_kWh', 'L2_kWh', 'L3_kWh']].sum(axis=1)
-            
             fig_hora = go.Figure()
             for i in range(1,4):
                 fig_hora.add_trace(go.Bar(x=[f"{h:02d}:00" for h in range(24)], y=df_hora_avg[f'L{i}_kWh'], name=f"Línea {i}", marker_color=clrs[i-1]))
@@ -561,7 +572,6 @@ elif seccion == "📈 Perfil de Carga Dinámico":
         with col_der:
             # --- GRÁFICO 3: MAPA DE CALOR ---
             st.markdown("#### 🌡️ Mapa de Calor de Consumo (kWh)")
-            df_heat = df.groupby(['nombre_dia', 'hora'])['incremento_kWh'].mean().unstack().reindex(order_dias)
             fig_heat = go.Figure(data=go.Heatmap(
                 z=df_heat.values, x=[f"{h:02d}:00" for h in range(24)], y=df_heat.index,
                 colorscale='YlOrRd', hoverongaps=False,
