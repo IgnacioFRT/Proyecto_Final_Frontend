@@ -637,56 +637,39 @@ elif seccion == "📶 Calidad (QoS)":
                     reales_lista.append(count)
                     esperados_lista.append(esperados_m)
 
+           # ==========================================
+            # C. Cálculo de Cortes Reales (Por Ausencia de Datos)
             # ==========================================
-            # C. Cálculo de Cortes Reales (Caída a 0V)
-            # ==========================================
+            # 1. Calculamos la diferencia de tiempo entre cada registro y el anterior
+            df['time_diff'] = df.index.to_series().diff()
+            
+            # 2. FILTRO CLAVE: ¿A partir de cuántos minutos consideramos que es un corte relevante?
+            # Si le ponés 60, va a ignorar los microcortes de WiFi y solo atrapar los apagones largos (como el del 3 de marzo).
+            minutos_tolerancia = 60 
+            
+            # 3. Filtramos solo los saltos de tiempo que superen nuestra tolerancia
+            cortes_graves = df[df['time_diff'] > pd.Timedelta(minutes=minutos_tolerancia)].copy()
+            
             lista_cortes = []
-            en_corte = False
-            inicio_corte = None
-            
-            # Umbral de caída: Si baja de 100V, es el pico hacia abajo que ves en InfluxDB
-            umbral_v = 100 
-            
-            # Recorremos el DataFrame fila por fila en orden cronológico
-            for idx, row in df.iterrows():
-                # Verificamos si alguna de las 3 fases se desplomó
-                hay_caida = (row['UL1N'] < umbral_v) or (row['UL2N'] < umbral_v) or (row['UL3N'] < umbral_v)
+            for idx, row in cortes_graves.iterrows():
+                fin_corte = idx
+                inicio_corte = idx - row['time_diff']
+                duracion = row['time_diff']
                 
-                if hay_caida and not en_corte:
-                    # ¡Se acaba de caer la tensión! Anotamos la hora de inicio
-                    en_corte = True
-                    inicio_corte = idx
-                    
-                elif not hay_caida and en_corte:
-                    # ¡Volvió la tensión a la normalidad! Cerramos el evento
-                    en_corte = False
-                    fin_corte = idx
-                    duracion = fin_corte - inicio_corte
-                    
-                    # Formateamos la duración
-                    horas, remainder = divmod(duracion.total_seconds(), 3600)
-                    minutos, _ = divmod(remainder, 60)
-                    
-                    lista_cortes.append({
-                        'Fecha y Hora': inicio_corte.strftime('%d/%m/%Y %H:%M'),
-                        'Hora de Reconexión': fin_corte.strftime('%d/%m/%Y %H:%M'),
-                        'Duración': f"{int(horas)}h {int(minutos)}m",
-                        'Diagnóstico': "🔴 Caída de Tensión (Corte Físico)"
-                    })
-
-            # Por si el último dato del mes justo cae durante un corte
-            if en_corte:
-                duracion = df.index[-1] - inicio_corte
+                # Formateo de la duración
                 horas, remainder = divmod(duracion.total_seconds(), 3600)
                 minutos, _ = divmod(remainder, 60)
+                duracion_str = f"{int(horas)}h {int(minutos)}m"
+                
                 lista_cortes.append({
                     'Fecha y Hora': inicio_corte.strftime('%d/%m/%Y %H:%M'),
-                    'Hora de Reconexión': "Aún sin conexión",
-                    'Duración': f"> {int(horas)}h {int(minutos)}m",
-                    'Diagnóstico': "🔴 Corte activo"
+                    'Hora de Reconexión': fin_corte.strftime('%d/%m/%Y %H:%M'),
+                    'Duración': duracion_str,
+                    'Diagnóstico': "🔴 Sin registro de datos"
                 })
                 
             df_cortes = pd.DataFrame(lista_cortes)
+            
             # ==========================================
             # 2. FRONTEND: MAQUETADO Y DISEÑO VISUAL
             # ==========================================
