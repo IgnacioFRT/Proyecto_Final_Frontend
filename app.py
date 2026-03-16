@@ -638,34 +638,44 @@ elif seccion == "📶 Calidad (QoS)":
                     esperados_lista.append(esperados_m)
 
             # ==========================================
-            # C. Cálculo de Cortes Reales (Tiempo + Energía)
+            # C. DESHACER EL .FFILL Y CALCULAR GAPS
             # ==========================================
-            df['time_diff'] = df.index.to_series().diff()
-            df['energy_diff'] = df['EA_imp_T1_kwh'].diff()
+            # 1. Detectar filas "Fantasma": donde la Energía y Tensión son EXACTAMENTE iguales a la fila anterior
+            # (Esto significa que fueron copiadas artificialmente por el .ffill() de tu importación)
+            filas_fantasma = (df['EA_imp_T1_kwh'] == df['EA_imp_T1_kwh'].shift(1)) & (df['UL1N'] == df['UL1N'].shift(1))
             
-            # 1. Buscamos saltos de tiempo (Tolerancia: 60 minutos)
-            cortes_graves = df[df['time_diff'] > pd.Timedelta(minutes=60)].copy()
+            # 2. Arreglar el Gráfico: A las filas fantasma les clavamos 0V para que la línea se desplome como en InfluxDB
+            df_grafico = df.copy()
+            df_grafico.loc[filas_fantasma, ['UL1N', 'UL2N', 'UL3N']] = 0
+            
+            # 3. Arreglar la Tabla: Eliminamos las filas fantasma para recuperar el hueco original que veías en tu Excel
+            df_real = df[~filas_fantasma].copy()
+            
+            # 4. Ahora sí, calculamos el salto de tiempo original
+            df_real['time_diff'] = df_real.index.to_series().diff()
+            df_real['energy_diff'] = df_real['EA_imp_T1_kwh'].diff()
+            
+            # Buscamos saltos mayores a 60 minutos
+            cortes_graves = df_real[df_real['time_diff'] > pd.Timedelta(minutes=60)].copy()
             
             lista_cortes = []
             for idx, row in cortes_graves.iterrows():
                 duracion = row['time_diff']
                 energia_perdida = row['energy_diff']
                 
-                # 2. EL FILTRO MAESTRO: ¿Fue un apagón real o solo se cayó el WiFi?
-                # Si consumió menos de 1 kWh durante ese salto de tiempo, el tablero estuvo apagado.
+                # Si durante ese mega-hueco el consumo fue menor a 1 kWh, ¡fue un apagón!
                 if energia_perdida < 1.0: 
                     inicio_corte = idx - duracion
                     horas, remainder = divmod(duracion.total_seconds(), 3600)
                     minutos, _ = divmod(remainder, 60)
                     
                     lista_cortes.append({
-                        'Inicio_dt': inicio_corte, # Columna oculta para que el filtro de meses funcione bien
+                        'Inicio_dt': inicio_corte, 
                         'Fecha y Hora': inicio_corte.strftime('%d/%m/%Y %H:%M'),
                         'Hora de Reconexión': idx.strftime('%d/%m/%Y %H:%M'),
                         'Duración': f"{int(horas)}h {int(minutos)}m",
-                        'Diagnóstico': "🔴 Apagón Real"
+                        'Diagnóstico': "🔴 Falla de Alimentación (Sin Datos)"
                     })
-                # Si la energía fue mayor a 1.0, fue un corte de WiFi (como el 13/03) y lo ignoramos por completo.
                 
             df_cortes = pd.DataFrame(lista_cortes)
             
@@ -720,21 +730,21 @@ elif seccion == "📶 Calidad (QoS)":
             meses_disponibles = ["Todos los meses"] + meses_labels
             mes_seleccionado = st.selectbox("📅 Filtrar análisis por mes:", meses_disponibles)
 
-            # Aplicar filtro al DataFrame arreglado
+            # Usamos df_grafico para el filtro visual (que tiene los ceros)
             if mes_seleccionado != "Todos los meses":
-                df_filtrado = df[df.index.strftime('%b %Y').str.capitalize() == mes_seleccionado]
+                df_filtrado = df_grafico[df_grafico.index.strftime('%b %Y').str.capitalize() == mes_seleccionado]
                 if not df_cortes.empty:
-                    # Usamos la columna oculta de fecha real para filtrar exacto
                     df_cortes_filtrado = df_cortes[df_cortes['Inicio_dt'].dt.strftime('%b %Y').str.capitalize() == mes_seleccionado]
                 else:
                     df_cortes_filtrado = df_cortes
             else:
-                df_filtrado = df
+                df_filtrado = df_grafico
                 df_cortes_filtrado = df_cortes
 
             col_grafico, col_tabla = st.columns([2, 1])
 
             with col_grafico:
+                # El gráfico ahora se alimenta de df_filtrado que tiene las líneas cayendo a 0V
                 fig_tension = go.Figure()
                 fig_tension.add_trace(go.Scatter(x=df_filtrado.index, y=df_filtrado['UL1N'], name='Línea 1', line=dict(color='#1f77b4', width=1)))
                 fig_tension.add_trace(go.Scatter(x=df_filtrado.index, y=df_filtrado['UL2N'], name='Línea 2', line=dict(color='#ff7f0e', width=1)))
@@ -753,7 +763,6 @@ elif seccion == "📶 Calidad (QoS)":
                 if df_cortes_filtrado.empty:
                     st.success("✅ No se registraron apagones reales en el período seleccionado.")
                 else:
-                    # Borramos la columna auxiliar 'Inicio_dt' antes de mostrar la tabla al usuario
                     if 'Inicio_dt' in df_cortes_filtrado.columns:
                         df_mostrar = df_cortes_filtrado.drop(columns=['Inicio_dt'])
                     else:
@@ -763,7 +772,6 @@ elif seccion == "📶 Calidad (QoS)":
 
     except Exception as e:
         st.error(f"Error al generar el análisis de calidad: {e}")
-
 
 # =====================================================================
 # --- NUEVA VENTANA: HUELLA DE CARBONO ---
