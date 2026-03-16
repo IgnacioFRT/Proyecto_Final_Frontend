@@ -637,7 +637,7 @@ elif seccion == "📶 Calidad (QoS)":
                     reales_lista.append(count)
                     esperados_lista.append(esperados_m)
 
-           # ==========================================
+            # ==========================================
             # C. Cálculo de Cortes Reales (Tiempo + Energía)
             # ==========================================
             df['time_diff'] = df.index.to_series().diff()
@@ -760,6 +760,10 @@ elif seccion == "📶 Calidad (QoS)":
                         df_mostrar = df_cortes_filtrado
                         
                     st.dataframe(df_mostrar, use_container_width=True, hide_index=True)
+
+    except Exception as e:
+        st.error(f"Error al generar el análisis de calidad: {e}")
+
 
 # =====================================================================
 # --- NUEVA VENTANA: HUELLA DE CARBONO ---
