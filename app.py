@@ -638,36 +638,41 @@ elif seccion == "📶 Calidad (QoS)":
                     esperados_lista.append(esperados_m)
 
             # ==========================================
-            # C. Cálculo de Cortes y Gaps (Filtro Inteligente)
+            # C. Cálculo de Cortes Reales (El Método del Odómetro)
             # ==========================================
-            # Buscamos la diferencia de tiempo entre cada fila y la anterior
+            # 1. Calculamos el salto de tiempo y el salto de energía entre la fila actual y la anterior
             df['time_diff'] = df.index.to_series().diff()
+            df['energy_diff'] = df['EA_imp_T1_kwh'].diff()
             
-            # FILTRO CLAVE: Solo consideramos como "Corte" si pasaron más de 45 MINUTOS sin datos.
-            # Esto elimina las caídas cortas de WiFi (15-30 min) y atrapa los cortes de luz reales.
-            cortes_graves = df[df['time_diff'] > pd.Timedelta(minutes=45)].copy()
+            # 2. Buscamos huecos "gigantes" donde no hubo datos por más de 1 hora
+            # (Esto ignora automáticamente los microcortes de WiFi de 15 o 30 minutos)
+            cortes_graves = df[df['time_diff'] > pd.Timedelta(hours=1)].copy()
             
             lista_cortes = []
             for idx, row in cortes_graves.iterrows():
                 fin_corte = idx
                 inicio_corte = idx - row['time_diff']
                 duracion = row['time_diff']
+                energia_perdida = row['energy_diff']
                 
                 horas, remainder = divmod(duracion.total_seconds(), 3600)
                 minutos, _ = divmod(remainder, 60)
                 duracion_str = f"{int(horas)}h {int(minutos)}m"
                 
-                # Clasificamos la gravedad del corte
-                if duracion > pd.Timedelta(hours=2):
-                    gravedad = "🔴 Falla Masiva (>2h)"
+                # 3. LA MAGIA: ¿Fue WiFi o fue Apagón Físico?
+                # Si pasaron horas y el consumo fue casi nulo (ej. menos de 1 kWh), el tablero estuvo apagado.
+                # Podés ajustar este '1.0' dependiendo del consumo pasivo normal de tu tablero.
+                if energia_perdida < 1.0: 
+                    diagnostico = "🔴 Apagón Físico (0V)"
                 else:
-                    gravedad = "🟠 Corte Temporal"
+                    diagnostico = "🟠 Corte de red (Siguió consumiendo)"
                 
                 lista_cortes.append({
-                    'Fecha y Hora': inicio_corte.strftime('%d/%m/%Y %H:%M'), # Esto permite que el filtro mensual siga funcionando
+                    'Fecha y Hora': inicio_corte.strftime('%d/%m/%Y %H:%M'),
                     'Hora de Reconexión': fin_corte.strftime('%d/%m/%Y %H:%M'),
                     'Duración': duracion_str,
-                    'Clasificación': gravedad
+                    'Energía no registrada': f"{energia_perdida:.2f} kWh",
+                    'Diagnóstico': diagnostico
                 })
                 
             df_cortes = pd.DataFrame(lista_cortes)
@@ -729,7 +734,7 @@ elif seccion == "📶 Calidad (QoS)":
                 df_filtrado = df[df.index.strftime('%b %Y').str.capitalize() == mes_seleccionado]
                 if not df_cortes.empty:
                     # Filtramos la tabla de cortes usando la misma lógica de texto
-                    df_cortes_filtrado = df_cortes[df_cortes['Inicio del Corte'].str.contains(mes_seleccionado.split()[1]) & df_cortes['Inicio del Corte'].str.contains(mes_seleccionado.split()[0].lower(), case=False)]
+                    df_cortes_filtrado = df_cortes[df_cortes['Fecha y Hora'].str.contains(mes_seleccionado.split()[1]) & df_cortes['Fecha y Hora'].str.contains(mes_seleccionado.split()[0].lower(), case=False)]
                 else:
                     df_cortes_filtrado = df_cortes
             else:
