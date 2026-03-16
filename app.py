@@ -638,26 +638,34 @@ elif seccion == "📶 Calidad (QoS)":
                     esperados_lista.append(esperados_m)
 
             # C. Cálculo de Gaps (Cortes)
-            # Buscamos la diferencia de tiempo entre cada fila y la anterior
-            df['time_diff'] = df.index.to_series().diff()
-            # Filtramos donde la diferencia es mayor a 16 minutos (tolerancia por latencia)
-            cortes = df[df['time_diff'] > pd.Timedelta(minutes=16)].copy()
+            # ==========================================
+            # C. Cálculo de Caídas Físicas de Tensión (Cortes Reales)
+            # ==========================================
+            # Definimos un umbral. Por ejemplo, si alguna fase cae por debajo de 150V, es una anomalía grave.
+            umbral_tension = 150 
+            
+            # Filtramos la tabla buscando en qué momentos la tensión cayó de ese umbral
+            caidas_reales = df[(df['UL1N'] < umbral_tension) | (df['UL2N'] < umbral_tension) | (df['UL3N'] < umbral_tension)].copy()
             
             lista_cortes = []
-            for idx, row in cortes.iterrows():
-                fin_corte = idx
-                inicio_corte = idx - row['time_diff']
-                duracion = row['time_diff']
-                # Formatear la duración para que sea legible
-                horas, remainder = divmod(duracion.total_seconds(), 3600)
-                minutos, _ = divmod(remainder, 60)
-                duracion_str = f"{int(horas)}h {int(minutos)}m"
+            for idx, row in caidas_reales.iterrows():
+                # Vemos cuál fue la tensión más baja de las tres fases
+                tension_minima = min(row['UL1N'], row['UL2N'], row['UL3N'])
+                
+                # Clasificamos el problema
+                if tension_minima < 10:
+                    tipo_falla = "🔴 Corte Total"
+                else:
+                    tipo_falla = "⚠️ Baja Tensión (Sag)"
                 
                 lista_cortes.append({
-                    'Inicio del Corte': inicio_corte.strftime('%d/%m/%Y %H:%M'),
-                    'Fin del Corte': fin_corte.strftime('%d/%m/%Y %H:%M'),
-                    'Duración': duracion_str
+                    'Fecha y Hora': idx.strftime('%d/%m/%Y %H:%M'),
+                    'Tipo de Falla': tipo_falla,
+                    'Línea 1 (V)': round(row['UL1N'], 1),
+                    'Línea 2 (V)': round(row['UL2N'], 1),
+                    'Línea 3 (V)': round(row['UL3N'], 1)
                 })
+                
             df_cortes = pd.DataFrame(lista_cortes)
 
             # ==========================================
