@@ -637,46 +637,48 @@ elif seccion == "📶 Calidad (QoS)":
                     reales_lista.append(count)
                     esperados_lista.append(esperados_m)
 
-            
             # ==========================================
-            # C. DETECCIÓN DE APAGONES Y CORRECCIÓN GRÁFICA
+            # C. DESHACER EL .FFILL Y CALCULAR GAPS
             # ==========================================
-            # 1. Identificamos las filas rellenadas artificialmente
+            # 1. Detectar filas "Fantasma": donde la Energía y Tensión son EXACTAMENTE iguales a la fila anterior
             filas_fantasma = (df['EA_imp_T1_kwh'] == df['EA_imp_T1_kwh'].shift(1)) & (df['UL1N'] == df['UL1N'].shift(1))
             
-            # Creamos un df_real "limpio" para poder calcular los saltos de tiempo y energía
+            # 2. Arreglar el Gráfico: A las filas fantasma les clavamos 0V para que la línea se desplome
+            df_grafico = df.copy()
+            df_grafico.loc[filas_fantasma, ['UL1N', 'UL2N', 'UL3N']] = 0
+            
+            # 3. Arreglar la Tabla: Eliminamos las filas fantasma para recuperar el hueco original
             df_real = df[~filas_fantasma].copy()
+            
+            # 4. Calculamos el salto de tiempo original
             df_real['time_diff'] = df_real.index.to_series().diff()
             df_real['energy_diff'] = df_real['EA_imp_T1_kwh'].diff()
             
-            # Buscamos huecos mayores a 30 minutos
+            # Buscamos saltos mayores a 30 MINUTOS (Ajustado)
             cortes_graves = df_real[df_real['time_diff'] > pd.Timedelta(minutes=30)].copy()
             
-            # 2. Armamos la tabla y arreglamos el gráfico en simultáneo
-            df_grafico = df.copy()
             lista_cortes = []
-            
             for idx, row in cortes_graves.iterrows():
                 duracion = row['time_diff']
                 energia_perdida = row['energy_diff']
-                inicio_corte = idx - duracion
                 
-                # EL FILTRO MAESTRO: Solo pasa si NO hubo consumo de energía (Apagón Real)
+                inicio_corte = idx - duracion
+                horas, remainder = divmod(duracion.total_seconds(), 3600)
+                minutos, _ = divmod(remainder, 60)
+                
+                # ACÁ ESTÁ LA MAGIA: Clasificamos, pero anotamos TODO en la tabla
                 if energia_perdida < 1.0: 
-                    horas, remainder = divmod(duracion.total_seconds(), 3600)
-                    minutos, _ = divmod(remainder, 60)
+                    diagnostico = "🔴 Apagón Real"
+                else:
+                    diagnostico = f"🟠 Corte de Red ({energia_perdida:.1f} kWh)"
                     
-                    lista_cortes.append({
-                        'Inicio_dt': inicio_corte, 
-                        'Fecha y Hora': inicio_corte.strftime('%d/%m/%Y %H:%M'),
-                        'Hora de Reconexión': idx.strftime('%d/%m/%Y %H:%M'),
-                        'Duración': f"{int(horas)}h {int(minutos)}m",
-                        'Diagnóstico': "🔴 Apagón Real"
-                    })
-                    
-                    # Magia visual: Hundimos el gráfico a 0V SOLAMENTE durante este apagón comprobado
-                    mask = (df_grafico.index > inicio_corte) & (df_grafico.index < idx)
-                    df_grafico.loc[mask, ['UL1N', 'UL2N', 'UL3N']] = 0
+                lista_cortes.append({
+                    'Inicio_dt': inicio_corte, 
+                    'Fecha y Hora': inicio_corte.strftime('%d/%m/%Y %H:%M'),
+                    'Hora de Reconexión': idx.strftime('%d/%m/%Y %H:%M'),
+                    'Duración': f"{int(horas)}h {int(minutos)}m",
+                    'Diagnóstico': diagnostico
+                })
                 
             df_cortes = pd.DataFrame(lista_cortes)
             
@@ -774,7 +776,6 @@ elif seccion == "📶 Calidad (QoS)":
 
     except Exception as e:
         st.error(f"Error al generar el análisis de calidad: {e}")
-
 # =====================================================================
 # --- NUEVA VENTANA: HUELLA DE CARBONO ---
 # =====================================================================
