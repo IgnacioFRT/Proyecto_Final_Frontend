@@ -597,7 +597,6 @@ elif seccion == "📈 Perfil de Carga Dinámico":
 
     except Exception as e:
         st.error(f"Error al generar el perfil de carga: {e}")
-
 # --- VENTANA CALIDAD DE SERVICIO (QoS) ---
 
 elif seccion == "📶 Calidad (QoS)":
@@ -638,64 +637,49 @@ elif seccion == "📶 Calidad (QoS)":
                     esperados_lista.append(esperados_m)
 
             # ==========================================
-            # C. DETECCIÓN VISUAL (Gráfico y Tabla 1 a 1)
+            # C. DETECCIÓN PURA DE GAPS Y GRÁFICO
             # ==========================================
-            # 1. Identificamos las filas rellenadas artificialmente (Las que van a caer a 0V)
-            filas_fantasma = (df['EA_imp_T1_kwh'] == df['EA_imp_T1_kwh'].shift(1)) & (df['UL1N'] == df['UL1N'].shift(1))
+            # 1. Calculamos la diferencia de tiempo real entre cada fila
+            time_diff = df.index.to_series().diff()
             
-            # 2. Arreglamos el Gráfico: Todo lo que es fantasma, lo hundimos a 0V
+            # 2. Buscamos los huecos reales mayores a 30 minutos
+            cortes_graves = df[time_diff > pd.Timedelta(minutes=30)].copy()
+            
             df_grafico = df.copy()
-            df_grafico.loc[filas_fantasma, ['UL1N', 'UL2N', 'UL3N']] = 0
-            
-            # 3. Armamos la tabla LEYENDO exactamente las mismas caídas del gráfico
             lista_cortes = []
-            en_corte = False
-            inicio_corte = None
+            nuevos_puntos_0v = []
             
-            for idx, is_fantasma in filas_fantasma.items():
-                if is_fantasma and not en_corte:
-                    en_corte = True
-                    inicio_corte = idx
-                elif not is_fantasma and en_corte:
-                    en_corte = False
-                    fin_corte = idx
-                    duracion = fin_corte - inicio_corte
-                    
-                    # Filtramos: Solo anotamos si la caída a 0V dura más de 30 min
-                    if duracion >= pd.Timedelta(minutes=30):
-                        horas, remainder = divmod(duracion.total_seconds(), 3600)
-                        minutos, _ = divmod(remainder, 60)
-                        
-                        lista_cortes.append({
-                            'Inicio_dt': inicio_corte, 
-                            'Fecha y Hora': inicio_corte.strftime('%d/%m/%Y %H:%M'),
-                            'Hora de Reconexión': fin_corte.strftime('%d/%m/%Y %H:%M'),
-                            'Duración': f"{int(horas)}h {int(minutos)}m",
-                            'Diagnóstico': "🔴 Caída a 0V"
-                        })
-            
-            # Por si el mes termina justo durante una caída a 0V
-            if en_corte:
-                fin_corte = df.index[-1]
-                duracion = fin_corte - inicio_corte
-                if duracion >= pd.Timedelta(minutes=30):
-                    horas, remainder = divmod(duracion.total_seconds(), 3600)
-                    minutos, _ = divmod(remainder, 60)
-                    lista_cortes.append({
-                        'Inicio_dt': inicio_corte, 
-                        'Fecha y Hora': inicio_corte.strftime('%d/%m/%Y %H:%M'),
-                        'Hora de Reconexión': "En curso",
-                        'Duración': f"{int(horas)}h {int(minutos)}m",
-                        'Diagnóstico': "🔴 Caída a 0V"
-                    })
-                    
+            for idx, row in cortes_graves.iterrows():
+                duracion = time_diff[idx]
+                fin_corte = idx
+                inicio_corte = idx - duracion
+                
+                # Armamos la tabla
+                horas, remainder = divmod(duracion.total_seconds(), 3600)
+                minutos, _ = divmod(remainder, 60)
+                
+                lista_cortes.append({
+                    'Inicio_dt': inicio_corte, 
+                    'Fecha y Hora': inicio_corte.strftime('%d/%m/%Y %H:%M'),
+                    'Hora de Reconexión': fin_corte.strftime('%d/%m/%Y %H:%M'),
+                    'Duración': f"{int(horas)}h {int(minutos)}m",
+                    'Diagnóstico': "🔴 Caída a 0V"
+                })
+                
+                # Inyectamos 0V al gráfico para que dibuje el precipicio (Igual que InfluxDB)
+                nuevos_puntos_0v.append({'index': inicio_corte + pd.Timedelta(seconds=1), 'UL1N': 0, 'UL2N': 0, 'UL3N': 0})
+                nuevos_puntos_0v.append({'index': fin_corte - pd.Timedelta(seconds=1), 'UL1N': 0, 'UL2N': 0, 'UL3N': 0})
+                
             df_cortes = pd.DataFrame(lista_cortes)
             
+            # Sumamos los puntos de 0V a la gráfica y ordenamos todo
+            if nuevos_puntos_0v:
+                df_inyectado = pd.DataFrame(nuevos_puntos_0v).set_index('index')
+                df_grafico = pd.concat([df_grafico, df_inyectado]).sort_index()
+
             # ==========================================
             # 2. FRONTEND: MAQUETADO Y DISEÑO VISUAL
             # ==========================================
-            
-            # --- FILA 1: ESTADÍSTICAS GLOBALES ---
             col_tendencia, col_espacio, col_torta = st.columns([1.5, 0.1, 1])
 
             with col_tendencia:
@@ -721,7 +705,7 @@ elif seccion == "📶 Calidad (QoS)":
             with col_torta:
                 st.markdown("#### 🥧 Resumen Histórico Global")
                 fig_pie = go.Figure(data=[go.Pie(
-                    labels=['Datos Registrados', 'Gaps (Cortes/WiFi)'], values=[registrado_global, no_registrado_global],
+                    labels=['Datos Registrados', 'Gaps (Cortes)'], values=[registrado_global, no_registrado_global],
                     marker_colors=['#66bb6a', '#ef5350'], pull=[0.05, 0], textinfo='percent+label', textposition='outside'
                 )])
                 fig_pie.update_layout(height=380, margin=dict(t=40, b=20, l=20, r=20), showlegend=False, template='plotly_white')
@@ -782,6 +766,7 @@ elif seccion == "📶 Calidad (QoS)":
 
     except Exception as e:
         st.error(f"Error al generar el análisis de calidad: {e}")
+
         
 # =====================================================================
 # --- NUEVA VENTANA: HUELLA DE CARBONO ---
