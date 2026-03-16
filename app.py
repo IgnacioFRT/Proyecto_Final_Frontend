@@ -637,33 +637,37 @@ elif seccion == "📶 Calidad (QoS)":
                     reales_lista.append(count)
                     esperados_lista.append(esperados_m)
 
-            # C. Cálculo de Gaps (Cortes)
             # ==========================================
-            # C. Cálculo de Caídas Físicas de Tensión (Cortes Reales)
+            # C. Cálculo de Cortes y Gaps (Filtro Inteligente)
             # ==========================================
-            # Definimos un umbral. Por ejemplo, si alguna fase cae por debajo de 150V, es una anomalía grave.
-            umbral_tension = 150 
+            # Buscamos la diferencia de tiempo entre cada fila y la anterior
+            df['time_diff'] = df.index.to_series().diff()
             
-            # Filtramos la tabla buscando en qué momentos la tensión cayó de ese umbral
-            caidas_reales = df[(df['UL1N'] < umbral_tension) | (df['UL2N'] < umbral_tension) | (df['UL3N'] < umbral_tension)].copy()
+            # FILTRO CLAVE: Solo consideramos como "Corte" si pasaron más de 45 MINUTOS sin datos.
+            # Esto elimina las caídas cortas de WiFi (15-30 min) y atrapa los cortes de luz reales.
+            cortes_graves = df[df['time_diff'] > pd.Timedelta(minutes=45)].copy()
             
             lista_cortes = []
-            for idx, row in caidas_reales.iterrows():
-                # Vemos cuál fue la tensión más baja de las tres fases
-                tension_minima = min(row['UL1N'], row['UL2N'], row['UL3N'])
+            for idx, row in cortes_graves.iterrows():
+                fin_corte = idx
+                inicio_corte = idx - row['time_diff']
+                duracion = row['time_diff']
                 
-                # Clasificamos el problema
-                if tension_minima < 10:
-                    tipo_falla = "🔴 Corte Total"
+                horas, remainder = divmod(duracion.total_seconds(), 3600)
+                minutos, _ = divmod(remainder, 60)
+                duracion_str = f"{int(horas)}h {int(minutos)}m"
+                
+                # Clasificamos la gravedad del corte
+                if duracion > pd.Timedelta(hours=2):
+                    gravedad = "🔴 Falla Masiva (>2h)"
                 else:
-                    tipo_falla = "⚠️ Baja Tensión (Sag)"
+                    gravedad = "🟠 Corte Temporal"
                 
                 lista_cortes.append({
-                    'Fecha y Hora': idx.strftime('%d/%m/%Y %H:%M'),
-                    'Tipo de Falla': tipo_falla,
-                    'Línea 1 (V)': round(row['UL1N'], 1),
-                    'Línea 2 (V)': round(row['UL2N'], 1),
-                    'Línea 3 (V)': round(row['UL3N'], 1)
+                    'Fecha y Hora': inicio_corte.strftime('%d/%m/%Y %H:%M'), # Esto permite que el filtro mensual siga funcionando
+                    'Hora de Reconexión': fin_corte.strftime('%d/%m/%Y %H:%M'),
+                    'Duración': duracion_str,
+                    'Clasificación': gravedad
                 })
                 
             df_cortes = pd.DataFrame(lista_cortes)
