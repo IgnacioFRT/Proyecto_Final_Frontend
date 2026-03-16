@@ -638,45 +638,55 @@ elif seccion == "📶 Calidad (QoS)":
                     esperados_lista.append(esperados_m)
 
             # ==========================================
-            # C. Cálculo de Cortes Reales (El Método del Odómetro)
+            # C. Cálculo de Cortes Reales (Caída a 0V)
             # ==========================================
-            # 1. Calculamos el salto de tiempo y el salto de energía entre la fila actual y la anterior
-            df['time_diff'] = df.index.to_series().diff()
-            df['energy_diff'] = df['EA_imp_T1_kwh'].diff()
-            
-            # 2. Buscamos huecos "gigantes" donde no hubo datos por más de 1 hora
-            # (Esto ignora automáticamente los microcortes de WiFi de 15 o 30 minutos)
-            cortes_graves = df[df['time_diff'] > pd.Timedelta(hours=1)].copy()
-            
             lista_cortes = []
-            for idx, row in cortes_graves.iterrows():
-                fin_corte = idx
-                inicio_corte = idx - row['time_diff']
-                duracion = row['time_diff']
-                energia_perdida = row['energy_diff']
+            en_corte = False
+            inicio_corte = None
+            
+            # Umbral de caída: Si baja de 100V, es el pico hacia abajo que ves en InfluxDB
+            umbral_v = 100 
+            
+            # Recorremos el DataFrame fila por fila en orden cronológico
+            for idx, row in df.iterrows():
+                # Verificamos si alguna de las 3 fases se desplomó
+                hay_caida = (row['UL1N'] < umbral_v) or (row['UL2N'] < umbral_v) or (row['UL3N'] < umbral_v)
                 
+                if hay_caida and not en_corte:
+                    # ¡Se acaba de caer la tensión! Anotamos la hora de inicio
+                    en_corte = True
+                    inicio_corte = idx
+                    
+                elif not hay_caida and en_corte:
+                    # ¡Volvió la tensión a la normalidad! Cerramos el evento
+                    en_corte = False
+                    fin_corte = idx
+                    duracion = fin_corte - inicio_corte
+                    
+                    # Formateamos la duración
+                    horas, remainder = divmod(duracion.total_seconds(), 3600)
+                    minutos, _ = divmod(remainder, 60)
+                    
+                    lista_cortes.append({
+                        'Fecha y Hora': inicio_corte.strftime('%d/%m/%Y %H:%M'),
+                        'Hora de Reconexión': fin_corte.strftime('%d/%m/%Y %H:%M'),
+                        'Duración': f"{int(horas)}h {int(minutos)}m",
+                        'Diagnóstico': "🔴 Caída de Tensión (Corte Físico)"
+                    })
+
+            # Por si el último dato del mes justo cae durante un corte
+            if en_corte:
+                duracion = df.index[-1] - inicio_corte
                 horas, remainder = divmod(duracion.total_seconds(), 3600)
                 minutos, _ = divmod(remainder, 60)
-                duracion_str = f"{int(horas)}h {int(minutos)}m"
-                
-                # 3. LA MAGIA: ¿Fue WiFi o fue Apagón Físico?
-                # Si pasaron horas y el consumo fue casi nulo (ej. menos de 1 kWh), el tablero estuvo apagado.
-                # Podés ajustar este '1.0' dependiendo del consumo pasivo normal de tu tablero.
-                if energia_perdida < 1.0: 
-                    diagnostico = "🔴 Apagón Físico (0V)"
-                else:
-                    diagnostico = "🟠 Corte de red (Siguió consumiendo)"
-                
                 lista_cortes.append({
                     'Fecha y Hora': inicio_corte.strftime('%d/%m/%Y %H:%M'),
-                    'Hora de Reconexión': fin_corte.strftime('%d/%m/%Y %H:%M'),
-                    'Duración': duracion_str,
-                    'Energía no registrada': f"{energia_perdida:.2f} kWh",
-                    'Diagnóstico': diagnostico
+                    'Hora de Reconexión': "Aún sin conexión",
+                    'Duración': f"> {int(horas)}h {int(minutos)}m",
+                    'Diagnóstico': "🔴 Corte activo"
                 })
                 
             df_cortes = pd.DataFrame(lista_cortes)
-
             # ==========================================
             # 2. FRONTEND: MAQUETADO Y DISEÑO VISUAL
             # ==========================================
