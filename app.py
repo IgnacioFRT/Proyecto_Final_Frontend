@@ -640,16 +640,21 @@ elif seccion == "📶 Calidad (QoS)":
                     esperados_lista.append(esperados_m)
 
             # ==========================================
-            # C. DETECCIÓN DE CORTES DE COMUNICACIÓN (GAPS > 1H)
+            # C. DETECCIÓN DE CORTES DE COMUNICACIÓN (GAPS REALES)
             # ==========================================
+            
+            # ⚙️ PERILLA DE SENSIBILIDAD MAESTRA ⚙️
+            # Cambiá este número al límite de horas que quieras (ej: 1, 2, 3)
+            HORAS_FILTRO = 2 
+            
             df_grafico = df.copy()
             lista_cortes = []
             
-            # 1. ÚNICA REGLA: Calculamos cuánto tiempo pasó entre una fila y la anterior
+            # 1. Calculamos cuánto tiempo pasó entre una fila y la anterior
             time_diff = df.index.to_series().diff()
             
-            # 2. Sensibilidad ajustada: Solo saltos MAYORES O IGUALES A 1 HORA
-            cortes_graves = df[time_diff >= pd.Timedelta(hours=3)]
+            # 2. Aplicamos tu perilla maestra
+            cortes_graves = df[time_diff >= pd.Timedelta(hours=HORAS_FILTRO)]
             
             nuevos_puntos_0v = []
             
@@ -667,10 +672,10 @@ elif seccion == "📶 Calidad (QoS)":
                     'Fecha y Hora': inicio_corte.strftime('%d/%m/%Y %H:%M'),
                     'Hora de Reconexión': fin_corte.strftime('%d/%m/%Y %H:%M'),
                     'Duración': f"{int(horas)}h {int(minutos)}m",
-                    'Diagnóstico': "🔴 Falla de Comunicación"
+                    'Diagnóstico': "🔴 Falla de Comunicación (Sin Datos)"
                 })
                 
-                # B. Obligamos al gráfico a caer a 0V para que veas dónde estuvo el apagón de red
+                # B. Obligamos al gráfico a caer a 0V 
                 nuevos_puntos_0v.append({'index': inicio_corte + pd.Timedelta(seconds=1), 'UL1N': 0, 'UL2N': 0, 'UL3N': 0})
                 nuevos_puntos_0v.append({'index': fin_corte - pd.Timedelta(seconds=1), 'UL1N': 0, 'UL2N': 0, 'UL3N': 0})
                 
@@ -759,8 +764,8 @@ elif seccion == "📶 Calidad (QoS)":
                 st.plotly_chart(fig_tension, use_container_width=True)
 
             with col_tabla:
-                # Título actualizado a 1h
-                st.markdown("**Registro de Apagones (Gaps > 1h)**")
+                # ¡EL TÍTULO AHORA ES INTELIGENTE Y CAMBIA SOLO!
+                st.markdown(f"**Registro de Apagones (Gaps >= {HORAS_FILTRO}h)**")
                 if df_cortes_filtrado.empty:
                     st.success("✅ No se registraron apagones reales en el período seleccionado.")
                 else:
