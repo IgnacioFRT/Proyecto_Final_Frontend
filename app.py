@@ -640,15 +640,13 @@ elif seccion == "📶 Calidad (QoS)":
             # ==========================================
             # C. DETECCIÓN VISUAL (Gráfico y Tabla 1 a 1)
             # ==========================================
-            # 1. Identificamos las filas rellenadas artificialmente (Las que van a caer a 0V)
+            df_grafico = df.copy()
+            lista_cortes = []
+            
+            # --- PARTE 1: Detectar Congelamiento de Datos (Filas Fantasma) ---
+            # Identificamos las filas rellenadas artificialmente
             filas_fantasma = (df['EA_imp_T1_kwh'] == df['EA_imp_T1_kwh'].shift(1)) & (df['UL1N'] == df['UL1N'].shift(1))
             
-            # 2. Arreglamos el Gráfico: Todo lo que es fantasma, lo hundimos a 0V
-            df_grafico = df.copy()
-            df_grafico.loc[filas_fantasma, ['UL1N', 'UL2N', 'UL3N']] = 0
-            
-            # 3. Armamos la tabla LEYENDO exactamente las mismas caídas del gráfico
-            lista_cortes = []
             en_corte = False
             inicio_corte = None
             
@@ -661,8 +659,8 @@ elif seccion == "📶 Calidad (QoS)":
                     fin_corte = idx
                     duracion = fin_corte - inicio_corte
                     
-                    # Filtramos: Solo anotamos si la caída a 0V dura más de 30 min
-                    if duracion >= pd.Timedelta(minutes=30):
+                    # Filtramos: Lo subimos a 1 hora para ignorar el falso positivo del 01/03 (que fue de 45m)
+                    if duracion >= pd.Timedelta(hours=1):
                         horas, remainder = divmod(duracion.total_seconds(), 3600)
                         minutos, _ = divmod(remainder, 60)
                         
@@ -673,12 +671,15 @@ elif seccion == "📶 Calidad (QoS)":
                             'Duración': f"{int(horas)}h {int(minutos)}m",
                             'Diagnóstico': "🔴 Caída a 0V"
                         })
+                        # Hundimos el gráfico a 0V en este tramo
+                        mask = (df_grafico.index >= inicio_corte) & (df_grafico.index < fin_corte)
+                        df_grafico.loc[mask, ['UL1N', 'UL2N', 'UL3N']] = 0
             
-            # Por si el mes termina justo durante una caída a 0V
+            # Por si el mes termina justo durante un congelamiento
             if en_corte:
                 fin_corte = df.index[-1]
                 duracion = fin_corte - inicio_corte
-                if duracion >= pd.Timedelta(minutes=30):
+                if duracion >= pd.Timedelta(hours=1):
                     horas, remainder = divmod(duracion.total_seconds(), 3600)
                     minutos, _ = divmod(remainder, 60)
                     lista_cortes.append({
@@ -688,8 +689,47 @@ elif seccion == "📶 Calidad (QoS)":
                         'Duración': f"{int(horas)}h {int(minutos)}m",
                         'Diagnóstico': "🔴 Caída a 0V"
                     })
-                    
+                    mask = (df_grafico.index >= inicio_corte)
+                    df_grafico.loc[mask, ['UL1N', 'UL2N', 'UL3N']] = 0
+
+            # --- PARTE 2: Detectar Saltos Crudos de Tiempo (Para atrapar el 03/03) ---
+            # Calculamos la diferencia de tiempo real entre cada fila
+            time_diff = df.index.to_series().diff()
+            
+            # Buscamos los huecos reales mayores a 30 minutos
+            cortes_graves = df[time_diff > pd.Timedelta(minutes=30)]
+            
+            nuevos_puntos_0v = []
+            
+            for idx, row in cortes_graves.iterrows():
+                duracion = time_diff[idx]
+                fin_corte = idx
+                inicio_corte = idx - duracion
+                
+                horas, remainder = divmod(duracion.total_seconds(), 3600)
+                minutos, _ = divmod(remainder, 60)
+                
+                lista_cortes.append({
+                    'Inicio_dt': inicio_corte, 
+                    'Fecha y Hora': inicio_corte.strftime('%d/%m/%Y %H:%M'),
+                    'Hora de Reconexión': fin_corte.strftime('%d/%m/%Y %H:%M'),
+                    'Duración': f"{int(horas)}h {int(minutos)}m",
+                    'Diagnóstico': "🔴 Caída a 0V"
+                })
+                
+                # Inyectamos 0V al gráfico para que dibuje el precipicio (igual que InfluxDB)
+                nuevos_puntos_0v.append({'index': inicio_corte + pd.Timedelta(seconds=1), 'UL1N': 0, 'UL2N': 0, 'UL3N': 0})
+                nuevos_puntos_0v.append({'index': fin_corte - pd.Timedelta(seconds=1), 'UL1N': 0, 'UL2N': 0, 'UL3N': 0})
+            
+            # Sumamos los puntos inyectados a la gráfica y ordenamos
+            if nuevos_puntos_0v:
+                df_inyectado = pd.DataFrame(nuevos_puntos_0v).set_index('index')
+                df_grafico = pd.concat([df_grafico, df_inyectado]).sort_index()
+
+            # Consolidamos la tabla y eliminamos duplicados (por si un corte cumple ambas condiciones)
             df_cortes = pd.DataFrame(lista_cortes)
+            if not df_cortes.empty:
+                df_cortes = df_cortes.sort_values('Inicio_dt').drop_duplicates(subset=['Inicio_dt']).reset_index(drop=True)
             
             # ==========================================
             # 2. FRONTEND: MAQUETADO Y DISEÑO VISUAL
