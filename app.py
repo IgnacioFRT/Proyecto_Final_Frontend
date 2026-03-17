@@ -600,6 +600,8 @@ elif seccion == "📈 Perfil de Carga Dinámico":
 
 # --- VENTANA CALIDAD DE SERVICIO (QoS) ---
 
+# --- VENTANA CALIDAD DE SERVICIO (QoS) ---
+
 elif seccion == "📶 Calidad (QoS)":
     try:
         with st.spinner('Evaluando disponibilidad y gaps de datos... ⏳'):
@@ -637,8 +639,8 @@ elif seccion == "📶 Calidad (QoS)":
                     reales_lista.append(count)
                     esperados_lista.append(esperados_m)
 
-           # ==========================================
-            # C. DETECCIÓN DE CORTES DE COMUNICACIÓN (GAPS REALES)
+            # ==========================================
+            # C. DETECCIÓN DE CORTES DE COMUNICACIÓN (GAPS > 1H)
             # ==========================================
             df_grafico = df.copy()
             lista_cortes = []
@@ -646,8 +648,8 @@ elif seccion == "📶 Calidad (QoS)":
             # 1. ÚNICA REGLA: Calculamos cuánto tiempo pasó entre una fila y la anterior
             time_diff = df.index.to_series().diff()
             
-            # 2. Si pasaron más de 30 minutos sin recibir filas, ES UNA FALLA DE COMUNICACIÓN
-            cortes_graves = df[time_diff > pd.Timedelta(minutes=30)]
+            # 2. Sensibilidad ajustada: Solo saltos MAYORES O IGUALES A 1 HORA
+            cortes_graves = df[time_diff >= pd.Timedelta(hours=1)]
             
             nuevos_puntos_0v = []
             
@@ -669,7 +671,6 @@ elif seccion == "📶 Calidad (QoS)":
                 })
                 
                 # B. Obligamos al gráfico a caer a 0V para que veas dónde estuvo el apagón de red
-                # (Porque InfluxDB dibuja una línea recta por el aire cuando faltan datos)
                 nuevos_puntos_0v.append({'index': inicio_corte + pd.Timedelta(seconds=1), 'UL1N': 0, 'UL2N': 0, 'UL3N': 0})
                 nuevos_puntos_0v.append({'index': fin_corte - pd.Timedelta(seconds=1), 'UL1N': 0, 'UL2N': 0, 'UL3N': 0})
                 
@@ -679,7 +680,7 @@ elif seccion == "📶 Calidad (QoS)":
             if nuevos_puntos_0v:
                 df_inyectado = pd.DataFrame(nuevos_puntos_0v).set_index('index')
                 df_grafico = pd.concat([df_grafico, df_inyectado]).sort_index()
-            
+
             # ==========================================
             # 2. FRONTEND: MAQUETADO Y DISEÑO VISUAL
             # ==========================================
@@ -758,7 +759,8 @@ elif seccion == "📶 Calidad (QoS)":
                 st.plotly_chart(fig_tension, use_container_width=True)
 
             with col_tabla:
-                st.markdown("**Registro de Apagones (Gaps > 30m)**")
+                # Título actualizado a 1h
+                st.markdown("**Registro de Apagones (Gaps > 1h)**")
                 if df_cortes_filtrado.empty:
                     st.success("✅ No se registraron apagones reales en el período seleccionado.")
                 else:
