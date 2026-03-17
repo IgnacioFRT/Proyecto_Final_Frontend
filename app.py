@@ -83,7 +83,9 @@ def obtener_datos_historicos():
         'S1': 'mean', 'S2': 'mean', 'S3': 'mean', 'FP1': 'mean', 'FP2': 'mean', 'FP3': 'mean',
         'THDv1': 'mean', 'THDv2': 'mean', 'THDv3': 'mean', 'THDi1': 'mean', 'THDi2': 'mean', 'THDi3': 'mean',
         'Imed': 'mean', 'Vmed': 'mean', 'EA_imp_T1_kwh': 'last', 'temp': 'mean', 'P_tot_kW': 'mean'
-    }).ffill()
+    })#.ffill()
+
+    df = df.dropna(how='all')
 
     # --- D. LIMPIEZA DE DATOS ---
     limites = {
