@@ -638,13 +638,19 @@ elif seccion == "📶 Calidad (QoS)":
                     esperados_lista.append(esperados_m)
 
            # ==========================================
-            # C. DETECCIÓN VISUAL (Gráfico y Tabla 1 a 1)
+            # C. DETECCIÓN VISUAL: SOLO CORTES DE COMUNICACIÓN
             # ==========================================
             df_grafico = df.copy()
             lista_cortes = []
             
-            # --- 1. Tu Lógica Original: Detectar filas repetidas (ffill) ---
-            filas_fantasma = (df['EA_imp_T1_kwh'] == df['EA_imp_T1_kwh'].shift(1)) & (df['UL1N'] == df['UL1N'].shift(1))
+            # REGLA MAESTRA: Si los datos de energía y tensión están congelados idénticos,
+            # Y la tensión NO es casi cero (ej. mayor a 10V), significa que se cortó la telemetría
+            # y los datos se están rellenando artificialmente.
+            filas_fantasma = (df['EA_imp_T1_kwh'] == df['EA_imp_T1_kwh'].shift(1)) & \
+                             (df['UL1N'] == df['UL1N'].shift(1)) & \
+                             (df['UL1N'] > 10) # <-- Esto excluye apagones reales como el del 01/03
+            
+            # Hundimos a 0V los tramos donde se perdió la comunicación para hacerlos visibles
             df_grafico.loc[filas_fantasma, ['UL1N', 'UL2N', 'UL3N']] = 0
             
             en_corte = False
@@ -658,37 +664,36 @@ elif seccion == "📶 Calidad (QoS)":
                     en_corte = False
                     fin_corte = idx
                     duracion = fin_corte - inicio_corte
+                    
+                    # Filtramos: Solo anotamos gaps de comunicación mayores a 30 min
                     if duracion >= pd.Timedelta(minutes=30):
                         horas, remainder = divmod(duracion.total_seconds(), 3600)
                         minutos, _ = divmod(remainder, 60)
+                        
                         lista_cortes.append({
                             'Inicio_dt': inicio_corte, 
                             'Fecha y Hora': inicio_corte.strftime('%d/%m/%Y %H:%M'),
                             'Hora de Reconexión': fin_corte.strftime('%d/%m/%Y %H:%M'),
                             'Duración': f"{int(horas)}h {int(minutos)}m",
-                            'Diagnóstico': "🔴 Caída a 0V"
+                            'Diagnóstico': "🔴 Falla de Comunicación"
                         })
-
-            # --- 2. Regla Extra: Detectar Saltos de Tiempo Crudos (Para el 03/03) ---
-            # Si hay un hueco de tiempo donde NO hay filas, lo sumamos a la tabla
-            time_diff_raw = df.index.to_series().diff()
-            for idx, duracion in time_diff_raw[time_diff_raw > pd.Timedelta(minutes=30)].items():
-                inicio_gap = idx - duracion
-                horas, remainder = divmod(duracion.total_seconds(), 3600)
-                minutos, _ = divmod(remainder, 60)
-                
-                lista_cortes.append({
-                    'Inicio_dt': inicio_gap,
-                    'Fecha y Hora': inicio_gap.strftime('%d/%m/%Y %H:%M'),
-                    'Hora de Reconexión': idx.strftime('%d/%m/%Y %H:%M'),
-                    'Duración': f"{int(horas)}h {int(minutos)}m",
-                    'Diagnóstico': "🔴 Caída a 0V"
-                })
-
-            # Consolidamos y eliminamos duplicados por si acaso
+            
+            # Por si el mes termina justo durante un corte de comunicación
+            if en_corte:
+                fin_corte = df.index[-1]
+                duracion = fin_corte - inicio_corte
+                if duracion >= pd.Timedelta(minutes=30):
+                    horas, remainder = divmod(duracion.total_seconds(), 3600)
+                    minutos, _ = divmod(remainder, 60)
+                    lista_cortes.append({
+                        'Inicio_dt': inicio_corte, 
+                        'Fecha y Hora': inicio_corte.strftime('%d/%m/%Y %H:%M'),
+                        'Hora de Reconexión': "En curso",
+                        'Duración': f"{int(horas)}h {int(minutos)}m",
+                        'Diagnóstico': "🔴 Falla de Comunicación"
+                    })
+                    
             df_cortes = pd.DataFrame(lista_cortes)
-            if not df_cortes.empty:
-                df_cortes = df_cortes.sort_values('Inicio_dt').drop_duplicates(subset=['Inicio_dt']).reset_index(drop=True)
             
             # ==========================================
             # 2. FRONTEND: MAQUETADO Y DISEÑO VISUAL
