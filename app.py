@@ -649,7 +649,7 @@ elif seccion == "📶 Calidad (QoS)":
             time_diff = df.index.to_series().diff()
             
             # 2. Sensibilidad ajustada: Solo saltos MAYORES O IGUALES A 1 HORA
-            cortes_graves = df[time_diff >= pd.Timedelta(hours=1)]
+            cortes_graves = df[time_diff >= pd.Timedelta(hours=2)]
             
             nuevos_puntos_0v = []
             
