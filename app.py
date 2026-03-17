@@ -70,7 +70,7 @@ def obtener_datos_historicos():
     df = query_api.query_data_frame(query)
 
     # Le sacamos la zona horaria errónea de InfluxDB y le clavamos la de Argentina sin restar horas
-    df['_time'] = pd.to_datetime(df['_time']).dt.tz_localize(None).dt.tz_localize(tz_local) #
+    df['_time'] = pd.to_datetime(df['_time']).dt.tz_localize(tz_local) #
     df = df.rename(columns={'_time': 'time'})
     df = df.set_index('time')
     df['P_tot_kW'] = df['P1'] + df['P2'] + df['P3']
