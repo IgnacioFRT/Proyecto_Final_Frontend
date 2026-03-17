@@ -638,62 +638,47 @@ elif seccion == "📶 Calidad (QoS)":
                     esperados_lista.append(esperados_m)
 
            # ==========================================
-            # C. DETECCIÓN VISUAL: SOLO CORTES DE COMUNICACIÓN
+            # C. DETECCIÓN DE CORTES DE COMUNICACIÓN (GAPS REALES)
             # ==========================================
             df_grafico = df.copy()
             lista_cortes = []
             
-            # REGLA MAESTRA: Si los datos de energía y tensión están congelados idénticos,
-            # Y la tensión NO es casi cero (ej. mayor a 10V), significa que se cortó la telemetría
-            # y los datos se están rellenando artificialmente.
-            filas_fantasma = (df['EA_imp_T1_kwh'] == df['EA_imp_T1_kwh'].shift(1)) & \
-                             (df['UL1N'] == df['UL1N'].shift(1)) & \
-                             (df['UL1N'] > 10) # <-- Esto excluye apagones reales como el del 01/03
+            # 1. ÚNICA REGLA: Calculamos cuánto tiempo pasó entre una fila y la anterior
+            time_diff = df.index.to_series().diff()
             
-            # Hundimos a 0V los tramos donde se perdió la comunicación para hacerlos visibles
-            df_grafico.loc[filas_fantasma, ['UL1N', 'UL2N', 'UL3N']] = 0
+            # 2. Si pasaron más de 30 minutos sin recibir filas, ES UNA FALLA DE COMUNICACIÓN
+            cortes_graves = df[time_diff > pd.Timedelta(minutes=30)]
             
-            en_corte = False
-            inicio_corte = None
+            nuevos_puntos_0v = []
             
-            for idx, is_fantasma in filas_fantasma.items():
-                if is_fantasma and not en_corte:
-                    en_corte = True
-                    inicio_corte = idx
-                elif not is_fantasma and en_corte:
-                    en_corte = False
-                    fin_corte = idx
-                    duracion = fin_corte - inicio_corte
-                    
-                    # Filtramos: Solo anotamos gaps de comunicación mayores a 30 min
-                    if duracion >= pd.Timedelta(minutes=30):
-                        horas, remainder = divmod(duracion.total_seconds(), 3600)
-                        minutos, _ = divmod(remainder, 60)
-                        
-                        lista_cortes.append({
-                            'Inicio_dt': inicio_corte, 
-                            'Fecha y Hora': inicio_corte.strftime('%d/%m/%Y %H:%M'),
-                            'Hora de Reconexión': fin_corte.strftime('%d/%m/%Y %H:%M'),
-                            'Duración': f"{int(horas)}h {int(minutos)}m",
-                            'Diagnóstico': "🔴 Falla de Comunicación"
-                        })
-            
-            # Por si el mes termina justo durante un corte de comunicación
-            if en_corte:
-                fin_corte = df.index[-1]
-                duracion = fin_corte - inicio_corte
-                if duracion >= pd.Timedelta(minutes=30):
-                    horas, remainder = divmod(duracion.total_seconds(), 3600)
-                    minutos, _ = divmod(remainder, 60)
-                    lista_cortes.append({
-                        'Inicio_dt': inicio_corte, 
-                        'Fecha y Hora': inicio_corte.strftime('%d/%m/%Y %H:%M'),
-                        'Hora de Reconexión': "En curso",
-                        'Duración': f"{int(horas)}h {int(minutos)}m",
-                        'Diagnóstico': "🔴 Falla de Comunicación"
-                    })
-                    
+            for idx, row in cortes_graves.iterrows():
+                duracion = time_diff[idx]
+                fin_corte = idx
+                inicio_corte = idx - duracion
+                
+                # A. Lo anotamos en la tabla
+                horas, remainder = divmod(duracion.total_seconds(), 3600)
+                minutos, _ = divmod(remainder, 60)
+                
+                lista_cortes.append({
+                    'Inicio_dt': inicio_corte, 
+                    'Fecha y Hora': inicio_corte.strftime('%d/%m/%Y %H:%M'),
+                    'Hora de Reconexión': fin_corte.strftime('%d/%m/%Y %H:%M'),
+                    'Duración': f"{int(horas)}h {int(minutos)}m",
+                    'Diagnóstico': "🔴 Falla de Comunicación"
+                })
+                
+                # B. Obligamos al gráfico a caer a 0V para que veas dónde estuvo el apagón de red
+                # (Porque InfluxDB dibuja una línea recta por el aire cuando faltan datos)
+                nuevos_puntos_0v.append({'index': inicio_corte + pd.Timedelta(seconds=1), 'UL1N': 0, 'UL2N': 0, 'UL3N': 0})
+                nuevos_puntos_0v.append({'index': fin_corte - pd.Timedelta(seconds=1), 'UL1N': 0, 'UL2N': 0, 'UL3N': 0})
+                
+            # Consolidamos la tabla y el gráfico
             df_cortes = pd.DataFrame(lista_cortes)
+            
+            if nuevos_puntos_0v:
+                df_inyectado = pd.DataFrame(nuevos_puntos_0v).set_index('index')
+                df_grafico = pd.concat([df_grafico, df_inyectado]).sort_index()
             
             # ==========================================
             # 2. FRONTEND: MAQUETADO Y DISEÑO VISUAL
