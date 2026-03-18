@@ -866,6 +866,8 @@ elif seccion == "🌱 Huella de Carbono":
             
             st.write("") # Espaciador
 
+            st.divider()
+
 
             # --- 5. GRÁFICOS LADO A LADO ---
             # Partimos la pantalla a la mitad (50% y 50%)
