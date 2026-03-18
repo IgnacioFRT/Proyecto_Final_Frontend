@@ -929,11 +929,7 @@ elif seccion == "🌱 Huella de Carbono":
 
 
 # =====================================================================
-# --- NUEVA VENTANA: DETECCIÓN DE ANOMALÍAS (MACHINE LEARNING) ---
-# =====================================================================
-
-# =====================================================================
-# --- VENTANA: DETECCIÓN DE ANOMALÍAS (NIVEL 2 - MULTIDIMENSIONAL) ---
+# --- VENTANA: DETECCIÓN DE ANOMALÍAS (LÍNEA BASE Y CLUSTERS) ---
 # =====================================================================
 
 elif seccion == "🧠 Detección de Anomalías":
@@ -949,93 +945,134 @@ elif seccion == "🧠 Detección de Anomalías":
                 text-align: left;
             }
         </style>
-        <h1 class='titulo-ml'>Detección de Anomalías Contextuales</h1>
+        <h1 class='titulo-ml'>Auditoría por Línea Base (Novelty Detection)</h1>
     """, unsafe_allow_html=True)
     st.divider()
 
     try:
-        with st.spinner('🤖 Entrenando IA con análisis de rutinas (Potencia + Día + Hora)... 🧠'):
-            # 1. Traemos los datos
+        with st.spinner('🤖 Procesando motor de Machine Learning... 🧠'):
             df = obtener_datos_historicos()
-            from sklearn.ensemble import IsolationForest
             
-            # 2. PREPARACIÓN NIVEL 2: Agregamos contexto temporal
+            # Preparación inicial de datos
             df_ml = df[['P_tot_kW']].dropna().copy()
-            
-            # Extraemos hora y día del índice de tiempo
             df_ml['hora'] = df_ml.index.hour
             df_ml['dia_semana'] = df_ml.index.dayofweek
             
+            # Nombres para visualización
             dias_map = {0:'Lunes', 1:'Martes', 2:'Miércoles', 3:'Jueves', 4:'Viernes', 5:'Sábado', 6:'Domingo'}
             df_ml['nombre_dia'] = df_ml['dia_semana'].map(dias_map)
             
-            # 3. MÁQUINA DE APRENDIZAJE AUTOMÁTICO (Isolation Forest + Escalado)
-            # Importamos librerías necesarias
-            from sklearn.preprocessing import StandardScaler
-            from sklearn.ensemble import IsolationForest
+            # Creamos una columna con "Mes Año" para el selector
+            # Usamos un diccionario para traducir los meses al español
+            meses_trad = {1:'Enero', 2:'Febrero', 3:'Marzo', 4:'Abril', 5:'Mayo', 6:'Junio', 
+                          7:'Julio', 8:'Agosto', 9:'Septiembre', 10:'Octubre', 11:'Noviembre', 12:'Diciembre'}
+            df_ml['mes_str'] = df_ml.index.month.map(meses_trad) + " " + df_ml.index.year.astype(str)
             
-            # --- PASO CRUCIAL: ESCALADO MULTIDIMENSIONAL ---
-            # El StandardScaler pone la Potencia, Hora y Día en la misma escala (media 0, var 1)
-            # para que la IA no ignore el contexto temporal.
-            columnas_entrenamiento = ['P_tot_kW', 'hora', 'dia_semana']
-            scaler = StandardScaler()
-            datos_escalados = scaler.fit_transform(df_ml[columnas_entrenamiento])
+            # --- INTERFAZ: SELECTOR DE LÍNEA BASE ---
+            st.markdown("#### ⚙️ Configuración del Modelo")
+            meses_disponibles = df_ml['mes_str'].unique().tolist()
             
-            # --- ENTRENAMIENTO AUTOMÁTICO DE LA IA ---
-            # contamination=0.025 le dice a la IA: "Automaticamente detectame el top 2.5% de datos mas raros"
-            # No dependemos de perillas del usuario.
-            modelo_ia = IsolationForest(contamination=0.025, random_state=42)
-            df_ml['etiqueta_anomalia'] = modelo_ia.fit_predict(datos_escalados)
-            
-            # Filtramos las anomalías detectadas por la IA
-            anomalias = df_ml[df_ml['etiqueta_anomalia'] == -1]
-            
-            # 4. KPIs (Actualizados conceptualmente para el Nivel 2)
-            total_analizados = len(df_ml)
-            total_detectadas = len(anomalias)
-            porcentaje = (total_detectadas / total_analizados) * 100 if total_analizados > 0 else 0
+            col_sel, col_info = st.columns([1, 2])
+            with col_sel:
+                mes_referencia = st.selectbox("Seleccionar Mes de Referencia (Comportamiento Ideal):", meses_disponibles)
+            with col_info:
+                st.info(f"La Inteligencia Artificial aprenderá la rutina de **{mes_referencia}** y auditará el resto del año buscando desviaciones (Outliers).")
 
-            st.markdown("#### 🧠 Detección de Anomalías Contextuales con Machine Learning")
-            st.caption("El modelo Isolation Forest analiza Potencia cruzas con Día y Hora, utilizando escalado de datos (StandardScaler) para una detección autónoma y precisa de rupturas de rutina, sin necesidad de calibración manual.")
-            
-            col1, col2, col3 = st.columns(3)
-            col1.metric("Datos Analizados", f"{total_analizados:,}")
-            col2.metric("Anomalías Contextuales", f"{total_detectadas}", delta="Análisis 3D Automático", delta_color="normal")
-            col3.metric("Variables de IA", "Potencia + Día + Hora")
             st.write("---")
 
-            # 5. GRÁFICO CON TOOLTIPS MEJORADOS
-            st.markdown("#### 📊 Perfil de Carga y Rupturas de Patrón")
+            # --- MACHINE LEARNING: ENTRENAMIENTO EXCLUSIVO ---
+            from sklearn.preprocessing import StandardScaler
+            from sklearn.ensemble import IsolationForest
+            from sklearn.decomposition import PCA # <-- Para hacer el gráfico de Clusters 2D
             
-            fig_ml = go.Figure()
+            # 1. Separamos los datos del mes "Ideal" (Entrenamiento)
+            df_entrenamiento = df_ml[df_ml['mes_str'] == mes_referencia].copy()
             
-            fig_ml.add_trace(go.Scatter(
-                x=df_ml.index, y=df_ml['P_tot_kW'], mode='lines',
-                name='Perfil de Carga (kW)', line=dict(color='#3498db', width=2),
-                customdata=df_ml['nombre_dia'],
-                hovertemplate="<b>%{customdata}, %{x|%d %b - %H:%M}</b><br>Potencia: <b>%{y:.2f} kW</b><extra></extra>"
-            ))
+            columnas_features = ['P_tot_kW', 'hora', 'dia_semana']
+            scaler = StandardScaler()
             
-            fig_ml.add_trace(go.Scatter(
-                x=anomalias.index, y=anomalias['P_tot_kW'], mode='markers',
-                name='Anomalía Detectada',
-                marker=dict(color='#e74c3c', size=12, symbol='x', line=dict(width=2, color='darkred')),
-                customdata=anomalias['nombre_dia'],
-                # El cartelito ahora te resalta el día y la hora para que entiendas POR QUÉ es raro
-                hovertemplate="<b>⚠️ RUPTURA DE RUTINA</b><br>%{customdata}, %{x|%d %b - %H:%M}<br>Potencia: <b>%{y:.2f} kW</b><extra></extra>"
-            ))
+            # Ajustamos el escalador SOLO con el mes de referencia
+            datos_entrenamiento_escalados = scaler.fit_transform(df_entrenamiento[columnas_features])
             
-            fig_ml.update_layout(
-                template='plotly_white', height=500, hovermode='x unified',
-                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-                margin=dict(t=30, b=30, l=10, r=10),
-                yaxis=dict(title="Potencia Activa Total (kW)", gridcolor='#e5e8e8')
-            )
+            # Entrenamos la IA (Baja contaminación porque asumimos que este mes fue "sano")
+            modelo_ia = IsolationForest(contamination=0.01, random_state=42)
+            modelo_ia.fit(datos_entrenamiento_escalados)
             
-            st.plotly_chart(fig_ml, use_container_width=True)
+            # 2. AUDITORÍA: Evaluamos TODO el año usando la memoria de ese mes
+            datos_totales_escalados = scaler.transform(df_ml[columnas_features])
+            df_ml['etiqueta_anomalia'] = modelo_ia.predict(datos_totales_escalados)
+            anomalias = df_ml[df_ml['etiqueta_anomalia'] == -1]
 
-            # 6. Tabla detalle
-            with st.expander("📋 Ver registro detallado de anomalías contextuales"):
+            # --- REDUCCIÓN DE DIMENSIONALIDAD (Para el gráfico de Clusters) ---
+            # Aplanamos Potencia, Hora y Día en 2 ejes matemáticos (PCA1 y PCA2)
+            pca = PCA(n_components=2)
+            componentes_pca = pca.fit_transform(datos_totales_escalados)
+            df_ml['PCA1'] = componentes_pca[:, 0]
+            df_ml['PCA2'] = componentes_pca[:, 1]
+            
+            anomalias_pca = df_ml[df_ml['etiqueta_anomalia'] == -1]
+            normales_pca = df_ml[df_ml['etiqueta_anomalia'] == 1]
+
+            # --- KPIs ---
+            st.markdown("#### 📊 Resultados de la Auditoría")
+            col1, col2, col3 = st.columns(3)
+            col1.metric("Registros Evaluados", f"{len(df_ml):,}")
+            col2.metric("Anomalías Detectadas", f"{len(anomalias)}", delta="Rupturas de rutina", delta_color="inverse")
+            col3.metric("Línea Base", mes_referencia)
+
+            # --- GRÁFICOS (Tiempo vs Clusters) ---
+            col_graf1, col_graf2 = st.columns([1.5, 1])
+
+            with col_graf1:
+                st.markdown("###### Evolución Temporal y Eventos Aislados")
+                fig_tiempo = go.Figure()
+                
+                fig_tiempo.add_trace(go.Scatter(
+                    x=df_ml.index, y=df_ml['P_tot_kW'], mode='lines',
+                    name='Perfil de Carga', line=dict(color='#3498db', width=1),
+                    customdata=df_ml['nombre_dia'],
+                    hovertemplate="%{customdata}, %{x|%d %b - %H:%M}<br>Potencia: <b>%{y:.2f} kW</b><extra></extra>"
+                ))
+                
+                fig_tiempo.add_trace(go.Scatter(
+                    x=anomalias.index, y=anomalias['P_tot_kW'], mode='markers',
+                    name='Anomalía',
+                    marker=dict(color='#e74c3c', size=10, symbol='x', line=dict(width=2, color='darkred')),
+                    customdata=anomalias['nombre_dia'],
+                    hovertemplate="<b>⚠️ OUTLIER</b><br>%{customdata}, %{x|%d %b - %H:%M}<br>Potencia: <b>%{y:.2f} kW</b><extra></extra>"
+                ))
+                
+                fig_tiempo.update_layout(template='plotly_white', height=400, showlegend=False, margin=dict(t=10, b=10, l=10, r=10))
+                st.plotly_chart(fig_tiempo, use_container_width=True)
+
+            with col_graf2:
+                st.markdown("###### Análisis de Clusters (PCA 2D)")
+                fig_cluster = go.Figure()
+                
+                # Nube Azul (Normalidad)
+                fig_cluster.add_trace(go.Scatter(
+                    x=normales_pca['PCA1'], y=normales_pca['PCA2'], mode='markers',
+                    name='Rutina Normal', marker=dict(color='rgba(52, 152, 219, 0.4)', size=5),
+                    hoverinfo='skip'
+                ))
+                
+                # Nube Roja (Anomalías)
+                fig_cluster.add_trace(go.Scatter(
+                    x=anomalias_pca['PCA1'], y=anomalias_pca['PCA2'], mode='markers',
+                    name='Outliers', marker=dict(color='#e74c3c', size=7, symbol='cross'),
+                    hoverinfo='skip'
+                ))
+                
+                fig_cluster.update_layout(
+                    template='plotly_white', height=400, 
+                    legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+                    margin=dict(t=10, b=10, l=10, r=10),
+                    xaxis=dict(title="Componente 1 (Magnitud)", showticklabels=False),
+                    yaxis=dict(title="Componente 2 (Temporalidad)", showticklabels=False)
+                )
+                st.plotly_chart(fig_cluster, use_container_width=True)
+
+            with st.expander("📋 Ver tabla detallada de eventos anómalos"):
                 tabla_mostrar = anomalias[['nombre_dia', 'hora', 'P_tot_kW']].copy()
                 tabla_mostrar.columns = ['Día de la Semana', 'Hora del Día', 'Potencia (kW)']
                 st.dataframe(tabla_mostrar.sort_index(ascending=False), use_container_width=True)
