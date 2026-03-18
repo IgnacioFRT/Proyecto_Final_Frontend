@@ -961,22 +961,27 @@ elif seccion == "🧠 Detección de Anomalías":
             
             # 2. PREPARACIÓN NIVEL 2: Agregamos contexto temporal
             df_ml = df[['P_tot_kW']].dropna().copy()
-            
-            # Extraemos la hora (0 a 23) y el día de la semana (0 a 6) directamente del índice de tiempo
             df_ml['hora'] = df_ml.index.hour
             df_ml['dia_semana'] = df_ml.index.dayofweek
             
-            # Mapeamos los días para que los cartelitos queden prolijos
             dias_map = {0:'Lunes', 1:'Martes', 2:'Miércoles', 3:'Jueves', 4:'Viernes', 5:'Sábado', 6:'Domingo'}
             df_ml['nombre_dia'] = df_ml['dia_semana'].map(dias_map)
             
-            # 3. ENTRENAMIENTO MULTIDIMENSIONAL
-            # Ahora la IA mira 3 columnas al mismo tiempo para aislar el dato
-            modelo_ia = IsolationForest(contamination=0.02, random_state=42)
+            # --- NUEVO: CONTROL DE SENSIBILIDAD EN PANTALLA ---
+            st.markdown("#### ⚙️ Ajuste del Algoritmo")
+            sensibilidad = st.slider("Sensibilidad de Detección (%) - Más alto detecta anomalías más sutiles", min_value=1, max_value=15, value=4, step=1)
             
-            # ¡Acá ocurre la magia! Le pasamos las 3 variables
+            # 3. ENTRENAMIENTO MULTIDIMENSIONAL Y ESCALADO
+            from sklearn.preprocessing import StandardScaler
+            
+            # Normalizamos los datos para que el Día y la Hora "pesen" igual que los kW
+            scaler = StandardScaler()
             columnas_entrenamiento = ['P_tot_kW', 'hora', 'dia_semana']
-            df_ml['etiqueta_anomalia'] = modelo_ia.fit_predict(df_ml[columnas_entrenamiento])
+            datos_escalados = scaler.fit_transform(df_ml[columnas_entrenamiento])
+            
+            # Entrenamos usando el slider que mueve el usuario
+            modelo_ia = IsolationForest(contamination=(sensibilidad / 100.0), random_state=42)
+            df_ml['etiqueta_anomalia'] = modelo_ia.fit_predict(datos_escalados)
             
             anomalias = df_ml[df_ml['etiqueta_anomalia'] == -1]
             
