@@ -796,7 +796,7 @@ elif seccion == "🌱 Huella de Carbono":
             .titulo-carbono {
                 font-size: 45px !important;
                 font-weight: 700 !important;
-                color: #27ae60; /* Un verde ecológico */
+                color: #27ae60; 
                 margin-top: -70px !important;
                 margin-left: -20px !important;
                 margin-bottom: 20px !important;
@@ -811,84 +811,118 @@ elif seccion == "🌱 Huella de Carbono":
             df = obtener_datos_historicos()
             
             # --- 1. PARÁMETROS Y CÁLCULOS GLOBALES ---
-            FACTOR_EMISION_ARG = 0.45 # kg CO2 por kWh (Referencia CAMMESA)
-            total_kwh_real = df['EA_imp_T1_kwh'].max() - df['EA_imp_T1_kwh'].min()
-            total_co2_kg = total_kwh_real * FACTOR_EMISION_ARG
+            # ¡Acá cambiamos el factor a 0.5 como pediste!
+            FACTOR_EMISION = 0.5 
             
-            # Equivalencias (Aproximaciones estándar de impacto ambiental)
-            arboles_equivalentes = total_co2_kg / 22 # 1 árbol maduro absorbe ~22kg CO2/año
-            km_auto_equivalente = total_co2_kg / 0.12 # Un auto promedio emite ~0.12 kg CO2/km
+            total_kwh_real = df['EA_imp_T1_kwh'].max() - df['EA_imp_T1_kwh'].min()
+            total_co2_kg = total_kwh_real * FACTOR_EMISION
+            
+            arboles_equivalentes = total_co2_kg / 22 
+            km_auto_equivalente = total_co2_kg / 0.12 
 
             # --- 2. TARJETAS DE IMPACTO (KPIs) ---
             st.markdown("#### 🌍 Métricas Globales de Emisión")
             kpi1, kpi2, kpi3 = st.columns(3)
             
-            kpi1.metric("Huella de Carbono Total", f"{total_co2_kg:,.1f} kg CO₂", "Factor: 0.45 kg/kWh", delta_color="inverse")
+            kpi1.metric("Huella de Carbono Total", f"{total_co2_kg:,.1f} kg CO₂", f"Factor: {FACTOR_EMISION} kg/kWh", delta_color="inverse")
             kpi2.metric("Equivalencia en Forestación", f"🌳 {int(arboles_equivalentes)} árboles", "Absorción estimada en 1 año", delta_color="off")
             kpi3.metric("Equivalencia Vehicular", f"🚗 {km_auto_equivalente:,.0f} km", "Recorridos por un auto a combustión", delta_color="off")
             
             with st.expander("ℹ️ ¿De dónde sale este cálculo?"):
-                st.write("El cálculo se realiza multiplicando la energía activa total consumida por el factor de emisión de la red eléctrica nacional. Para Argentina, se estima un promedio de **0.45 kg de CO₂ por cada kWh** consumido, dependiendo de la participación térmica vs. renovable en la matriz de generación de CAMMESA en el período analizado.")
+                st.write(f"El cálculo se realiza multiplicando la energía activa total consumida por el factor de emisión. Actualmente configurado en **{FACTOR_EMISION} kg de CO₂ por cada kWh** consumido.")
 
-            st.write("") # Espacio
+            st.write("---") # Divisor visual antes de los gráficos
 
-            # --- 3. PREPARACIÓN DE DATOS (Tu lógica de Colab) ---
+            # --- 3. PREPARACIÓN DE DATOS (Diarios y Mensuales) ---
+            
+            # A. Lógica Diaria (Para el gráfico)
             df_ambiental = df.resample('D').last()[['EA_imp_T1_kwh']].copy()
             df_ambiental['consumo_kWh'] = df_ambiental['EA_imp_T1_kwh'].diff().clip(lower=0).fillna(0)
-            df_ambiental['emisiones_diarias'] = df_ambiental['consumo_kWh'] * FACTOR_EMISION_ARG
+            df_ambiental['emisiones_diarias'] = df_ambiental['consumo_kWh'] * FACTOR_EMISION
             df_ambiental['emisiones_acumuladas'] = df_ambiental['emisiones_diarias'].cumsum()
             dias_map = {0:'Lunes', 1:'Martes', 2:'Miércoles', 3:'Jueves', 4:'Viernes', 5:'Sábado', 6:'Domingo'}
             df_ambiental['nombre_dia'] = df_ambiental.index.dayofweek.map(dias_map)
 
-            # --- 4. GRÁFICO CON SUBPLOTS ---
-            st.markdown("#### 📊 Evolución de Emisiones Diarias y Acumuladas")
-            
-            fig = make_subplots(
-                rows=2, cols=1, 
-                shared_xaxes=True, 
-                vertical_spacing=0.1, 
-                subplot_titles=("Emisiones Diarias (kg CO₂)", "Huella Acumulada Total (kg CO₂)")
-            )
+            # B. Lógica Mensual (Para la tendencia porcentual)
+            df_mensual = df_ambiental[['emisiones_diarias']].resample('MS').sum()
+            df_mensual.rename(columns={'emisiones_diarias': 'emisiones_mes'}, inplace=True)
+            # pct_change() calcula el % de salto entre un mes y el anterior
+            df_mensual['variacion_pct'] = df_mensual['emisiones_mes'].pct_change() * 100
 
-            # Emisiones Diarias (Barras)
-            fig.add_trace(
-                go.Bar(
-                    x=df_ambiental.index, y=df_ambiental['emisiones_diarias'],
-                    name="Día", marker_color='#95a5a6', # Un gris elegante
-                    customdata=df_ambiental['nombre_dia'],
-                    hovertemplate="<b>%{x|%Y}, %{customdata} %{x|%d %b}</b><br>Emisión: <b>%{y:.2f} kg CO₂</b><extra></extra>"
-                ), row=1, col=1
-            )
 
-            # Acumulado (Área Roja/Naranja)
-            fig.add_trace(
-                go.Scatter(
-                    x=df_ambiental.index, y=df_ambiental['emisiones_acumuladas'],
-                    name="Acumulado", fill='tozeroy', fillcolor='rgba(211, 84, 0, 0.2)', # Naranja industrial
-                    line=dict(color='#d35400', width=3),
-                    customdata=df_ambiental['nombre_dia'],
-                    hovertemplate="<b>%{x|%Y}, %{customdata} %{x|%d %b}</b><br>Total Acumulado: <b>%{y:.2f} kg CO₂</b><extra></extra>"
-                ), row=2, col=1
-            )
+            # --- 4. DISEÑO DE PANTALLA DIVIDIDA ---
+            # Columna izquierda (1 parte de ancho) y Derecha (2.5 partes de ancho)
+            col_izq, col_der = st.columns([1, 2.5])
 
-            # Diseño final
-            fig.update_layout(
-                template='plotly_white',
-                height=600, # Un poco más compacto que en Colab para que entre bien en pantalla
-                hovermode='x unified',
-                showlegend=False,
-                margin=dict(t=40, b=40, l=20, r=20),
-                font=dict(color="#5d6d7e")
-            )
+            with col_izq:
+                st.markdown("#### 📉 Tendencia Mensual")
+                st.caption("Evolución respecto al mes anterior.")
+                
+                # Iteramos de atrás para adelante (iloc[::-1]) para ver el mes actual arriba de todo
+                for fecha, row in df_mensual.dropna(subset=['emisiones_mes']).iloc[::-1].iterrows():
+                    mes_nombre = fecha.strftime('%B %Y').capitalize()
+                    emision = row['emisiones_mes']
+                    variacion = row['variacion_pct']
 
-            fig.update_xaxes(
-                tickformat='%d %b\n%Y', 
-                gridcolor='#e5e8e8',
-                minor=dict(showgrid=True, gridcolor='whitesmoke')
-            )
-            fig.update_yaxes(gridcolor='#e5e8e8')
+                    # Si es el primer mes de todos, no hay porcentaje para comparar
+                    if pd.isna(variacion):
+                        delta_str = None
+                    else:
+                        delta_str = f"{variacion:.1f}%"
+                    
+                    # Usamos delta_color="inverse" para que si el % sube (malo) se pinte de rojo
+                    # y si el % baja (bueno para el ambiente) se pinte de verde.
+                    st.metric(label=mes_nombre, value=f"{emision:.1f} kg", delta=delta_str, delta_color="inverse")
+                    st.divider()
 
-            st.plotly_chart(fig, use_container_width=True)
+            with col_der:
+                st.markdown("#### 📊 Evolución Diaria y Acumulada")
+                
+                fig = make_subplots(
+                    rows=2, cols=1, 
+                    shared_xaxes=True, 
+                    vertical_spacing=0.1, 
+                    subplot_titles=("Emisiones Diarias (kg CO₂)", "Huella Acumulada Total (kg CO₂)")
+                )
+
+                # Emisiones Diarias (Barras)
+                fig.add_trace(
+                    go.Bar(
+                        x=df_ambiental.index, y=df_ambiental['emisiones_diarias'],
+                        name="Día", marker_color='#95a5a6', 
+                        customdata=df_ambiental['nombre_dia'],
+                        hovertemplate="<b>%{x|%Y}, %{customdata} %{x|%d %b}</b><br>Emisión: <b>%{y:.2f} kg CO₂</b><extra></extra>"
+                    ), row=1, col=1
+                )
+
+                # Acumulado (Área Naranja)
+                fig.add_trace(
+                    go.Scatter(
+                        x=df_ambiental.index, y=df_ambiental['emisiones_acumuladas'],
+                        name="Acumulado", fill='tozeroy', fillcolor='rgba(211, 84, 0, 0.2)',
+                        line=dict(color='#d35400', width=3),
+                        customdata=df_ambiental['nombre_dia'],
+                        hovertemplate="<b>%{x|%Y}, %{customdata} %{x|%d %b}</b><br>Total Acumulado: <b>%{y:.2f} kg CO₂</b><extra></extra>"
+                    ), row=2, col=1
+                )
+
+                fig.update_layout(
+                    template='plotly_white',
+                    height=550, 
+                    hovermode='x unified',
+                    showlegend=False,
+                    margin=dict(t=40, b=40, l=20, r=20),
+                    font=dict(color="#5d6d7e")
+                )
+
+                fig.update_xaxes(
+                    tickformat='%d %b\n%Y', 
+                    gridcolor='#e5e8e8',
+                    minor=dict(showgrid=True, gridcolor='whitesmoke')
+                )
+                fig.update_yaxes(gridcolor='#e5e8e8')
+
+                st.plotly_chart(fig, use_container_width=True)
 
     except Exception as e:
         st.error(f"Error al generar el análisis ambiental: {e}")
