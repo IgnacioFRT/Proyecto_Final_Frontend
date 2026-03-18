@@ -866,37 +866,38 @@ elif seccion == "🌱 Huella de Carbono":
             
             st.write("") # Espaciador
 
-            # --- 5. GRÁFICO DE TENDENCIA MENSUAL (Líneas) ---
-            st.markdown("#### 📈 Tendencia de Emisiones Mensuales")
-            
-            fig_tendencia = go.Figure()
-            
-            fig_tendencia.add_trace(go.Scatter(
-                x=df_mensual.index, 
-                y=df_mensual['emisiones_mes'],
-                mode='lines+markers+text',
-                name='Emisiones',
-                line=dict(color='#2980b9', width=4),
-                marker=dict(size=10, color='#2980b9', symbol='circle'),
-                text=[f"{val:.1f} kg" for val in df_mensual['emisiones_mes']],
-                textposition="top center",
-                textfont=dict(color="#7f8c8d", size=11),
-                hovertemplate="<b>%{x|%B %Y}</b><br>Emisión Total: <b>%{y:.1f} kg CO₂</b><extra></extra>"
-            ))
 
-            fig_tendencia.update_layout(
-                template='plotly_white',
-                height=350,
-                margin=dict(t=30, b=30, l=10, r=10),
-                yaxis=dict(title="Emisiones (kg CO₂)", gridcolor='#e5e8e8', rangemode='tozero'),
-                xaxis=dict(tickformat='%b\n%Y', gridcolor='#e5e8e8')
-            )
-            st.plotly_chart(fig_tendencia, use_container_width=True)
+            # --- 5. GRÁFICOS LADO A LADO ---
+            # Partimos la pantalla a la mitad (50% y 50%)
+            col_graf_izq, col_graf_der = st.columns(2)
 
-            st.write("---")
+            # --- GRÁFICO IZQUIERDO: Tendencia Mensual ---
+            with col_graf_izq:
+                st.markdown("#### 📈 Tendencia Mensual")
+                
+                fig_tendencia = go.Figure()
+                fig_tendencia.add_trace(go.Scatter(
+                    x=df_mensual.index, y=df_mensual['emisiones_mes'],
+                    mode='lines+markers+text', name='Emisiones',
+                    line=dict(color='#2980b9', width=4),
+                    marker=dict(size=10, color='#2980b9', symbol='circle'),
+                    text=[f"{val:.1f} kg" for val in df_mensual['emisiones_mes']],
+                    textposition="top center", textfont=dict(color="#7f8c8d", size=11),
+                    hovertemplate="<b>%{x|%B %Y}</b><br>Emisión Total: <b>%{y:.1f} kg CO₂</b><extra></extra>"
+                ))
 
-            # --- 6. GRÁFICO DIARIO (Con expansor para no saturar la pantalla) ---
-            with st.expander("🔍 Ver Detalle Diario y Acumulado (Zoom)"):
+                fig_tendencia.update_layout(
+                    template='plotly_white', height=450, # Altura ajustada para que queden parejos
+                    margin=dict(t=30, b=30, l=10, r=10),
+                    yaxis=dict(title="Emisiones (kg CO₂)", gridcolor='#e5e8e8', rangemode='tozero'),
+                    xaxis=dict(tickformat='%b\n%Y', gridcolor='#e5e8e8')
+                )
+                st.plotly_chart(fig_tendencia, use_container_width=True)
+
+            # --- GRÁFICO DERECHO: Detalle Diario ---
+            with col_graf_der:
+                st.markdown("#### 🔍 Detalle Diario y Acumulado")
+                
                 fig_diario = make_subplots(
                     rows=2, cols=1, shared_xaxes=True, vertical_spacing=0.1, 
                     subplot_titles=("Emisiones Diarias (kg CO₂)", "Huella Acumulada (kg CO₂)")
@@ -904,18 +905,21 @@ elif seccion == "🌱 Huella de Carbono":
 
                 fig_diario.add_trace(go.Bar(
                     x=df_ambiental.index, y=df_ambiental['emisiones_diarias'],
-                    name="Día", marker_color='#95a5a6', customdata=df_ambiental['nombre_dia'],
+                    marker_color='#95a5a6', customdata=df_ambiental['nombre_dia'],
                     hovertemplate="<b>%{x|%d %b %Y} (%{customdata})</b><br>Emisión: <b>%{y:.2f} kg CO₂</b><extra></extra>"
                 ), row=1, col=1)
 
                 fig_diario.add_trace(go.Scatter(
                     x=df_ambiental.index, y=df_ambiental['emisiones_acumuladas'],
-                    name="Acumulado", fill='tozeroy', fillcolor='rgba(211, 84, 0, 0.2)',
+                    fill='tozeroy', fillcolor='rgba(211, 84, 0, 0.2)',
                     line=dict(color='#d35400', width=3), customdata=df_ambiental['nombre_dia'],
                     hovertemplate="<b>%{x|%d %b %Y}</b><br>Acumulado: <b>%{y:.2f} kg CO₂</b><extra></extra>"
                 ), row=2, col=1)
 
-                fig_diario.update_layout(height=500, template='plotly_white', showlegend=False, margin=dict(t=40, b=20, l=10, r=10))
+                fig_diario.update_layout(
+                    template='plotly_white', height=450, # Misma altura que el otro gráfico
+                    showlegend=False, margin=dict(t=40, b=20, l=10, r=10)
+                )
                 st.plotly_chart(fig_diario, use_container_width=True)
 
     except Exception as e:
