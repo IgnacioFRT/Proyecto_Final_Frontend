@@ -1,6 +1,7 @@
 from influxdb_client import InfluxDBClient
 from streamlit_autorefresh import st_autorefresh
 from plotly.subplots import make_subplots
+from pandas.tseries.offsets import MonthEnd
 
 import streamlit as st
 import pandas as pd
@@ -362,7 +363,9 @@ elif seccion == "🕒 Tiempo Real":
 elif seccion == "📊 Resumen Histórico":
     try:
         
-        #BACKEND : CÁLCULOS Y PROCESAMIENDO
+        # ==========================================
+        # 1. BACKEND: CÁLCULOS Y PROCESAMIENTO
+        # ==========================================
         
         # A. ADQUISICIÓN DE DATOS
         with st.spinner('Descargando y procesando historial completo desde InfluxDB... ⏳'):
@@ -492,7 +495,9 @@ elif seccion == "📊 Resumen Histórico":
 elif seccion == "📈 Perfil de Carga Dinámico":
     try:
         
-        #BACKEND : CÁLCULOS Y PROCESAMIENDO
+        # ==========================================
+        # 1. BACKEND: CÁLCULOS Y PROCESAMIENTO
+        # ==========================================
         
         # A. ADQUISICIÓN DE DATOS
         with st.spinner('Procesando perfiles de carga interactivos... ⏳'):
@@ -603,15 +608,15 @@ elif seccion == "📈 Perfil de Carga Dinámico":
 
 # --- VENTANA CALIDAD DE SERVICIO (QoS) ---
 
-# --- VENTANA CALIDAD DE SERVICIO (QoS) ---
-
 elif seccion == "📶 Calidad (QoS)":
     try:
+
+        # ==========================================
+        # 1. BACKEND: CÁLCULOS Y PROCESAMIENTO
+        # ==========================================
+
+        # A. ADQUISICIÓN DE DATOS
         with st.spinner('Evaluando disponibilidad y gaps de datos... ⏳'):
-            
-            # ==========================================
-            # 1. BACKEND: CÁLCULOS Y PROCESAMIENTO
-            # ==========================================
             df = obtener_datos_historicos()
 
             start = df.index.min()
@@ -627,7 +632,6 @@ elif seccion == "📶 Calidad (QoS)":
             df_reales_mes = df.resample('MS').size()
             meses_labels, porcentajes_mes, reales_lista, esperados_lista = [], [], [], []
             
-            from pandas.tseries.offsets import MonthEnd
             for mes_start, count in df_reales_mes.items():
                 mes_end = mes_start + MonthEnd(1) + pd.Timedelta(hours=23, minutes=45)
                 calc_start = max(mes_start, start.replace(second=0, microsecond=0))
