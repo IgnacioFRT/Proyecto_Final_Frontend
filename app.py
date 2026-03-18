@@ -932,91 +932,92 @@ elif seccion == "🌱 Huella de Carbono":
 # --- NUEVA VENTANA: DETECCIÓN DE ANOMALÍAS (MACHINE LEARNING) ---
 # =====================================================================
 
+# =====================================================================
+# --- VENTANA: DETECCIÓN DE ANOMALÍAS (NIVEL 2 - MULTIDIMENSIONAL) ---
+# =====================================================================
+
 elif seccion == "🧠 Detección de Anomalías":
     st.markdown("""
         <style>
             .titulo-ml {
                 font-size: 45px !important;
                 font-weight: 700 !important;
-                color: #8e44ad; /* Un violeta tecnológico para diferenciar la IA */
+                color: #8e44ad;
                 margin-top: -70px !important;
                 margin-left: -20px !important;
                 margin-bottom: 20px !important;
                 text-align: left;
             }
         </style>
-        <h1 class='titulo-ml'>Detección de Anomalías mediante IA</h1>
+        <h1 class='titulo-ml'>Detección de Anomalías Contextuales</h1>
     """, unsafe_allow_html=True)
     st.divider()
 
     try:
-        with st.spinner('🤖 Entrenando modelo de Inteligencia Artificial (Isolation Forest)... 🧠'):
-            # 1. Traemos los datos históricos crudos
+        with st.spinner('🤖 Entrenando IA con análisis de rutinas (Potencia + Día + Hora)... 🧠'):
+            # 1. Traemos los datos
             df = obtener_datos_historicos()
-            
-            # 2. Importamos la librería de Machine Learning
             from sklearn.ensemble import IsolationForest
             
-            # 3. Preparación de los datos
-            # Elegimos la Potencia Total (P_tot_kW) como variable a auditar. 
-            # Eliminamos filas vacías para que la matemática no tire error.
+            # 2. PREPARACIÓN NIVEL 2: Agregamos contexto temporal
             df_ml = df[['P_tot_kW']].dropna().copy()
             
-            # 4. Configuración y Entrenamiento del Modelo
-            # contamination=0.02 le dice a la IA: "Asumí que el 2% de los datos son raros/anómalos"
+            # Extraemos la hora (0 a 23) y el día de la semana (0 a 6) directamente del índice de tiempo
+            df_ml['hora'] = df_ml.index.hour
+            df_ml['dia_semana'] = df_ml.index.dayofweek
+            
+            # Mapeamos los días para que los cartelitos queden prolijos
+            dias_map = {0:'Lunes', 1:'Martes', 2:'Miércoles', 3:'Jueves', 4:'Viernes', 5:'Sábado', 6:'Domingo'}
+            df_ml['nombre_dia'] = df_ml['dia_semana'].map(dias_map)
+            
+            # 3. ENTRENAMIENTO MULTIDIMENSIONAL
+            # Ahora la IA mira 3 columnas al mismo tiempo para aislar el dato
             modelo_ia = IsolationForest(contamination=0.02, random_state=42)
             
-            # La IA entrena y predice automáticamente. 
-            # Nos devuelve 1 si el comportamiento es normal, y -1 si es una anomalía.
-            df_ml['etiqueta_anomalia'] = modelo_ia.fit_predict(df_ml[['P_tot_kW']])
+            # ¡Acá ocurre la magia! Le pasamos las 3 variables
+            columnas_entrenamiento = ['P_tot_kW', 'hora', 'dia_semana']
+            df_ml['etiqueta_anomalia'] = modelo_ia.fit_predict(df_ml[columnas_entrenamiento])
             
-            # Filtramos para tener una lista exclusiva de los eventos raros
             anomalias = df_ml[df_ml['etiqueta_anomalia'] == -1]
             
-            # 5. KPIs de Análisis (Tarjetas superiores)
+            # 4. KPIs
             total_analizados = len(df_ml)
             total_detectadas = len(anomalias)
             porcentaje = (total_detectadas / total_analizados) * 100 if total_analizados > 0 else 0
 
-            st.markdown("#### 🔍 Auditoría Automática de Potencia Activa")
-            st.caption("El algoritmo *Isolation Forest* analiza el historial de consumo y aísla eventos eléctricos atípicos sin necesidad de configurar límites manuales.")
+            st.markdown("#### 🔍 Auditoría Inteligente de Rutinas Eléctricas")
+            st.caption("El modelo analiza la Potencia Total cruzada con el Día de la Semana y la Hora. Detecta consumos atípicos **incluso si el valor de potencia es bajo**, si este ocurre fuera del horario habitual.")
             
             col1, col2, col3 = st.columns(3)
             col1.metric("Registros Analizados", f"{total_analizados:,}")
-            col2.metric("Eventos Anómalos", f"{total_detectadas}", delta=f"{porcentaje:.1f}% del total evaluado", delta_color="inverse")
-            col3.metric("Motor de Análisis", "Isolation Forest ML")
+            col2.metric("Eventos Atípicos (2%)", f"{total_detectadas}", delta=f"Análisis Contextual 3D", delta_color="normal")
+            col3.metric("Variables Analizadas", "Potencia + Día + Hora")
             
             st.write("---")
 
-            # 6. Gráfico Interactivo (Visualización del aislamiento)
-            st.markdown("#### 📊 Perfil de Carga y Eventos Aislados")
+            # 5. GRÁFICO CON TOOLTIPS MEJORADOS
+            st.markdown("#### 📊 Perfil de Carga y Rupturas de Patrón")
             
             fig_ml = go.Figure()
             
-            # Trazamos la línea azul de fondo con todo el consumo normal
             fig_ml.add_trace(go.Scatter(
-                x=df_ml.index, 
-                y=df_ml['P_tot_kW'],
-                mode='lines',
-                name='Perfil de Carga (kW)',
-                line=dict(color='#3498db', width=2),
-                hovertemplate="<b>%{x|%d %b %Y - %H:%M}</b><br>Potencia: <b>%{y:.2f} kW</b><extra></extra>"
+                x=df_ml.index, y=df_ml['P_tot_kW'], mode='lines',
+                name='Perfil de Carga (kW)', line=dict(color='#3498db', width=2),
+                customdata=df_ml['nombre_dia'],
+                hovertemplate="<b>%{customdata}, %{x|%d %b - %H:%M}</b><br>Potencia: <b>%{y:.2f} kW</b><extra></extra>"
             ))
             
-            # Superponemos cruces ROJAS gigantes exactamente donde la IA detectó anomalías
             fig_ml.add_trace(go.Scatter(
-                x=anomalias.index, 
-                y=anomalias['P_tot_kW'],
-                mode='markers',
+                x=anomalias.index, y=anomalias['P_tot_kW'], mode='markers',
                 name='Anomalía Detectada',
                 marker=dict(color='#e74c3c', size=12, symbol='x', line=dict(width=2, color='darkred')),
-                hovertemplate="<b>⚠️ EVENTO ATÍPICO</b><br>%{x|%d %b %Y - %H:%M}<br>Potencia Aislada: <b>%{y:.2f} kW</b><extra></extra>"
+                customdata=anomalias['nombre_dia'],
+                # El cartelito ahora te resalta el día y la hora para que entiendas POR QUÉ es raro
+                hovertemplate="<b>⚠️ RUPTURA DE RUTINA</b><br>%{customdata}, %{x|%d %b - %H:%M}<br>Potencia: <b>%{y:.2f} kW</b><extra></extra>"
             ))
             
             fig_ml.update_layout(
-                template='plotly_white',
-                height=500,
-                hovermode='x unified',
+                template='plotly_white', height=500, hovermode='x unified',
                 legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
                 margin=dict(t=30, b=30, l=10, r=10),
                 yaxis=dict(title="Potencia Activa Total (kW)", gridcolor='#e5e8e8')
@@ -1024,11 +1025,11 @@ elif seccion == "🧠 Detección de Anomalías":
             
             st.plotly_chart(fig_ml, use_container_width=True)
 
-            # 7. Tabla detalle opcional
-            with st.expander("📋 Ver registro detallado de anomalías"):
-                st.dataframe(anomalias[['P_tot_kW']].rename(columns={'P_tot_kW': 'Potencia Anómala (kW)'}).sort_index(ascending=False), use_container_width=True)
+            # 6. Tabla detalle
+            with st.expander("📋 Ver registro detallado de anomalías contextuales"):
+                tabla_mostrar = anomalias[['nombre_dia', 'hora', 'P_tot_kW']].copy()
+                tabla_mostrar.columns = ['Día de la Semana', 'Hora del Día', 'Potencia (kW)']
+                st.dataframe(tabla_mostrar.sort_index(ascending=False), use_container_width=True)
 
-    except ImportError:
-        st.error("⚠️ Falta una librería. Abrí tu consola, frená Streamlit y ejecutá: `pip install scikit-learn`")
     except Exception as e:
         st.error(f"Error al ejecutar el modelo de IA: {e}")
