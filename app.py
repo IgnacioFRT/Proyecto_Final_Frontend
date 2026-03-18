@@ -932,7 +932,7 @@ elif seccion == "🌱 Huella de Carbono":
 # --- NUEVA VENTANA: DETECCIÓN DE ANOMALÍAS (MACHINE LEARNING) ---
 # =====================================================================
 
-elif seccion == "🤖 Detección de Anomalías":
+elif seccion == "🧠 Detección de Anomalías":
     st.markdown("""
         <style>
             .titulo-ml {
