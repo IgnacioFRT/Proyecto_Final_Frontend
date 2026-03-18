@@ -959,43 +959,49 @@ elif seccion == "🧠 Detección de Anomalías":
             df = obtener_datos_historicos()
             from sklearn.ensemble import IsolationForest
             
-            # 2. PREPARACIÓN: Agregamos contexto temporal
+            # 2. PREPARACIÓN NIVEL 2: Agregamos contexto temporal
             df_ml = df[['P_tot_kW']].dropna().copy()
+            
+            # Extraemos hora y día del índice de tiempo
             df_ml['hora'] = df_ml.index.hour
             df_ml['dia_semana'] = df_ml.index.dayofweek
             
             dias_map = {0:'Lunes', 1:'Martes', 2:'Miércoles', 3:'Jueves', 4:'Viernes', 5:'Sábado', 6:'Domingo'}
             df_ml['nombre_dia'] = df_ml['dia_semana'].map(dias_map)
             
-            # --- 3. PERFILADO ESTADÍSTICO DINÁMICO (Z-Score Contextual) ---
-            # A. Calculamos el comportamiento histórico esperado para CADA hora de CADA día
-            df_ml['media_esperada'] = df_ml.groupby(['dia_semana', 'hora'])['P_tot_kW'].transform('mean')
-            df_ml['desviacion_estandar'] = df_ml.groupby(['dia_semana', 'hora'])['P_tot_kW'].transform('std')
+            # 3. MÁQUINA DE APRENDIZAJE AUTOMÁTICO (Isolation Forest + Escalado)
+            # Importamos librerías necesarias
+            from sklearn.preprocessing import StandardScaler
+            from sklearn.ensemble import IsolationForest
             
-            # Evitamos errores matemáticos si hay horas con 0 variación (std = 0 o NaN)
-            df_ml['desviacion_estandar'] = df_ml['desviacion_estandar'].fillna(1.0).replace(0, 1.0)
+            # --- PASO CRUCIAL: ESCALADO MULTIDIMENSIONAL ---
+            # El StandardScaler pone la Potencia, Hora y Día en la misma escala (media 0, var 1)
+            # para que la IA no ignore el contexto temporal.
+            columnas_entrenamiento = ['P_tot_kW', 'hora', 'dia_semana']
+            scaler = StandardScaler()
+            datos_escalados = scaler.fit_transform(df_ml[columnas_entrenamiento])
             
-            # B. Calculamos el Z-Score: ¿Qué tan lejos está el dato real de su media esperada?
-            df_ml['z_score'] = abs((df_ml['P_tot_kW'] - df_ml['media_esperada']) / df_ml['desviacion_estandar'])
+            # --- ENTRENAMIENTO AUTOMÁTICO DE LA IA ---
+            # contamination=0.025 le dice a la IA: "Automaticamente detectame el top 2.5% de datos mas raros"
+            # No dependemos de perillas del usuario.
+            modelo_ia = IsolationForest(contamination=0.025, random_state=42)
+            df_ml['etiqueta_anomalia'] = modelo_ia.fit_predict(datos_escalados)
             
-            # C. Regla universal: Si se desvía más de 3 veces de lo normal (Z-Score > 3), es anomalía
-            df_ml['etiqueta_anomalia'] = (df_ml['z_score'] > 3).astype(int)
+            # Filtramos las anomalías detectadas por la IA
+            anomalias = df_ml[df_ml['etiqueta_anomalia'] == -1]
             
-            # Filtramos los eventos atípicos
-            anomalias = df_ml[df_ml['etiqueta_anomalia'] == 1]
-            
-            # 4. KPIs
+            # 4. KPIs (Actualizados conceptualmente para el Nivel 2)
             total_analizados = len(df_ml)
             total_detectadas = len(anomalias)
             porcentaje = (total_detectadas / total_analizados) * 100 if total_analizados > 0 else 0
 
-            st.markdown("#### 🔍 Auditoría Inteligente de Rutinas Eléctricas (Z-Score)")
-            st.caption("El sistema genera un perfil estadístico dinámico. Aprende el consumo esperado para cada hora y día de la semana, aislando de forma autónoma cualquier desviación que rompa la banda de normalidad estadística.")
+            st.markdown("#### 🧠 Detección de Anomalías Contextuales con Machine Learning")
+            st.caption("El modelo Isolation Forest analiza Potencia cruzas con Día y Hora, utilizando escalado de datos (StandardScaler) para una detección autónoma y precisa de rupturas de rutina, sin necesidad de calibración manual.")
             
             col1, col2, col3 = st.columns(3)
-            col1.metric("Registros Analizados", f"{total_analizados:,}")
-            col2.metric("Eventos Atípicos", f"{total_detectadas}", delta="Desviación > 3σ", delta_color="inverse")
-            col3.metric("Método de Análisis", "Perfilado Dinámico (Z-Score)")
+            col1.metric("Datos Analizados", f"{total_analizados:,}")
+            col2.metric("Anomalías Contextuales", f"{total_detectadas}", delta="Análisis 3D Automático", delta_color="normal")
+            col3.metric("Variables de IA", "Potencia + Día + Hora")
             st.write("---")
 
             # 5. GRÁFICO CON TOOLTIPS MEJORADOS
