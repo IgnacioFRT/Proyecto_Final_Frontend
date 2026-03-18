@@ -4,3 +4,4 @@ plotly
 openpyxl
 influxdb-client
 streamlit-autorefresh
+scikit-learn
