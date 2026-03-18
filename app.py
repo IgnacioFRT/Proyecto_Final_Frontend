@@ -959,7 +959,7 @@ elif seccion == "🧠 Detección de Anomalías":
             df = obtener_datos_historicos()
             from sklearn.ensemble import IsolationForest
             
-            # 2. PREPARACIÓN NIVEL 2: Agregamos contexto temporal
+            # 2. PREPARACIÓN: Agregamos contexto temporal
             df_ml = df[['P_tot_kW']].dropna().copy()
             df_ml['hora'] = df_ml.index.hour
             df_ml['dia_semana'] = df_ml.index.dayofweek
@@ -967,37 +967,35 @@ elif seccion == "🧠 Detección de Anomalías":
             dias_map = {0:'Lunes', 1:'Martes', 2:'Miércoles', 3:'Jueves', 4:'Viernes', 5:'Sábado', 6:'Domingo'}
             df_ml['nombre_dia'] = df_ml['dia_semana'].map(dias_map)
             
-            # --- NUEVO: CONTROL DE SENSIBILIDAD EN PANTALLA ---
-            st.markdown("#### ⚙️ Ajuste del Algoritmo")
-            sensibilidad = st.slider("Sensibilidad de Detección (%) - Más alto detecta anomalías más sutiles", min_value=1, max_value=15, value=4, step=1)
+            # --- 3. PERFILADO ESTADÍSTICO DINÁMICO (Z-Score Contextual) ---
+            # A. Calculamos el comportamiento histórico esperado para CADA hora de CADA día
+            df_ml['media_esperada'] = df_ml.groupby(['dia_semana', 'hora'])['P_tot_kW'].transform('mean')
+            df_ml['desviacion_estandar'] = df_ml.groupby(['dia_semana', 'hora'])['P_tot_kW'].transform('std')
             
-            # 3. ENTRENAMIENTO MULTIDIMENSIONAL Y ESCALADO
-            from sklearn.preprocessing import StandardScaler
+            # Evitamos errores matemáticos si hay horas con 0 variación (std = 0 o NaN)
+            df_ml['desviacion_estandar'] = df_ml['desviacion_estandar'].fillna(1.0).replace(0, 1.0)
             
-            # Normalizamos los datos para que el Día y la Hora "pesen" igual que los kW
-            scaler = StandardScaler()
-            columnas_entrenamiento = ['P_tot_kW', 'hora', 'dia_semana']
-            datos_escalados = scaler.fit_transform(df_ml[columnas_entrenamiento])
+            # B. Calculamos el Z-Score: ¿Qué tan lejos está el dato real de su media esperada?
+            df_ml['z_score'] = abs((df_ml['P_tot_kW'] - df_ml['media_esperada']) / df_ml['desviacion_estandar'])
             
-            # Entrenamos usando el slider que mueve el usuario
-            modelo_ia = IsolationForest(contamination=(sensibilidad / 100.0), random_state=42)
-            df_ml['etiqueta_anomalia'] = modelo_ia.fit_predict(datos_escalados)
+            # C. Regla universal: Si se desvía más de 3 veces de lo normal (Z-Score > 3), es anomalía
+            df_ml['etiqueta_anomalia'] = (df_ml['z_score'] > 3).astype(int)
             
-            anomalias = df_ml[df_ml['etiqueta_anomalia'] == -1]
+            # Filtramos los eventos atípicos
+            anomalias = df_ml[df_ml['etiqueta_anomalia'] == 1]
             
             # 4. KPIs
             total_analizados = len(df_ml)
             total_detectadas = len(anomalias)
             porcentaje = (total_detectadas / total_analizados) * 100 if total_analizados > 0 else 0
 
-            st.markdown("#### 🔍 Auditoría Inteligente de Rutinas Eléctricas")
-            st.caption("El modelo analiza la Potencia Total cruzada con el Día de la Semana y la Hora. Detecta consumos atípicos **incluso si el valor de potencia es bajo**, si este ocurre fuera del horario habitual.")
+            st.markdown("#### 🔍 Auditoría Inteligente de Rutinas Eléctricas (Z-Score)")
+            st.caption("El sistema genera un perfil estadístico dinámico. Aprende el consumo esperado para cada hora y día de la semana, aislando de forma autónoma cualquier desviación que rompa la banda de normalidad estadística.")
             
             col1, col2, col3 = st.columns(3)
             col1.metric("Registros Analizados", f"{total_analizados:,}")
-            col2.metric("Eventos Atípicos (2%)", f"{total_detectadas}", delta=f"Análisis Contextual 3D", delta_color="normal")
-            col3.metric("Variables Analizadas", "Potencia + Día + Hora")
-            
+            col2.metric("Eventos Atípicos", f"{total_detectadas}", delta="Desviación > 3σ", delta_color="inverse")
+            col3.metric("Método de Análisis", "Perfilado Dinámico (Z-Score)")
             st.write("---")
 
             # 5. GRÁFICO CON TOOLTIPS MEJORADOS
