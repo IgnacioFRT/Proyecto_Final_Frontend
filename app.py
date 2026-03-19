@@ -199,11 +199,13 @@ if seccion == "🏠 Inicio":
             banner_estado = True
             
     except Exception as e:
-        # Si no hay datos aún, usamos los valores de tu foto como respaldo
+        # Si no hay datos aún (ej. el sistema se está reiniciando)
         energia_total = 2933.4
-        fecha_str = "10/03/2026"
-        estado_texto = "↑ Sistema Activo"
-        estado_color = "#27ae60"
+        fecha_str = "Reconectando..."
+        estado_texto = "⚠️ Esperando datos..."
+        estado_color = "#f39c12" # Naranja
+        banner_estado = False    # <-- ¡ACÁ ESTÁ LA SOLUCIÓN AL ERROR!
+        diferencia_minutos = 0   # Para que no tire error el texto de abajo
 
     # --- DISEÑO CSS PARA LAS TARJETAS (CARDS) ---
     st.markdown("""
@@ -337,7 +339,7 @@ elif seccion == "🕒 Tiempo Real":
         with col_barras:
             st.plotly_chart(crear_barras_corriente(data.get("IL1",0), data.get("IL2",0), data.get("IL3",0)), use_container_width=True)
         with col_frec:
-            st.plotly_chart(crear_gauge_pro(data.get("Freq", 50.0), "Frecuencia", 60, "#9b59b6", " Hz"), use_container_width=True)
+            st.plotly_chart(crear_gauge_pro(data.get("Freq", 0), "Frecuencia", 60, "#9b59b6", " Hz"), use_container_width=True)
             
         st.divider()
         st.markdown("### 💎 Calidad de Energía")
