@@ -1015,10 +1015,19 @@ elif seccion == "🧠 Detección de Anomalías":
             anomalias = df_ml[df_ml['etiqueta_anomalia'] == -1]
             normales = df_ml[df_ml['etiqueta_anomalia'] == 1]
 
-            # --- CÁLCULO DEL PROMEDIO IDEAL (Solo Lunes a Viernes del mes de referencia) ---
-            # Acá aplicamos tu lógica de limpiar el fin de semana para sacar la silueta perfecta
+            # --- CÁLCULO DEL PROMEDIO IDEAL Y SU DISPERSIÓN (Banda de error) ---
             df_habiles_ideal = df_entrenamiento[df_entrenamiento['dia_semana'] <= 4]
-            perfil_ideal = df_habiles_ideal.groupby('hora')['P_tot_kW'].mean().reset_index()
+            
+            # Calculamos la media (Línea verde) y la desviación estándar (El "Error")
+            perfil_ideal_mean = df_habiles_ideal.groupby('hora')['P_tot_kW'].mean().reset_index()
+            perfil_ideal_std = df_habiles_ideal.groupby('hora')['P_tot_kW'].std().reset_index().fillna(0)
+            
+            perfil_ideal = pd.merge(perfil_ideal_mean, perfil_ideal_std, on='hora', suffixes=('_mean', '_std'))
+            
+            # Calculamos los límites superior e inferior (Media +/- 2 Desviaciones Estándar)
+            perfil_ideal['upper'] = perfil_ideal['P_tot_kW_mean'] + (2 * perfil_ideal['P_tot_kW_std'])
+            # Evitamos que el límite inferior sea negativo
+            perfil_ideal['lower'] = (perfil_ideal['P_tot_kW_mean'] - (2 * perfil_ideal['P_tot_kW_std'])).clip(lower=0)
 
             # --- KPIs ---
             st.markdown("#### 📊 Resultados de la Auditoría")
@@ -1070,10 +1079,23 @@ elif seccion == "🧠 Detección de Anomalías":
                     hoverinfo='skip'
                 ))
                 
-                # Línea Verde Gruesa (El promedio ideal calculado sin fines de semana)
+                # 1. Banda de Error (Límite Inferior) - Invisible pero sirve de base
                 fig_perfil.add_trace(go.Scatter(
-                    x=perfil_ideal['hora'], y=perfil_ideal['P_tot_kW'], mode='lines',
-                    name='Promedio Ideal (Línea Base)', line=dict(color='#2ecc71', width=4, dash='solid'),
+                    x=perfil_ideal['hora'], y=perfil_ideal['lower'], mode='lines',
+                    line=dict(width=0), showlegend=False, hoverinfo='skip'
+                ))
+                
+                # 2. Banda de Error (Límite Superior) - Rellena hasta el límite inferior
+                fig_perfil.add_trace(go.Scatter(
+                    x=perfil_ideal['hora'], y=perfil_ideal['upper'], mode='lines',
+                    fill='tonexty', fillcolor='rgba(46, 204, 113, 0.2)', line=dict(width=0),
+                    name='Margen de Dispersión (\u00B1 2\u03C3)', hoverinfo='skip'
+                ))
+
+                # 3. Línea Verde Gruesa (El promedio ideal en el centro de la banda)
+                fig_perfil.add_trace(go.Scatter(
+                    x=perfil_ideal['hora'], y=perfil_ideal['P_tot_kW_mean'], mode='lines',
+                    name='Promedio Ideal', line=dict(color='#2ecc71', width=3, dash='solid'),
                     hovertemplate="Hora: %{x}:00<br>Promedio Ideal: <b>%{y:.2f} kW</b><extra></extra>"
                 ))
                 
@@ -1085,11 +1107,3 @@ elif seccion == "🧠 Detección de Anomalías":
                     yaxis=dict(title="Potencia (kW)")
                 )
                 st.plotly_chart(fig_perfil, use_container_width=True)
-
-            with st.expander("📋 Ver tabla detallada de eventos anómalos"):
-                tabla_mostrar = anomalias[['nombre_dia', 'hora', 'P_tot_kW']].copy()
-                tabla_mostrar.columns = ['Día de la Semana', 'Hora del Día', 'Potencia (kW)']
-                st.dataframe(tabla_mostrar.sort_index(ascending=False), use_container_width=True)
-
-    except Exception as e:
-        st.error(f"Error al ejecutar el modelo de IA: {e}")
