@@ -182,16 +182,21 @@ if seccion == "🏠 Inicio":
         ultima_fecha = df_inicio.index.max()
         fecha_str = ultima_fecha.strftime("%d/%m/%Y %H:%M")
 
-        # Verificamos si está "En línea" (ej. si la última medición fue hace menos de 2 horas)
-        ahora = datetime.datetime.now(ultima_fecha.tzinfo)
-        diferencia = ahora - ultima_fecha
+        # Calculamos la diferencia de tiempo entre ahora y la última medición
+        tz_ar = pytz.timezone('America/Argentina/Buenos_Aires')
+        ahora = datetime.datetime.now(tz_ar)
         
-        if diferencia.total_seconds() < 1200: # 1200 segundos = 20min
-            estado_texto = "↑ Sistema Activo / En línea"
-            estado_color = "#27ae60" # Verde
+        # Calculamos los minutos de diferencia usando tu variable ultima_fecha
+        diferencia_minutos = (ahora - ultima_fecha).total_seconds() / 60
+        
+        if diferencia_minutos > 5:
+            estado_texto = "⚠️ SISTEMA FUERA DE LÍNEA (Posible Corte)"
+            estado_color = "#e74c3c" # Rojo para tu CSS
+            banner_estado = False # Variable para cambiar el cartel de abajo
         else:
-            estado_texto = "↓ Sistema Fuera de Línea"
-            estado_color = "#e74c3c" # Rojo
+            estado_texto = "✅ SISTEMA ACTIVO / EN LÍNEA"
+            estado_color = "#27ae60" # Verde para tu CSS
+            banner_estado = True
             
     except Exception as e:
         # Si no hay datos aún, usamos los valores de tu foto como respaldo
@@ -264,7 +269,10 @@ if seccion == "🏠 Inicio":
         """, unsafe_allow_html=True)
 
     st.write("") # Un pequeño espacio
-    st.success("✅ **Estado:** Sistema Operativo. Enlace con base de datos histórica InfluxDB establecido correctamente.")
+    if banner_estado:
+        st.success("✅ **Estado:** Sistema Operativo. Enlace con base de datos InfluxDB establecido.")
+    else:
+        st.error(f"❌ **Alerta de Sistema:** No se reciben datos del PAC3200 hace {int(diferencia_minutos)} minutos. Verifique la conexión o el suministro eléctrico.")
     st.divider()
 
     st.markdown("#### 🛠️ Arquitectura y Tecnologías Implementadas")
