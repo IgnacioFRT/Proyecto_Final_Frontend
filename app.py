@@ -1107,3 +1107,6 @@ elif seccion == "🧠 Detección de Anomalías":
                     yaxis=dict(title="Potencia (kW)")
                 )
                 st.plotly_chart(fig_perfil, use_container_width=True)
+
+except Exception as e:
+        st.error(f"Error al generar el análisis ambiental: {e}")
