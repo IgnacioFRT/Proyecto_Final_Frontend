@@ -312,7 +312,7 @@ elif seccion == "🕒 Tiempo Real":
     
     try:
         result = query_api.query(org=org, query=query)
-        data = { "Freq": 0.0, "temp": 0.0, "hum": 0.0, "wind": 0.0, "IL1": 0.0, "IL2": 0.0, "IL3": 0.0, "UL1N": 0.0, "UL2N": 0.0, "UL3N": 0.0, "FP1": 0.0, "FP2": 0.0, "FP3": 0.0, "THDv1": 0.0, "THDv2": 0.0, "THDv3": 0.0, "THDi1": 0.0, "THDi2": 0.0, "THDi3": 0.0 }
+        data = { "freq": 0.0, "temp": 0.0, "hum": 0.0, "wind": 0.0, "IL1": 0.0, "IL2": 0.0, "IL3": 0.0, "UL1N": 0.0, "UL2N": 0.0, "UL3N": 0.0, "FP1": 0.0, "FP2": 0.0, "FP3": 0.0, "THDv1": 0.0, "THDv2": 0.0, "THDv3": 0.0, "THDi1": 0.0, "THDi2": 0.0, "THDi3": 0.0 }
         
         for table in result:
             for record in table.records:
@@ -339,7 +339,7 @@ elif seccion == "🕒 Tiempo Real":
         with col_barras:
             st.plotly_chart(crear_barras_corriente(data.get("IL1",0), data.get("IL2",0), data.get("IL3",0)), use_container_width=True)
         with col_frec:
-            st.plotly_chart(crear_gauge_pro(data.get("Freq", 0), "Frecuencia", 60, "#9b59b6", " Hz"), use_container_width=True)
+            st.plotly_chart(crear_gauge_pro(data.get("freq", 0), "Frecuencia", 60, "#9b59b6", " Hz"), use_container_width=True)
             
         st.divider()
         st.markdown("### 💎 Calidad de Energía")
