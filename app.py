@@ -939,10 +939,12 @@ elif seccion == "🌱 Huella de Carbono":
         st.error(f"Error al generar el análisis ambiental: {e}")
 
 # =====================================================================
-# --- VENTANA: DETECCIÓN DE ANOMALÍAS (LÍNEA BASE Y PERFIL IDEAL) ---
+# --- VENTANA: DETECCIÓN DE ANOMALÍAS (AUDITORÍA QUIRÚRGICA) ---
 # =====================================================================
 
 elif seccion == "🧠 Detección de Anomalías":
+    import numpy as np # <-- Agregado para que no tire error el gráfico 3D
+
     st.markdown("""
         <style>
             .titulo-ml {
@@ -975,78 +977,80 @@ elif seccion == "🧠 Detección de Anomalías":
                           7:'Julio', 8:'Agosto', 9:'Septiembre', 10:'Octubre', 11:'Noviembre', 12:'Diciembre'}
             df_ml['mes_str'] = df_ml.index.month.map(meses_trad) + " " + df_ml.index.year.astype(str)
             
-            # --- INTERFAZ: SELECTOR DE LÍNEA BASE ---
-            st.markdown("#### ⚙️ Configuración del Modelo")
+            # --- INTERFAZ: DOBLE SELECTOR (TU IDEA GENIAL) ---
+            st.markdown("#### ⚙️ Configuración de la Auditoría")
             meses_disponibles = df_ml['mes_str'].unique().tolist()
             
-            # Buscamos si "Noviembre" está en la lista para ponerlo por defecto
             indice_noviembre = 0
             for i, m in enumerate(meses_disponibles):
                 if "Noviembre" in m:
                     indice_noviembre = i
                     break
             
-            col_sel, col_info = st.columns([1, 2])
-            with col_sel:
-                mes_referencia = st.selectbox("Seleccionar Mes de Referencia (Comportamiento Ideal):", meses_disponibles, index=indice_noviembre)
+            col_sel1, col_sel2, col_info = st.columns([1, 1, 1.5])
+            with col_sel1:
+                mes_referencia = st.selectbox("1️⃣ Entrenar IA con (Mes Ideal):", meses_disponibles, index=indice_noviembre)
+            with col_sel2:
+                opciones_auditoria = ["Todo el historial"] + meses_disponibles
+                mes_auditoria = st.selectbox("2️⃣ Mes a Auditar (Evaluación):", opciones_auditoria, index=0)
             with col_info:
-                st.info(f"La IA aprenderá la rutina de **{mes_referencia}**. Además, se calculará el 'Promedio Ideal' (Línea Verde) y su Margen de Error Estadístico filtrando sábados y domingos para visualizar el patrón operativo normal.")
+                st.info(f"La IA aprende las reglas de **{mes_referencia}** y busca desviaciones exclusivamente en **{mes_auditoria}**.")
 
             st.write("---")
 
-            # --- MACHINE LEARNING: ENTRENAMIENTO EXCLUSIVO ---
+            # --- MACHINE LEARNING: ENTRENAMIENTO ---
             from sklearn.preprocessing import StandardScaler
             from sklearn.ensemble import IsolationForest
             
-            # 1. Separamos los datos del mes "Ideal"
+            # 1. Entrenamos SOLO con el mes de referencia
             df_entrenamiento = df_ml[df_ml['mes_str'] == mes_referencia].copy()
-            
             columnas_features = ['P_tot_kW', 'hora', 'dia_semana']
             scaler = StandardScaler()
             
-            # Entrenamos el escalador y la IA SOLO con el mes de referencia
             datos_entrenamiento_escalados = scaler.fit_transform(df_entrenamiento[columnas_features])
-            modelo_ia = IsolationForest(contamination=0.015, random_state=42) # 1.5% de contaminación esperada
+            modelo_ia = IsolationForest(contamination=0.015, random_state=42)
             modelo_ia.fit(datos_entrenamiento_escalados)
             
-            # 2. AUDITORÍA: Evaluamos TODO el año
-            datos_totales_escalados = scaler.transform(df_ml[columnas_features])
-            df_ml['etiqueta_anomalia'] = modelo_ia.predict(datos_totales_escalados)
-            anomalias = df_ml[df_ml['etiqueta_anomalia'] == -1]
-            normales = df_ml[df_ml['etiqueta_anomalia'] == 1]
+            # 2. AUDITORÍA: Filtramos los datos según el segundo selector
+            if mes_auditoria == "Todo el historial":
+                df_evaluacion = df_ml.copy()
+            else:
+                df_evaluacion = df_ml[df_ml['mes_str'] == mes_auditoria].copy()
 
-            # --- CÁLCULO DEL PROMEDIO IDEAL Y SU DISPERSIÓN (Banda de error) ---
-            df_habiles_ideal = df_entrenamiento[df_entrenamiento['dia_semana'] <= 4]
+            # Evaluamos solo el mes seleccionado (o todo)
+            datos_evaluar_escalados = scaler.transform(df_evaluacion[columnas_features])
+            df_evaluacion['etiqueta_anomalia'] = modelo_ia.predict(datos_evaluar_escalados)
             
-            # Calculamos la media (Línea verde) y la desviación estándar (El "Error")
+            anomalias = df_evaluacion[df_evaluacion['etiqueta_anomalia'] == -1]
+            normales = df_evaluacion[df_evaluacion['etiqueta_anomalia'] == 1]
+
+            # --- CÁLCULO DEL PROMEDIO IDEAL (Siempre basado en el entrenamiento) ---
+            df_habiles_ideal = df_entrenamiento[df_entrenamiento['dia_semana'] <= 4]
             perfil_ideal_mean = df_habiles_ideal.groupby('hora')['P_tot_kW'].mean().reset_index()
             perfil_ideal_std = df_habiles_ideal.groupby('hora')['P_tot_kW'].std().reset_index().fillna(0)
             
             perfil_ideal = pd.merge(perfil_ideal_mean, perfil_ideal_std, on='hora', suffixes=('_mean', '_std'))
-            
-            # Calculamos los límites superior e inferior (Media +/- 2 Desviaciones Estándar)
             perfil_ideal['upper'] = perfil_ideal['P_tot_kW_mean'] + (2 * perfil_ideal['P_tot_kW_std'])
-            # Evitamos que el límite inferior sea negativo
             perfil_ideal['lower'] = (perfil_ideal['P_tot_kW_mean'] - (2 * perfil_ideal['P_tot_kW_std'])).clip(lower=0)
 
             # --- KPIs ---
             st.markdown("#### 📊 Resultados de la Auditoría")
             col1, col2, col3 = st.columns(3)
-            col1.metric("Registros Evaluados", f"{len(df_ml):,}")
-            col2.metric("Anomalías Detectadas", f"{len(anomalias)}", delta="Outliers encontrados", delta_color="inverse")
-            col3.metric("Línea Base", mes_referencia)
+            col1.metric("Registros Evaluados", f"{len(df_evaluacion):,}")
+            col2.metric("Anomalías Detectadas", f"{len(anomalias)}", delta=f"Outliers en {mes_auditoria}", delta_color="inverse")
+            col3.metric("Línea Base Usada", mes_referencia)
 
             # --- GRÁFICOS ---
             col_graf1, col_graf2 = st.columns([1.5, 1])
 
             with col_graf1:
-                st.markdown("###### Evolución Temporal y Eventos Aislados")
+                st.markdown(f"###### Evolución Temporal ({mes_auditoria})")
                 fig_tiempo = go.Figure()
                 
                 fig_tiempo.add_trace(go.Scatter(
-                    x=df_ml.index, y=df_ml['P_tot_kW'], mode='lines',
+                    x=df_evaluacion.index, y=df_evaluacion['P_tot_kW'], mode='lines',
                     name='Perfil de Carga', line=dict(color='#3498db', width=1),
-                    customdata=df_ml['nombre_dia'],
+                    customdata=df_evaluacion['nombre_dia'],
                     hovertemplate="%{customdata}, %{x|%d %b - %H:%M}<br>Potencia: <b>%{y:.2f} kW</b><extra></extra>"
                 ))
                 
@@ -1065,38 +1069,31 @@ elif seccion == "🧠 Detección de Anomalías":
                 st.markdown("###### Dispersión vs Patrón Ideal (Lu-Vi)")
                 fig_perfil = go.Figure()
                 
-                # Nube Azul (Todos los datos normales de todo el año)
                 fig_perfil.add_trace(go.Scatter(
                     x=normales['hora'], y=normales['P_tot_kW'], mode='markers',
-                    name='Rutina Normal', marker=dict(color='rgba(52, 152, 219, 0.3)', size=4),
-                    hoverinfo='skip'
+                    name='Rutina Normal', marker=dict(color='rgba(52, 152, 219, 0.4)', size=4), hoverinfo='skip'
                 ))
                 
-                # Nube Roja (Las anomalías)
                 fig_perfil.add_trace(go.Scatter(
                     x=anomalias['hora'], y=anomalias['P_tot_kW'], mode='markers',
-                    name='Outliers', marker=dict(color='#e74c3c', size=6, symbol='cross'),
-                    hoverinfo='skip'
+                    name='Outliers', marker=dict(color='#e74c3c', size=6, symbol='cross'), hoverinfo='skip'
                 ))
                 
-                # 1. Banda de Error (Límite Inferior) - Invisible pero sirve de base
                 fig_perfil.add_trace(go.Scatter(
                     x=perfil_ideal['hora'], y=perfil_ideal['lower'], mode='lines',
                     line=dict(width=0), showlegend=False, hoverinfo='skip'
                 ))
                 
-                # 2. Banda de Error (Límite Superior) - Rellena hasta el límite inferior
                 fig_perfil.add_trace(go.Scatter(
                     x=perfil_ideal['hora'], y=perfil_ideal['upper'], mode='lines',
                     fill='tonexty', fillcolor='rgba(46, 204, 113, 0.2)', line=dict(width=0),
-                    name='Margen de Dispersión (±2σ)', hoverinfo='skip'
+                    name='Margen Ideal (±2σ)', hoverinfo='skip'
                 ))
 
-                # 3. Línea Verde Gruesa (El promedio ideal en el centro de la banda)
                 fig_perfil.add_trace(go.Scatter(
                     x=perfil_ideal['hora'], y=perfil_ideal['P_tot_kW_mean'], mode='lines',
                     name='Promedio Ideal', line=dict(color='#2ecc71', width=3, dash='solid'),
-                    hovertemplate="Hora: %{x}:00<br>Promedio Ideal: <b>%{y:.2f} kW</b><extra></extra>"
+                    hovertemplate="Hora: %{x}:00<br>Promedio: <b>%{y:.2f} kW</b><extra></extra>"
                 ))
                 
                 fig_perfil.update_layout(
@@ -1110,36 +1107,31 @@ elif seccion == "🧠 Detección de Anomalías":
 
             # --- GRÁFICO 3D MULTIDIMENSIONAL ---
             st.write("---")
-            st.markdown("###### 🌌 Visión 3D del Aislamiento (Por qué la IA ve lo que nosotros no)")
-            st.caption("Girá el gráfico con el mouse. Vas a notar que los puntos rojos que parecían estar 'dentro' de la nube normal, en realidad están flotando aislados en los días del fin de semana (Sáb/Dom).")
+            st.markdown(f"###### 🌌 Visión 3D del Aislamiento ({mes_auditoria})")
+            st.caption("Girá el gráfico con el mouse. Vas a notar que los puntos rojos flotan aislados en los días del fin de semana (Sáb/Dom).")
             
             fig_3d = go.Figure()
             
-            # Puntos Normales (Azules/Celestes)
             fig_3d.add_trace(go.Scatter3d(
                 x=normales['hora'], y=normales['dia_semana'], z=normales['P_tot_kW'],
                 mode='markers', name='Rutina Normal',
                 marker=dict(size=3, color='rgba(52, 152, 219, 0.4)'),
-                # Le pasamos el nombre del día Y la fecha exacta formateada
                 customdata=np.stack((normales['nombre_dia'], normales.index.strftime('%d %b %Y')), axis=-1),
                 hovertemplate="<b>%{customdata[1]}</b> (%{customdata[0]})<br>Hora: %{x}:00<br>Potencia: %{z:.2f} kW<extra></extra>"
             ))
             
-            # Puntos Anómalos (Rojos)
             fig_3d.add_trace(go.Scatter3d(
                 x=anomalias['hora'], y=anomalias['dia_semana'], z=anomalias['P_tot_kW'],
                 mode='markers', name='Outliers',
                 marker=dict(size=5, color='#e74c3c', symbol='cross'),
-                # Le pasamos el nombre del día Y la fecha exacta formateada
                 customdata=np.stack((anomalias['nombre_dia'], anomalias.index.strftime('%d %b %Y')), axis=-1),
                 hovertemplate="<b>⚠️ ANOMALÍA</b><br><b>%{customdata[1]}</b> (%{customdata[0]})<br>Hora: %{x}:00<br>Potencia: %{z:.2f} kW<extra></extra>"
             ))
             
-            # Configuración de los ejes en 3D
             fig_3d.update_layout(
                 scene=dict(
                     xaxis=dict(title='Hora (0-23)'),
-                    yaxis=dict(title='Día de la Semana', tickvals=[0,1,2,3,4,5,6], ticktext=['Lun','Mar','Mié','Jue','Vie','Sáb','Dom']),
+                    yaxis=dict(title='Día de la Sem.', tickvals=[0,1,2,3,4,5,6], ticktext=['Lun','Mar','Mié','Jue','Vie','Sáb','Dom']),
                     zaxis=dict(title='Potencia (kW)')
                 ),
                 margin=dict(l=0, r=0, b=0, t=0),
@@ -1148,7 +1140,7 @@ elif seccion == "🧠 Detección de Anomalías":
                 template='plotly_white'
             )
             st.plotly_chart(fig_3d, use_container_width=True)
-            
+
             with st.expander("📋 Ver tabla detallada de eventos anómalos"):
                 tabla_mostrar = anomalias[['nombre_dia', 'hora', 'P_tot_kW']].copy()
                 tabla_mostrar.columns = ['Día de la Semana', 'Hora del Día', 'Potencia (kW)']
