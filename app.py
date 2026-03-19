@@ -1114,13 +1114,14 @@ elif seccion == "🧠 Detección de Anomalías":
             
             fig_3d = go.Figure()
             
-            # Puntos Normales (Azules)
+            # Puntos Normales (Azules/Celestes)
             fig_3d.add_trace(go.Scatter3d(
                 x=normales['hora'], y=normales['dia_semana'], z=normales['P_tot_kW'],
                 mode='markers', name='Rutina Normal',
                 marker=dict(size=3, color='rgba(52, 152, 219, 0.4)'),
-                customdata=normales['nombre_dia'],
-                hovertemplate="Día: %{customdata}<br>Hora: %{x}:00<br>Potencia: %{z:.2f} kW<extra></extra>"
+                # Le pasamos el nombre del día Y la fecha exacta formateada
+                customdata=np.stack((normales['nombre_dia'], normales.index.strftime('%d %b %Y')), axis=-1),
+                hovertemplate="<b>%{customdata[1]}</b> (%{customdata[0]})<br>Hora: %{x}:00<br>Potencia: %{z:.2f} kW<extra></extra>"
             ))
             
             # Puntos Anómalos (Rojos)
@@ -1128,8 +1129,9 @@ elif seccion == "🧠 Detección de Anomalías":
                 x=anomalias['hora'], y=anomalias['dia_semana'], z=anomalias['P_tot_kW'],
                 mode='markers', name='Outliers',
                 marker=dict(size=5, color='#e74c3c', symbol='cross'),
-                customdata=anomalias['nombre_dia'],
-                hovertemplate="⚠️ ANOMALÍA<br>Día: %{customdata}<br>Hora: %{x}:00<br>Potencia: %{z:.2f} kW<extra></extra>"
+                # Le pasamos el nombre del día Y la fecha exacta formateada
+                customdata=np.stack((anomalias['nombre_dia'], anomalias.index.strftime('%d %b %Y')), axis=-1),
+                hovertemplate="<b>⚠️ ANOMALÍA</b><br><b>%{customdata[1]}</b> (%{customdata[0]})<br>Hora: %{x}:00<br>Potencia: %{z:.2f} kW<extra></extra>"
             ))
             
             # Configuración de los ejes en 3D
