@@ -937,7 +937,6 @@ elif seccion == "🌱 Huella de Carbono":
     except Exception as e:
         st.error(f"Error al generar el análisis ambiental: {e}")
 
-
 # =====================================================================
 # --- VENTANA: DETECCIÓN DE ANOMALÍAS (LÍNEA BASE Y PERFIL IDEAL) ---
 # =====================================================================
@@ -990,7 +989,7 @@ elif seccion == "🧠 Detección de Anomalías":
             with col_sel:
                 mes_referencia = st.selectbox("Seleccionar Mes de Referencia (Comportamiento Ideal):", meses_disponibles, index=indice_noviembre)
             with col_info:
-                st.info(f"La IA aprenderá la rutina de **{mes_referencia}**. Además, se calculará el 'Promedio Ideal' filtrando sábados y domingos para visualizar el patrón.")
+                st.info(f"La IA aprenderá la rutina de **{mes_referencia}**. Además, se calculará el 'Promedio Ideal' (Línea Verde) y su Margen de Error Estadístico filtrando sábados y domingos para visualizar el patrón operativo normal.")
 
             st.write("---")
 
@@ -1089,7 +1088,7 @@ elif seccion == "🧠 Detección de Anomalías":
                 fig_perfil.add_trace(go.Scatter(
                     x=perfil_ideal['hora'], y=perfil_ideal['upper'], mode='lines',
                     fill='tonexty', fillcolor='rgba(46, 204, 113, 0.2)', line=dict(width=0),
-                    name='Margen de Dispersión (\u00B1 2\u03C3)', hoverinfo='skip'
+                    name='Margen de Dispersión (±2σ)', hoverinfo='skip'
                 ))
 
                 # 3. Línea Verde Gruesa (El promedio ideal en el centro de la banda)
@@ -1108,5 +1107,10 @@ elif seccion == "🧠 Detección de Anomalías":
                 )
                 st.plotly_chart(fig_perfil, use_container_width=True)
 
-except Exception as e:
-        st.error(f"Error al generar el análisis ambiental: {e}")
+            with st.expander("📋 Ver tabla detallada de eventos anómalos"):
+                tabla_mostrar = anomalias[['nombre_dia', 'hora', 'P_tot_kW']].copy()
+                tabla_mostrar.columns = ['Día de la Semana', 'Hora del Día', 'Potencia (kW)']
+                st.dataframe(tabla_mostrar.sort_index(ascending=False), use_container_width=True)
+
+    except Exception as e:
+        st.error(f"Error al ejecutar el modelo de IA: {e}")
