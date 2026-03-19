@@ -1107,6 +1107,45 @@ elif seccion == "🧠 Detección de Anomalías":
                 )
                 st.plotly_chart(fig_perfil, use_container_width=True)
 
+            # --- GRÁFICO 3D MULTIDIMENSIONAL ---
+            st.write("---")
+            st.markdown("###### 🌌 Visión 3D del Aislamiento (Por qué la IA ve lo que nosotros no)")
+            st.caption("Girá el gráfico con el mouse. Vas a notar que los puntos rojos que parecían estar 'dentro' de la nube normal, en realidad están flotando aislados en los días del fin de semana (Sáb/Dom).")
+            
+            fig_3d = go.Figure()
+            
+            # Puntos Normales (Azules)
+            fig_3d.add_trace(go.Scatter3d(
+                x=normales['hora'], y=normales['dia_semana'], z=normales['P_tot_kW'],
+                mode='markers', name='Rutina Normal',
+                marker=dict(size=3, color='rgba(52, 152, 219, 0.4)'),
+                customdata=normales['nombre_dia'],
+                hovertemplate="Día: %{customdata}<br>Hora: %{x}:00<br>Potencia: %{z:.2f} kW<extra></extra>"
+            ))
+            
+            # Puntos Anómalos (Rojos)
+            fig_3d.add_trace(go.Scatter3d(
+                x=anomalias['hora'], y=anomalias['dia_semana'], z=anomalias['P_tot_kW'],
+                mode='markers', name='Outliers',
+                marker=dict(size=5, color='#e74c3c', symbol='cross'),
+                customdata=anomalias['nombre_dia'],
+                hovertemplate="⚠️ ANOMALÍA<br>Día: %{customdata}<br>Hora: %{x}:00<br>Potencia: %{z:.2f} kW<extra></extra>"
+            ))
+            
+            # Configuración de los ejes en 3D
+            fig_3d.update_layout(
+                scene=dict(
+                    xaxis=dict(title='Hora (0-23)'),
+                    yaxis=dict(title='Día de la Semana', tickvals=[0,1,2,3,4,5,6], ticktext=['Lun','Mar','Mié','Jue','Vie','Sáb','Dom']),
+                    zaxis=dict(title='Potencia (kW)')
+                ),
+                margin=dict(l=0, r=0, b=0, t=0),
+                height=550,
+                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+                template='plotly_white'
+            )
+            st.plotly_chart(fig_3d, use_container_width=True)
+            
             with st.expander("📋 Ver tabla detallada de eventos anómalos"):
                 tabla_mostrar = anomalias[['nombre_dia', 'hora', 'P_tot_kW']].copy()
                 tabla_mostrar.columns = ['Día de la Semana', 'Hora del Día', 'Potencia (kW)']
