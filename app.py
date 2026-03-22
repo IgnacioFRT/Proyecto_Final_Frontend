@@ -158,7 +158,7 @@ st.markdown("""
 # --- VENTANA: INICIO (ESTADO EN TIEMPO REAL ANTI-CACHÉ) ---
 # =====================================================================
 
-elif seccion == "🏠 Inicio":
+if seccion == "🏠 Inicio":
     # Refrescar automáticamente cada 5 minutos
     st_autorefresh(interval=300000, limit=None, key="refresh_inicio")
     
