@@ -154,11 +154,12 @@ st.markdown("""
     <h1 class="titulo-personalizado">⚡ Sistema de Gestión Energética ⚡</h1>
 """, unsafe_allow_html=True)
 
-# --- VENTANA INICIO ---
+# =====================================================================
+# --- VENTANA: INICIO (ESTADO EN TIEMPO REAL ANTI-CACHÉ) ---
+# =====================================================================
 
-if seccion == "🏠 Inicio":
-
-    # Refrescar automáticamente cada 5 minutos (300,000 milisegundos)
+elif seccion == "🏠 Inicio":
+    # Refrescar automáticamente cada 5 minutos
     st_autorefresh(interval=300000, limit=None, key="refresh_inicio")
     
     espacio1, col_logo_central, espacio3 = st.columns([1, 1.5, 1])
@@ -166,7 +167,7 @@ if seccion == "🏠 Inicio":
         try:
             st.image("logo_principal.jpg", use_container_width=True)
         except:
-            st.error("Falta logo_principal.jpg")
+            pass # Si no encuentra el logo, no rompe nada
     
     st.markdown("<h2 style='text-align: center; color: #34495e;'>Facultad Regional Tucumán (UTN FRT)</h2>", unsafe_allow_html=True)
     st.markdown("<h4 style='text-align: center; color: #7f8c8d;'>Departamento de Ingeniería Electrónica</h4>", unsafe_allow_html=True)
@@ -175,78 +176,78 @@ if seccion == "🏠 Inicio":
 
     st.markdown("#### 📊 Resumen Global del Sistema")
 
-    # --- LÓGICA DE DATOS DINÁMICOS ULTIMA MEDICIÓN Y HORA ---
+    # --- 1. LÓGICA DE ESTADO (PING DIRECTO A INFLUXDB, SIN CACHÉ) ---
+    import datetime
+    tz_ar = pytz.timezone('America/Argentina/Buenos_Aires')
+    
+    url = "https://influxdb.utn.xrob.com.ar"
+    token = "VPJoZH--S2GGPNNhfmWVUsZEaHqV4h1wkOX235FSfhk6GkitChp2e-8DxQ7O1ns6s7VwpKnmE-Evj7KYhLcWJQ=="
+    org = "ec1aafe9e31ba7af"
+    bucket = "UTN FRT"
+    
+    banner_estado = False
+    diferencia_minutos = 0
+    fecha_str = "Conectando..."
+    
     try:
-        # Intentamos obtener los datos reales de tu función
-        df_inicio = obtener_datos_historicos()
-        energia_total = df_inicio['EA_imp_T1_kwh'].max() - df_inicio['EA_imp_T1_kwh'].min()
-        ultima_fecha = df_inicio.index.max()
-        fecha_str = ultima_fecha.strftime("%d/%m/%Y %H:%M")
-
-        # Calculamos la diferencia de tiempo entre ahora y la última medición
-        tz_ar = pytz.timezone('America/Argentina/Buenos_Aires')
-        ahora = datetime.datetime.now(tz_ar)
+        # Hacemos una consulta súper rápida solo para ver el último pulso de vida
+        client = InfluxDBClient(url=url, token=token, org=org)
+        query_api = client.query_api()
+        query_ping = f'''
+            from(bucket: "{bucket}")
+              |> range(start: -15m) 
+              |> filter(fn: (r) => r._measurement == "pruebas_fn")
+              |> filter(fn: (r) => r.deviceID == "08B764")
+              |> last()
+        '''
+        result_ping = query_api.query(org=org, query=query_ping)
         
-        # Calculamos los minutos de diferencia usando tu variable ultima_fecha
-        diferencia_minutos = (ahora - ultima_fecha).total_seconds() / 60
+        ultima_hora_real = None
+        for table in result_ping:
+            for record in table.records:
+                t = record.get_time()
+                if ultima_hora_real is None or t > ultima_hora_real:
+                    ultima_hora_real = t
+                    
+        # Comparamos estrictamente en UTC para evitar errores de zona horaria
+        ahora_utc = datetime.datetime.now(datetime.timezone.utc)
         
-        if diferencia_minutos > 5:
-            estado_texto = "⚠️ SISTEMA FUERA DE LÍNEA (Posible Corte)"
-            estado_color = "#e74c3c" # Rojo para tu CSS
-            banner_estado = False # Variable para cambiar el cartel de abajo
+        if ultima_hora_real is not None:
+            diferencia_minutos = (ahora_utc - ultima_hora_real).total_seconds() / 60
+            fecha_str = ultima_hora_real.astimezone(tz_ar).strftime("%d/%m/%Y %H:%M:%S")
+            
+            if diferencia_minutos <= 5:
+                estado_texto = "✅ SISTEMA ACTIVO / EN LÍNEA"
+                estado_color = "#27ae60" # Verde
+                banner_estado = True
+            else:
+                estado_texto = "⚠️ SISTEMA FUERA DE LÍNEA (Posible Corte)"
+                estado_color = "#e74c3c" # Rojo
+                banner_estado = False
         else:
-            estado_texto = "✅ SISTEMA ACTIVO / EN LÍNEA"
-            estado_color = "#27ae60" # Verde para tu CSS
-            banner_estado = True
+            estado_texto = "⚠️ SISTEMA FUERA DE LÍNEA (Sin datos)"
+            estado_color = "#e74c3c" # Rojo
             
     except Exception as e:
-        # Si no hay datos aún (ej. el sistema se está reiniciando)
-        energia_total = 2933.4
-        fecha_str = "Reconectando..."
-        estado_texto = "⚠️ Esperando datos..."
-        estado_color = "#f39c12" # Naranja
-        banner_estado = False    # <-- ¡ACÁ ESTÁ LA SOLUCIÓN AL ERROR!
-        diferencia_minutos = 0   # Para que no tire error el texto de abajo
+        estado_texto = "⚠️ Error de conexión al servidor"
+        estado_color = "#e74c3c" # Rojo
 
-    # --- DISEÑO CSS PARA LAS TARJETAS (CARDS) ---
+    # --- 2. LÓGICA DE ENERGÍA TOTAL (USA DATOS HISTÓRICOS) ---
+    try:
+        df_inicio = obtener_datos_historicos()
+        energia_total = df_inicio['EA_imp_T1_kwh'].max() - df_inicio['EA_imp_T1_kwh'].min()
+    except:
+        energia_total = 0.0
+
+    # --- DISEÑO CSS PARA LAS TARJETAS ---
     st.markdown("""
     <style>
-        .kpi-card {
-            background-color: #f4f7f9; /* Fondo gris-azulado muy claro */
-            border: 1px solid #dce4e6; /* Borde sutil */
-            border-radius: 12px;       /* Bordes redondeados */
-            padding: 25px 20px;
-            text-align: center;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.05); /* Sombra muy suave */
-            transition: transform 0.2s;
-        }
-        .kpi-card:hover {
-            transform: translateY(-2px); /* Pequeño efecto al pasar el mouse */
-        }
-        .kpi-title {
-            color: #5d6d7e;
-            font-size: 16px;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-bottom: 10px;
-        }
-        .kpi-value {
-            color: #2b3a4a;
-            font-size: 42px;
-            font-weight: 800;
-            margin: 10px 0;
-        }
-        .kpi-unidad {
-            font-size: 20px;
-            font-weight: 500;
-            color: #7f8c8d;
-        }
-        .kpi-delta {
-            font-size: 14px;
-            font-weight: bold;
-            margin-top: 10px;
-        }
+        .kpi-card { background-color: #f4f7f9; border: 1px solid #dce4e6; border-radius: 12px; padding: 25px 20px; text-align: center; box-shadow: 0 4px 6px rgba(0,0,0,0.05); transition: transform 0.2s; }
+        .kpi-card:hover { transform: translateY(-2px); }
+        .kpi-title { color: #5d6d7e; font-size: 16px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px; }
+        .kpi-value { color: #2b3a4a; font-size: 42px; font-weight: 800; margin: 10px 0; }
+        .kpi-unidad { font-size: 20px; font-weight: 500; color: #7f8c8d; }
+        .kpi-delta { font-size: 14px; font-weight: bold; margin-top: 10px; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -267,15 +268,21 @@ if seccion == "🏠 Inicio":
         <div class="kpi-card">
             <div class="kpi-title">Última Medición Verificada</div>
             <div class="kpi-value" style="font-size: 34px; padding-top: 8px;">{fecha_str}</div>
-            <div class="kpi-delta" style="color: #7f8c8d;">Sincronizado con InfluxDB</div>
+            <div class="kpi-delta" style="color: #7f8c8d;">Sincronizado directo con InfluxDB</div>
         </div>
         """, unsafe_allow_html=True)
 
     st.write("") # Un pequeño espacio
+    
+    # Cartel inferior dinámico
     if banner_estado:
-        st.success("✅ **Estado:** Sistema Operativo. Enlace con base de datos InfluxDB establecido.")
+        st.success("✅ **Estado:** Sistema Operativo. Enlace con base de datos InfluxDB establecido en tiempo real.")
     else:
-        st.error(f"❌ **Alerta de Sistema:** No se reciben datos del PAC3200 hace {int(diferencia_minutos)} minutos. Verifique la conexión o el suministro eléctrico.")
+        if diferencia_minutos > 0:
+            st.error(f"❌ **Alerta de Sistema:** No se reciben datos del PAC3200 hace {int(diferencia_minutos)} minutos. Verifique la conexión o el suministro eléctrico.")
+        else:
+            st.error("❌ **Alerta de Sistema:** No se pudo establecer conexión con InfluxDB.")
+            
     st.divider()
 
     st.markdown("#### 🛠️ Arquitectura y Tecnologías Implementadas")
