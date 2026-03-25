@@ -724,11 +724,17 @@ elif seccion == "📶 Calidad (QoS)":
                 fig_trend.add_trace(go.Scatter(
                     x=meses_labels, y=porcentajes_mes, mode='lines+markers+text',
                     marker=dict(size=14, color='#1f77b4', line=dict(width=2, color='white')),
-                    line=dict(width=4, color='#1f77b4'), text=[f"{p:.1f}%" for p in porcentajes_mes],
+                    line=dict(width=4, color='#1f77b4'), 
+                    # TRUCO 1: Le agregamos <b> para que los numeritos arriba de los puntos sean negrita
+                    text=[f"<b>{p:.1f}%</b>" for p in porcentajes_mes],
                     textposition='top center', customdata=list(zip(reales_lista, esperados_lista)),
-                    hovertemplate="<b>%{x}</b><br>Disponibilidad: <b>%{y:.2f}%</b><br>Registros: %{customdata[0]:,} / %{customdata[1]:,}<extra></extra>"
+                    hovertemplate="<b>%{x}</b><br>Disponibilidad: <b>%{y:.2f}%</b><br>Registros: %{customdata[0]:,} / %{customdata[1]:,}<extra></extra>",
+                    # TRUCO 2: Forzamos que esos numeritos sean color negro
+                    textfont=dict(color='black', size=13)
                 ))
                 fig_trend.update_layout(height=420, margin=dict(t=40, b=40, l=40, r=20),
+                    # TRUCO 3: Forzamos que todos los números de los bordes (los ejes) sean negros
+                    font=dict(color='black'), 
                     yaxis=dict(title="Disponibilidad (%)", range=[max(0, min(porcentajes_mes)-10), 105], gridcolor='#e5e8e8'),
                     xaxis=dict(gridcolor='#e5e8e8'), template='plotly_white'
                 )
