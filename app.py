@@ -718,7 +718,7 @@ elif seccion == "📶 Calidad (QoS)":
             # --- FILA 1: ESTADÍSTICAS GLOBALES ---
             col_tendencia, col_espacio, col_torta = st.columns([1.5, 0.1, 1])
 
-             with col_tendencia:
+            with col_tendencia:
                 st.markdown("#### 📈 Tendencia de Disponibilidad Mensual")
                 fig_trend = go.Figure()
                 fig_trend.add_trace(go.Scatter(
