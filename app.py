@@ -711,7 +711,7 @@ elif seccion == "📶 Calidad (QoS)":
                 df_inyectado = pd.DataFrame(nuevos_puntos_0v).set_index('index')
                 df_grafico = pd.concat([df_grafico, df_inyectado]).sort_index()
 
-# ==========================================
+            # ==========================================
             # 2. FRONTEND: MAQUETADO Y DISEÑO VISUAL
             # ==========================================
             
@@ -724,19 +724,11 @@ elif seccion == "📶 Calidad (QoS)":
                 fig_trend.add_trace(go.Scatter(
                     x=meses_labels, y=porcentajes_mes, mode='lines+markers+text',
                     marker=dict(size=14, color='#1f77b4', line=dict(width=2, color='white')),
-                    line=dict(width=4, color='#1f77b4'), 
-                    # Truco: Le agregamos <b> para que el porcentaje sea negrita
-                    text=[f"<b>{p:.1f}%</b>" for p in porcentajes_mes],
-                    textposition='top center', 
-                    customdata=list(zip(reales_lista, esperados_lista)),
-                    hovertemplate="<b>%{x}</b><br>Disponibilidad: <b>%{y:.2f}%</b><br>Registros: %{customdata[0]:,} / %{customdata[1]:,}<extra></extra>",
-                    # Truco: Forzamos que el texto flotante sea negro
-                    textfont=dict(color='black', size=13)
+                    line=dict(width=4, color='#1f77b4'), text=[f"{p:.1f}%" for p in porcentajes_mes],
+                    textposition='top center', customdata=list(zip(reales_lista, esperados_lista)),
+                    hovertemplate="<b>%{x}</b><br>Disponibilidad: <b>%{y:.2f}%</b><br>Registros: %{customdata[0]:,} / %{customdata[1]:,}<extra></extra>"
                 ))
-                fig_trend.update_layout(
-                    height=420, margin=dict(t=40, b=40, l=40, r=20),
-                    # Truco: Forzamos que los números de los ejes (0 a 100 y los meses) sean negros
-                    font=dict(color='black', size=12),
+                fig_trend.update_layout(height=420, margin=dict(t=40, b=40, l=40, r=20),
                     yaxis=dict(title="Disponibilidad (%)", range=[max(0, min(porcentajes_mes)-10), 105], gridcolor='#e5e8e8'),
                     xaxis=dict(gridcolor='#e5e8e8'), template='plotly_white'
                 )
@@ -749,19 +741,16 @@ elif seccion == "📶 Calidad (QoS)":
             with col_torta:
                 st.markdown("#### 🥧 Resumen Histórico Global")
                 fig_pie = go.Figure(data=[go.Pie(
-                    labels=['<b>Datos Registrados</b>', '<b>Gaps (Cortes/WiFi)</b>'], 
-                    values=[registrado_global, no_registrado_global],
-                    marker_colors=['#66bb6a', '#ef5350'], pull=[0.05, 0], textinfo='percent+label', textposition='outside',
-                    # Truco: Letras negras para la torta
-                    textfont=dict(color='black', size=14)
+                    labels=['Datos Registrados', 'Gaps (Cortes/WiFi)'], values=[registrado_global, no_registrado_global],
+                    marker_colors=['#66bb6a', '#ef5350'], pull=[0.05, 0], textinfo='percent+label', textposition='outside'
                 )])
                 fig_pie.update_layout(height=380, margin=dict(t=40, b=20, l=20, r=20), showlegend=False, template='plotly_white')
                 st.plotly_chart(fig_pie, use_container_width=True)
                 
                 st.markdown(f"""
-                <div style="background-color: #f8f9fa; padding: 15px; border-radius: 8px; text-align: center; border: 1px solid #e6e9ef; color: black; font-size: 15px;">
-                    <b>Desde:</b> {start.strftime('%d/%m/%Y')} &nbsp;|&nbsp; <b>Hasta:</b> {end.strftime('%d/%m/%Y')}<br>
-                    <b>Esperados:</b> <span style="font-weight: 900;">{esperados_global:,}</span> &nbsp;|&nbsp; <b>Reales:</b> <span style="font-weight: 900;">{reales_global:,}</span>
+                <div style="background-color: #f8f9fa; padding: 15px; border-radius: 8px; text-align: center; border: 1px solid #e6e9ef; color: black;">
+                    <b>Desde:</b> {start.strftime('%d/%m/%Y')} <b>Hasta:</b> {end.strftime('%d/%m/%Y')}<br>
+                    <b>Esperados:</b> {esperados_global:,} | <b>Reales:</b> {reales_global:,}
                 </div>
                 """, unsafe_allow_html=True)
 
@@ -786,26 +775,21 @@ elif seccion == "📶 Calidad (QoS)":
             col_grafico, col_tabla = st.columns([2, 1])
 
             with col_grafico:
-                # TRUCO: Resample para ver los microcortes de red como huecos en blanco
-                df_continuo = df_filtrado.resample('15T').mean()
-                
                 fig_tension = go.Figure()
-                fig_tension.add_trace(go.Scatter(x=df_continuo.index, y=df_continuo['UL1N'], name='Línea 1', line=dict(color='#1f77b4', width=1), connectgaps=False))
-                fig_tension.add_trace(go.Scatter(x=df_continuo.index, y=df_continuo['UL2N'], name='Línea 2', line=dict(color='#ff7f0e', width=1), connectgaps=False))
-                fig_tension.add_trace(go.Scatter(x=df_continuo.index, y=df_continuo['UL3N'], name='Línea 3', line=dict(color='#2ca02c', width=1), connectgaps=False))
+                fig_tension.add_trace(go.Scatter(x=df_filtrado.index, y=df_filtrado['UL1N'], name='Línea 1', line=dict(color='#1f77b4', width=1)))
+                fig_tension.add_trace(go.Scatter(x=df_filtrado.index, y=df_filtrado['UL2N'], name='Línea 2', line=dict(color='#ff7f0e', width=1)))
+                fig_tension.add_trace(go.Scatter(x=df_filtrado.index, y=df_filtrado['UL3N'], name='Línea 3', line=dict(color='#2ca02c', width=1)))
                 
                 fig_tension.update_layout(
                     height=400, margin=dict(t=20, b=20, l=20, r=20),
-                    yaxis_title="Tensión (V)", 
-                    template='plotly_white', # <-- Fondo blanco
-                    font=dict(color='black'), # <-- Letras de los ejes en negro
-                    xaxis=dict(rangeslider=dict(visible=True), type="date", gridcolor='#e5e8e8'),
-                    yaxis=dict(gridcolor='#e5e8e8'),
-                    legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1, font=dict(color='black'))
+                    yaxis_title="Tensión (V)", template='plotly_dark',
+                    xaxis=dict(rangeslider=dict(visible=True), type="date"),
+                    legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
                 )
                 st.plotly_chart(fig_tension, use_container_width=True)
 
             with col_tabla:
+                # ¡EL TÍTULO AHORA ES INTELIGENTE Y CAMBIA SOLO!
                 st.markdown(f"**Registro de Apagones (Gaps >= {HORAS_FILTRO}h)**")
                 if df_cortes_filtrado.empty:
                     st.success("✅ No se registraron apagones reales en el período seleccionado.")
