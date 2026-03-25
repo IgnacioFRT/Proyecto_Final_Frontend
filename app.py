@@ -742,7 +742,7 @@ elif seccion == "📶 Calidad (QoS)":
                 st.markdown("#### 🥧 Resumen Histórico Global")
                 fig_pie = go.Figure(data=[go.Pie(
                     labels=['Datos Registrados', 'Gaps (Cortes/WiFi)'], values=[registrado_global, no_registrado_global],
-                    marker_colors=['#66bb6a', '#ef5350'], pull=[0.05, 0], textinfo='percent+label', textposition='outside'
+                    marker_colors=['#66bb6a', '#ef5350'], pull=[0.05, 0], textinfo='percent+label', textposition='outside', textfont=dict(color='black')
                 )])
                 fig_pie.update_layout(height=380, margin=dict(t=40, b=20, l=20, r=20), showlegend=False, template='plotly_white')
                 st.plotly_chart(fig_pie, use_container_width=True)
