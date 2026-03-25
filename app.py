@@ -748,7 +748,7 @@ elif seccion == "📶 Calidad (QoS)":
                 st.plotly_chart(fig_pie, use_container_width=True)
                 
                 st.markdown(f"""
-                <div style="background-color: #f8f9fa; padding: 15px; border-radius: 8px; text-align: center; border: 1px solid #e6e9ef;">
+                <div style="background-color: #f8f9fa; padding: 15px; border-radius: 8px; text-align: center; border: 1px solid #e6e9ef; color: black">
                     <b>Desde:</b> {start.strftime('%d/%m/%Y')} <b>Hasta:</b> {end.strftime('%d/%m/%Y')}<br>
                     <b>Esperados:</b> {esperados_global:,} | <b>Reales:</b> {reales_global:,}
                 </div>
