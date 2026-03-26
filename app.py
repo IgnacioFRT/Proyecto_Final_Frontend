@@ -681,14 +681,6 @@ elif seccion == "📈 Perfil de Carga Dinámico":
 # =====================================================================
 
 elif seccion == "🌡️ Impacto Climático":
-    st.markdown("""
-        <style>
-            .titulo-clima { font-size: 40px !important; font-weight: 700 !important; color: #d35400; margin-top: -50px !important; }
-        </style>
-        <h1 class='titulo-clima'>Correlación Termo-Eléctrica</h1>
-    """, unsafe_allow_html=True)
-    st.divider()
-
     try:
         with st.spinner('Analizando variables climáticas... ⏳'):
             df = obtener_datos_historicos()
@@ -705,8 +697,10 @@ elif seccion == "🌡️ Impacto Climático":
             # Temperatura promedio
             df_diario['temp_promedio'] = df.resample('D')['temp'].mean()
             
-            # ELIMINAMOS EL FILTRO ESTRICTO '> 1'. 
-            # Si el consumo es 0.05 kWh porque es Navidad, es un dato válido y debe graficarse.
+            # 🛠️ FILTRO DE SENSOR DE TEMPERATURA: Limpiamos ruido absurdo (ej: 300°C)
+            df_diario.loc[(df_diario['temp_promedio'] < 0) | (df_diario['temp_promedio'] > 50), 'temp_promedio'] = None
+            
+            # Ya no filtramos los consumos > 1 para no dejar huecos en los feriados
             df_limpio = df_diario.copy()
 
             dias_semana_es = {0: 'Lunes', 1: 'Martes', 2: 'Miércoles', 3: 'Jueves', 4: 'Viernes', 5: 'Sábado', 6: 'Domingo'}
@@ -736,6 +730,7 @@ elif seccion == "🌡️ Impacto Climático":
                 ), secondary_y=True,
             )
 
+            # Diseño Compacto
             fig_dual.update_layout(
                 template="plotly_white", hovermode="x unified", height=320, font=dict(color='black'),
                 legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
@@ -755,10 +750,9 @@ elif seccion == "🌡️ Impacto Climático":
             with col_disp:
                 import numpy as np
                 # --- ⚙️ TRATAMIENTO INGENIERIL DE DATOS ---
-                # 1. Obtenemos días hábiles con datos válidos
+                # Obtenemos días hábiles con datos válidos
                 df_temp = df_limpio[df_limpio['es_habil']].dropna(subset=['temp_promedio', 'consumo_diario_kWh'])
                 
-                # 2. CAMBIO PROFESIONAL: Filtro Operativo. 
                 # Descartamos Enero (1) y Febrero (2) para que el receso de verano no ensucie la pendiente.
                 df_habiles = df_temp[~df_temp.index.month.isin([1, 2])].copy()
 
@@ -768,7 +762,6 @@ elif seccion == "🌡️ Impacto Climático":
                 fig_scatter.add_trace(go.Scatter(
                     x=df_habiles['temp_promedio'], y=df_habiles['consumo_diario_kWh'],
                     mode='markers', name='Días Hábiles (Ciclo Lectivo)',
-                    # CAMBIO ESTÉTICO: Marcadores con borde para mejor definición
                     marker=dict(
                         size=9, 
                         color='rgba(0, 102, 204, 0.4)', # Relleno suave
@@ -788,47 +781,44 @@ elif seccion == "🌡️ Impacto Climático":
                     p = np.poly1d(coeffs)
                     x_trend = np.linspace(x.min(), x.max(), 100)
                     
-                    # CAMBIO ACADÉMICO: Cálculo del R² (Coeficiente de Determinación)
+                    # Cálculo del R² (Coeficiente de Determinación)
                     y_pred = p(x)
                     y_bar = np.mean(y)
                     ss_res = np.sum((y - y_pred)**2)
                     ss_tot = np.sum((y - y_bar)**2)
-                    # Manejo de error si ss_tot es 0
                     r_squared = 1 - (ss_res / ss_tot) if ss_tot != 0 else 0
                     
                     # Agregamos la línea de tendencia al gráfico
                     fig_scatter.add_trace(go.Scatter(
                         x=x_trend, y=p(x_trend), mode='lines', 
                         name='Tendencia Matemática',
-                        line=dict(color='#e74c3c', width=3, dash='solid'), # Pendiente más gruesa y sólida
+                        line=dict(color='#e74c3c', width=3, dash='solid'), 
                         hoverinfo='skip'
                     ))
 
-                # --- 🎨 DISEÑO FINAL PROFESIONAL ---
-                # CAMBIO ACADÉMICO: Sumamos la métrica R² al título para dar rigor estadístico
+                # --- 🎨 DISEÑO FINAL PROFESIONAL Y COMPACTO ---
                 titulo_con_r2 = f"Dispersión y Tendencia Lineal Hábiles (R² = {r_squared:.2f})" if len(df_habiles) > 1 else "Dispersión de Consumo"
 
                 fig_scatter.update_layout(
                     title=dict(
                         text=titulo_con_r2,
-                        x=0.5, xanchor='center', font=dict(size=16, color='black')
+                        x=0.5, xanchor='center', font=dict(size=14, color='black')
                     ),
-                    template='plotly_white', height=420, margin=dict(l=10, r=20, t=50, b=10), font=dict(color='black'),
+                    template='plotly_white', height=280, margin=dict(l=10, r=20, t=35, b=10), font=dict(color='black'),
                     xaxis=dict(title="Temperatura Promedio Diaria (°C)", gridcolor='#e5e8e8', zeroline=False),
                     yaxis=dict(title="Consumo Diario (kWh)", gridcolor='#e5e8e8', zeroline=False),
-                    legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1, font=dict(size=12, color='black'))
+                    legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1, font=dict(size=11, color='black'))
                 )
                 st.plotly_chart(fig_scatter, use_container_width=True)
 
             with col_info:
                 st.info("💡 **¿Cómo leer este análisis?**")
-                st.write("Cada punto representa un día hábil en la UTN.")
+                st.write("Cada punto representa un día hábil en la UTN (excluyendo receso de verano).")
                 st.write("📈 **La Línea Roja (Tendencia):** Demuestra matemáticamente cómo reacciona el edificio al calor. A mayor pendiente, peor es la eficiencia térmica de la instalación.")
                 st.write("❄️ Si los picos de demanda coinciden exclusivamente con las altas temperaturas, el esfuerzo de ahorro energético debe enfocarse en la climatización (Aires Acondicionados) y no en la iluminación.")
 
     except Exception as e:
         st.error(f"Error al generar el análisis de correlación térmica: {e}")
-
 
 
 
