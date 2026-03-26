@@ -154,6 +154,9 @@ st.markdown("""
     <h1 class="titulo-personalizado">⚡ Sistema de Gestión Energética ⚡</h1>
 """, unsafe_allow_html=True)
 
+
+
+
 # =====================================================================
 # --- VENTANA: INICIO (ESTADO EN TIEMPO REAL ANTI-CACHÉ) ---
 # =====================================================================
@@ -376,6 +379,9 @@ elif seccion == "🕒 Tiempo Real":
     except Exception as e:
         st.error(f"Error en la adquisición de datos en vivo: {e}")
 
+
+
+
 # --- VENTANA RESUMEN HISTÓRICO ---
 
 elif seccion == "📊 Resumen Histórico":
@@ -507,6 +513,9 @@ elif seccion == "📊 Resumen Histórico":
 
     except Exception as e:
         st.error(f"Error en el Resumen Histórico: {e}")
+
+
+
 
 # --- VENTANA PERFIL DE CARGA ---
 
@@ -656,27 +665,7 @@ elif seccion == "🌡️ Impacto Climático":
             df_limpio['nombre_dia'] = df_limpio.index.dayofweek.map(dias_semana_es)
             df_limpio['es_habil'] = df_limpio.index.dayofweek < 5
 
-            # --- 2. CÁLCULOS MATEMÁTICOS (KPIs) ---
-            # Consumo Base: Días hábiles con clima primaveral (ni frío ni calor extemo: 18 a 24 °C)
-            dias_templados = df_limpio[(df_limpio['temp_promedio'] >= 18) & (df_limpio['temp_promedio'] <= 24) & (df_limpio['es_habil'])]
-            consumo_base = dias_templados['consumo_diario_kWh'].mean() if not dias_templados.empty else df_limpio['consumo_diario_kWh'].quantile(0.2)
-
-            # Consumo Calor: Días hábiles muy calurosos (> 28°C)
-            dias_calor = df_limpio[(df_limpio['temp_promedio'] > 28) & (df_limpio['es_habil'])]
-            consumo_calor = dias_calor['consumo_diario_kWh'].mean() if not dias_calor.empty else consumo_base
-
-            aumento_por_calor = consumo_calor - consumo_base
-            porcentaje_aumento = (aumento_por_calor / consumo_base) * 100 if consumo_base > 0 else 0
-
-            # --- 3. FRONTEND: KPIs SUPERIORES ---
-            st.markdown("#### 📊 Impacto del Clima en la Facturación (Días Hábiles)")
-            col1, col2, col3 = st.columns(3)
-            col1.metric("Consumo Base Estructural", f"{consumo_base:.1f} kWh/día", "Clima templado (Luces, PCs, Servidores)")
-            col2.metric("Promedio en Días de Calor", f"{consumo_calor:.1f} kWh/día", f"+{porcentaje_aumento:.1f}% vs. Base", delta_color="inverse")
-            col3.metric("Sobrecarga por Refrigeración", f"{aumento_por_calor:.1f} kWh/día", "Atribuible a Aires Acondicionados", delta_color="inverse")
-            st.write("---")
-
-            # --- 4. GRÁFICO 1: EVOLUCIÓN DOBLE EJE (Basado en tu código de Colab) ---
+            # --- 2. GRÁFICO 1: EVOLUCIÓN DOBLE EJE ---
             from plotly.subplots import make_subplots
             st.markdown("#### 📅 Evolución Histórica: Consumo vs Temperatura")
             
@@ -711,7 +700,7 @@ elif seccion == "🌡️ Impacto Climático":
             st.plotly_chart(fig_dual, use_container_width=True)
             st.write("---")
 
-            # --- 5. GRÁFICO 2: DISPERSIÓN (SCATTER) Y TENDENCIA ---
+            # --- 3. GRÁFICO 2: DISPERSIÓN (SCATTER) Y TENDENCIA ---
             st.markdown("#### 🎯 Termosensibilidad del Edificio (Análisis de Regresión)")
             col_disp, col_info = st.columns([2.5, 1])
 
@@ -758,6 +747,8 @@ elif seccion == "🌡️ Impacto Climático":
 
     except Exception as e:
         st.error(f"Error al generar el análisis de correlación térmica: {e}")
+
+
 
 
 
