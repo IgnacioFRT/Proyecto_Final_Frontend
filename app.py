@@ -133,7 +133,7 @@ with st.sidebar:
         st.warning("⚠️ Cargando logo...")
     st.divider() 
     st.title("Navegación")
-    seccion = st.radio("Secciones:", ["🏠 Inicio", "🕒 Tiempo Real", "📊 Resumen Histórico", "📈 Perfil de Carga Dinámico", "📶 Calidad (QoS)", "🌱 Huella de Carbono", "🧠 Detección de Anomalías"])
+    seccion = st.radio("Secciones:", ["🏠 Inicio", "🕒 Tiempo Real", "📊 Resumen Histórico", "📈 Perfil de Carga Dinámico", "🌡️ Impacto Climático", "📶 Calidad (QoS)", "🌱 Huella de Carbono", "🧠 Detección de Anomalías"])
     st.markdown("---")
     st.info("Ingeniería Electrónica - UTN FRT")
 
@@ -623,6 +623,144 @@ elif seccion == "📈 Perfil de Carga Dinámico":
 
     except Exception as e:
         st.error(f"Error al generar el perfil de carga: {e}")
+
+
+# =====================================================================
+# --- VENTANA: IMPACTO CLIMÁTICO Y CORRELACIÓN ---
+# =====================================================================
+
+elif seccion == "🌡️ Impacto Climático":
+    st.markdown("""
+        <style>
+            .titulo-clima { font-size: 40px !important; font-weight: 700 !important; color: #d35400; margin-top: -50px !important; }
+        </style>
+        <h1 class='titulo-clima'>Correlación Termo-Eléctrica</h1>
+    """, unsafe_allow_html=True)
+    st.divider()
+
+    try:
+        with st.spinner('Analizando variables climáticas... ⏳'):
+            df = obtener_datos_historicos()
+
+            # --- 1. PREPARACIÓN DE DATOS ---
+            df_diario = pd.DataFrame()
+            # En vez de 'last', sacamos el maximo y restamos para evitar errores si hay cortes
+            df_diario['EA_max'] = df.resample('D')['EA_imp_T1_kwh'].max()
+            df_diario['consumo_diario_kWh'] = df_diario['EA_max'].diff().clip(lower=0).fillna(0)
+            df_diario['temp_promedio'] = df.resample('D')['temp'].mean()
+            
+            # Limpiamos días sin datos reales o cortes completos de luz
+            df_limpio = df_diario[df_diario['consumo_diario_kWh'] > 1].copy()
+
+            dias_semana_es = {0: 'Lunes', 1: 'Martes', 2: 'Miércoles', 3: 'Jueves', 4: 'Viernes', 5: 'Sábado', 6: 'Domingo'}
+            df_limpio['nombre_dia'] = df_limpio.index.dayofweek.map(dias_semana_es)
+            df_limpio['es_habil'] = df_limpio.index.dayofweek < 5
+
+            # --- 2. CÁLCULOS MATEMÁTICOS (KPIs) ---
+            # Consumo Base: Días hábiles con clima primaveral (ni frío ni calor extemo: 18 a 24 °C)
+            dias_templados = df_limpio[(df_limpio['temp_promedio'] >= 18) & (df_limpio['temp_promedio'] <= 24) & (df_limpio['es_habil'])]
+            consumo_base = dias_templados['consumo_diario_kWh'].mean() if not dias_templados.empty else df_limpio['consumo_diario_kWh'].quantile(0.2)
+
+            # Consumo Calor: Días hábiles muy calurosos (> 28°C)
+            dias_calor = df_limpio[(df_limpio['temp_promedio'] > 28) & (df_limpio['es_habil'])]
+            consumo_calor = dias_calor['consumo_diario_kWh'].mean() if not dias_calor.empty else consumo_base
+
+            aumento_por_calor = consumo_calor - consumo_base
+            porcentaje_aumento = (aumento_por_calor / consumo_base) * 100 if consumo_base > 0 else 0
+
+            # --- 3. FRONTEND: KPIs SUPERIORES ---
+            st.markdown("#### 📊 Impacto del Clima en la Facturación (Días Hábiles)")
+            col1, col2, col3 = st.columns(3)
+            col1.metric("Consumo Base Estructural", f"{consumo_base:.1f} kWh/día", "Clima templado (Luces, PCs, Servidores)")
+            col2.metric("Promedio en Días de Calor", f"{consumo_calor:.1f} kWh/día", f"+{porcentaje_aumento:.1f}% vs. Base", delta_color="inverse")
+            col3.metric("Sobrecarga por Refrigeración", f"{aumento_por_calor:.1f} kWh/día", "Atribuible a Aires Acondicionados", delta_color="inverse")
+            st.write("---")
+
+            # --- 4. GRÁFICO 1: EVOLUCIÓN DOBLE EJE (Basado en tu código de Colab) ---
+            from plotly.subplots import make_subplots
+            st.markdown("#### 📅 Evolución Histórica: Consumo vs Temperatura")
+            
+            fig_dual = make_subplots(specs=[[{"secondary_y": True}]])
+
+            fig_dual.add_trace(
+                go.Bar(
+                    x=df_limpio.index, y=df_limpio['consumo_diario_kWh'], name="Consumo (kWh)",
+                    marker_color='#2ca02c', customdata=df_limpio['nombre_dia'],
+                    hovertemplate="<b>%{x|%d %b %Y} (%{customdata})</b><br>Consumo: <b>%{y:.2f} kWh</b><extra></extra>"
+                ), secondary_y=False,
+            )
+
+            fig_dual.add_trace(
+                go.Scatter(
+                    x=df_limpio.index, y=df_limpio['temp_promedio'], name="Temp. Promedio (°C)",
+                    mode='lines+markers', line=dict(color='#ff7f0e', width=2), marker=dict(size=5),
+                    customdata=df_limpio['nombre_dia'],
+                    hovertemplate="<b>%{x|%d %b %Y} (%{customdata})</b><br>Temp: <b>%{y:.1f} °C</b><extra></extra>"
+                ), secondary_y=True,
+            )
+
+            fig_dual.update_layout(
+                template="plotly_white", hovermode="x unified", height=450, font=dict(color='black'),
+                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+                margin=dict(l=20, r=20, t=20, b=20)
+            )
+            fig_dual.update_yaxes(title_text="<b>Consumo (kWh)</b>", color="#2ca02c", secondary_y=False, gridcolor='#e5e8e8')
+            fig_dual.update_yaxes(title_text="<b>Temperatura (°C)</b>", color="#ff7f0e", secondary_y=True, showgrid=False)
+            fig_dual.update_xaxes(gridcolor='#e5e8e8')
+
+            st.plotly_chart(fig_dual, use_container_width=True)
+            st.write("---")
+
+            # --- 5. GRÁFICO 2: DISPERSIÓN (SCATTER) Y TENDENCIA ---
+            st.markdown("#### 🎯 Termosensibilidad del Edificio (Análisis de Regresión)")
+            col_disp, col_info = st.columns([2.5, 1])
+
+            with col_disp:
+                import numpy as np
+                # Filtramos solo días hábiles para una correlación honesta (el finde la facu está cerrada, haga frío o calor)
+                df_habiles = df_limpio[df_limpio['es_habil']].dropna(subset=['temp_promedio', 'consumo_diario_kWh'])
+                
+                fig_scatter = go.Figure()
+                
+                # Puntos (Días)
+                fig_scatter.add_trace(go.Scatter(
+                    x=df_habiles['temp_promedio'], y=df_habiles['consumo_diario_kWh'],
+                    mode='markers', name='Días Hábiles',
+                    marker=dict(size=10, color='rgba(52, 152, 219, 0.6)', line=dict(width=1, color='#2980b9')),
+                    customdata=np.stack((df_habiles.index.strftime('%d/%m/%Y'), df_habiles['nombre_dia']), axis=-1),
+                    hovertemplate="<b>%{customdata[0]} (%{customdata[1]})</b><br>Temperatura: <b>%{x:.1f}°C</b><br>Consumo: <b>%{y:.1f} kWh</b><extra></extra>"
+                ))
+
+                # Línea de Tendencia Matemática (Polinomio grado 1)
+                if len(df_habiles) > 1:
+                    z = np.polyfit(df_habiles['temp_promedio'], df_habiles['consumo_diario_kWh'], 1)
+                    p = np.poly1d(z)
+                    x_trend = np.linspace(df_habiles['temp_promedio'].min(), df_habiles['temp_promedio'].max(), 100)
+                    
+                    fig_scatter.add_trace(go.Scatter(
+                        x=x_trend, y=p(x_trend), mode='lines', name='Tendencia (Regresión)',
+                        line=dict(color='#e74c3c', width=3, dash='dash'), hoverinfo='skip'
+                    ))
+
+                fig_scatter.update_layout(
+                    template='plotly_white', height=400, margin=dict(l=10, r=20, t=10, b=10), font=dict(color='black'),
+                    xaxis=dict(title="Temperatura Promedio Diaria (°C)", gridcolor='#e5e8e8'),
+                    yaxis=dict(title="Consumo Diario (kWh)", gridcolor='#e5e8e8'),
+                    legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+                )
+                st.plotly_chart(fig_scatter, use_container_width=True)
+
+            with col_info:
+                st.info("💡 **¿Cómo leer este análisis?**")
+                st.write("Cada punto representa un día hábil en la UTN.")
+                st.write("📈 **La Línea Roja (Tendencia):** Demuestra matemáticamente cómo reacciona el edificio al calor. A mayor pendiente, peor es la eficiencia térmica de la instalación.")
+                st.write("❄️ Si los picos de demanda coinciden exclusivamente con las altas temperaturas, el esfuerzo de ahorro energético debe enfocarse en la climatización (Aires Acondicionados) y no en la iluminación.")
+
+    except Exception as e:
+        st.error(f"Error al generar el análisis de correlación térmica: {e}")
+
+
+
 
 # --- VENTANA CALIDAD DE SERVICIO (QoS) ---
 
