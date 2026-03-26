@@ -695,13 +695,19 @@ elif seccion == "🌡️ Impacto Climático":
 
             # --- 1. PREPARACIÓN DE DATOS ---
             df_diario = pd.DataFrame()
-            # En vez de 'last', sacamos el maximo y restamos para evitar errores si hay cortes
+            
+            # Extraemos la energía máxima diaria
             df_diario['EA_max'] = df.resample('D')['EA_imp_T1_kwh'].max()
+            
+            # Calculamos la diferencia diaria. Si hay corte o caída, clip(lower=0) lo deja en 0, pero NO borra la fila.
             df_diario['consumo_diario_kWh'] = df_diario['EA_max'].diff().clip(lower=0).fillna(0)
+            
+            # Temperatura promedio
             df_diario['temp_promedio'] = df.resample('D')['temp'].mean()
             
-            # Limpiamos días sin datos reales o cortes completos de luz
-            df_limpio = df_diario[df_diario['consumo_diario_kWh'] > 1].copy()
+            # ELIMINAMOS EL FILTRO ESTRICTO '> 1'. 
+            # Si el consumo es 0.05 kWh porque es Navidad, es un dato válido y debe graficarse.
+            df_limpio = df_diario.copy()
 
             dias_semana_es = {0: 'Lunes', 1: 'Martes', 2: 'Miércoles', 3: 'Jueves', 4: 'Viernes', 5: 'Sábado', 6: 'Domingo'}
             df_limpio['nombre_dia'] = df_limpio.index.dayofweek.map(dias_semana_es)
