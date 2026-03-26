@@ -706,36 +706,69 @@ elif seccion == "🌡️ Impacto Climático":
 
             with col_disp:
                 import numpy as np
-                # Filtramos solo días hábiles para una correlación honesta (el finde la facu está cerrada, haga frío o calor)
-                df_habiles = df_limpio[df_limpio['es_habil']].dropna(subset=['temp_promedio', 'consumo_diario_kWh'])
+                # --- ⚙️ TRATAMIENTO INGENIERIL DE DATOS ---
+                # 1. Obtenemos días hábiles con datos válidos
+                df_temp = df_limpio[df_limpio['es_habil']].dropna(subset=['temp_promedio', 'consumo_diario_kWh'])
                 
+                # 2. CAMBIO PROFESIONAL: Filtro Operativo. 
+                # Descartamos Enero (1) y Febrero (2) para que el receso de verano no ensucie la pendiente.
+                df_habiles = df_temp[~df_temp.index.month.isin([1, 2])].copy()
+
                 fig_scatter = go.Figure()
                 
-                # Puntos (Días)
+                # --- 📊 PUNTOS (DÍAS REALES OPERATIVOS) ---
                 fig_scatter.add_trace(go.Scatter(
                     x=df_habiles['temp_promedio'], y=df_habiles['consumo_diario_kWh'],
-                    mode='markers', name='Días Hábiles',
-                    marker=dict(size=10, color='rgba(52, 152, 219, 0.6)', line=dict(width=1, color='#2980b9')),
+                    mode='markers', name='Días Hábiles (Ciclo Lectivo)',
+                    # CAMBIO ESTÉTICO: Marcadores con borde para mejor definición
+                    marker=dict(
+                        size=9, 
+                        color='rgba(0, 102, 204, 0.4)', # Relleno suave
+                        line=dict(width=1, color='rgba(0, 51, 102, 1)') # Borde sólido
+                    ),
                     customdata=np.stack((df_habiles.index.strftime('%d/%m/%Y'), df_habiles['nombre_dia']), axis=-1),
                     hovertemplate="<b>%{customdata[0]} (%{customdata[1]})</b><br>Temperatura: <b>%{x:.1f}°C</b><br>Consumo: <b>%{y:.1f} kWh</b><extra></extra>"
                 ))
 
-                # Línea de Tendencia Matemática (Polinomio grado 1)
+                # --- 📈 LÍNEA DE TENDENCIA Y MÉTRICAS ---
                 if len(df_habiles) > 1:
-                    z = np.polyfit(df_habiles['temp_promedio'], df_habiles['consumo_diario_kWh'], 1)
-                    p = np.poly1d(z)
-                    x_trend = np.linspace(df_habiles['temp_promedio'].min(), df_habiles['temp_promedio'].max(), 100)
+                    x = df_habiles['temp_promedio']
+                    y = df_habiles['consumo_diario_kWh']
                     
+                    # Regresión Lineal (polyfit grado 1)
+                    coeffs = np.polyfit(x, y, 1)
+                    p = np.poly1d(coeffs)
+                    x_trend = np.linspace(x.min(), x.max(), 100)
+                    
+                    # CAMBIO ACADÉMICO: Cálculo del R² (Coeficiente de Determinación)
+                    y_pred = p(x)
+                    y_bar = np.mean(y)
+                    ss_res = np.sum((y - y_pred)**2)
+                    ss_tot = np.sum((y - y_bar)**2)
+                    # Manejo de error si ss_tot es 0
+                    r_squared = 1 - (ss_res / ss_tot) if ss_tot != 0 else 0
+                    
+                    # Agregamos la línea de tendencia al gráfico
                     fig_scatter.add_trace(go.Scatter(
-                        x=x_trend, y=p(x_trend), mode='lines', name='Tendencia (Regresión)',
-                        line=dict(color='#e74c3c', width=3, dash='dash'), hoverinfo='skip'
+                        x=x_trend, y=p(x_trend), mode='lines', 
+                        name='Tendencia Matemática',
+                        line=dict(color='#e74c3c', width=3, dash='solid'), # Pendiente más gruesa y sólida
+                        hoverinfo='skip'
                     ))
 
+                # --- 🎨 DISEÑO FINAL PROFESIONAL ---
+                # CAMBIO ACADÉMICO: Sumamos la métrica R² al título para dar rigor estadístico
+                titulo_con_r2 = f"Dispersión y Tendencia Lineal Hábiles (R² = {r_squared:.2f})" if len(df_habiles) > 1 else "Dispersión de Consumo"
+
                 fig_scatter.update_layout(
-                    template='plotly_white', height=400, margin=dict(l=10, r=20, t=10, b=10), font=dict(color='black'),
-                    xaxis=dict(title="Temperatura Promedio Diaria (°C)", gridcolor='#e5e8e8'),
-                    yaxis=dict(title="Consumo Diario (kWh)", gridcolor='#e5e8e8'),
-                    legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+                    title=dict(
+                        text=titulo_con_r2,
+                        x=0.5, xanchor='center', font=dict(size=16, color='black')
+                    ),
+                    template='plotly_white', height=420, margin=dict(l=10, r=20, t=50, b=10), font=dict(color='black'),
+                    xaxis=dict(title="Temperatura Promedio Diaria (°C)", gridcolor='#e5e8e8', zeroline=False),
+                    yaxis=dict(title="Consumo Diario (kWh)", gridcolor='#e5e8e8', zeroline=False),
+                    legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1, font=dict(size=12, color='black'))
                 )
                 st.plotly_chart(fig_scatter, use_container_width=True)
 
