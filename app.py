@@ -449,9 +449,11 @@ elif seccion == "📊 Resumen Histórico":
         df_diario_fases['P3_kWh'] = (df_diario_fases['P3'] / df_diario_fases['P_total_medio']) * df_diario_fases['consumo_diario_total_kWh']
         df_diario_fases['nombre_dia'] = df_diario_fases.index.dayofweek.map(dias_semana_es)
 
-        #FRONTEND : DISEÑO VISUAL
+        # ==========================================
+        # FRONTEND : DISEÑO VISUAL
+        # ==========================================
 
-        # --- GRÁFICO 1: TORTA CONSUMO POR TIPO DE DIA ---
+        # --- FILA 1: GRÁFICOS POR TIPO DE DÍA ---
         col_torta, col_barras = st.columns([1, 2])
 
         with col_torta:
@@ -468,7 +470,6 @@ elif seccion == "📊 Resumen Histórico":
             fig_torta.update_layout(margin=dict(t=80, b=20, l=10, r=10), showlegend=False, height=450, paper_bgcolor="rgba(0,0,0,0)", font=dict(color="black", size=14))
             st.plotly_chart(fig_torta, use_container_width=True)
 
-        # --- GRÁFICO 2: BARRAS CONSUMO POR TIPO DE DIA ---
         with col_barras:
             st.markdown("#### 📊 Evolución de Consumo Diario")
             color_map = {'Día hábil': '#2ca02c', 'Sábado': '#1f77b4', 'Domingo': '#ff7f0e', 'Feriado': 'red'}
@@ -486,7 +487,7 @@ elif seccion == "📊 Resumen Histórico":
 
         st.divider() 
 
-        # --- GRÁFICO 3: TORTA CONSUMO POR FASE ---
+        # --- FILA 2: GRÁFICOS POR FASE ---
         col_torta_fases, col_info_fases = st.columns([1, 2])
 
         with col_torta_fases:
@@ -501,7 +502,6 @@ elif seccion == "📊 Resumen Histórico":
             fig_fases.update_layout(margin=dict(t=80, b=20, l=10, r=10), showlegend=False, height=450, paper_bgcolor="rgba(0,0,0,0)", font=dict(color="black", size=14))
             st.plotly_chart(fig_fases, use_container_width=True)
 
-        # --- GRÁFICO 4: BARRAS CONSUMO POR FASE ---
         with col_info_fases:
             st.markdown("#### 📊 Desglose Diario por Fase")
             fig_stack = go.Figure()
@@ -510,6 +510,48 @@ elif seccion == "📊 Resumen Histórico":
                 fig_stack.add_trace(go.Bar(x=df_diario_fases.index, y=df_diario_fases[col], name=info['nombre'], marker_color=info['color'], customdata=df_diario_fases['nombre_dia'], hovertemplate="<b>%{customdata}</b>, %{x|%d de %b}<br><b>%{data.name}</b>: %{y:.2f} kWh<extra></extra>"))
             fig_stack.update_layout(barmode='stack', height=400, template='plotly_white', hovermode='x unified', legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
             st.plotly_chart(fig_stack, use_container_width=True)
+
+        st.divider()
+
+        # ==========================================
+        # --- FILA 3: CONSUMO MENSUAL TOTAL (ANCHO COMPLETO) ---
+        # ==========================================
+        st.markdown("#### 📅 Evolución del Consumo Mensual Total")
+        
+        # 1. Calculamos el consumo diario real primero
+        df_diario_mensual = pd.DataFrame()
+        df_diario_mensual['EA_max'] = df.resample('D')['EA_imp_T1_kwh'].max()
+        df_diario_mensual['consumo_diario'] = df_diario_mensual['EA_max'].diff().clip(lower=0).fillna(0)
+        
+        # 2. Agrupamos y sumamos por mes
+        df_mensual = df_diario_mensual.resample('MS')['consumo_diario'].sum()
+        df_mensual = df_mensual[df_mensual > 0] # Limpiamos meses vacíos
+        
+        # Formateo de fechas al español
+        meses_nombres = df_mensual.index.strftime('%b %Y').str.capitalize()
+
+        # 3. Armamos el gráfico de barras horizontales anchas
+        fig_mensual = go.Figure()
+        fig_mensual.add_trace(go.Bar(
+            x=meses_nombres, 
+            y=df_mensual.values,
+            marker_color='#2c3e50', # Color oscuro institucional
+            text=[f"<b>{val:,.0f} kWh</b>" for val in df_mensual.values],
+            textposition='auto',
+            hovertemplate="<b>%{x}</b><br>Energía Acumulada: <b>%{y:,.1f} kWh</b><extra></extra>"
+        ))
+
+        # 4. Diseño unificado
+        fig_mensual.update_layout(
+            template='plotly_white', 
+            height=350, 
+            margin=dict(l=20, r=20, t=30, b=20),
+            font=dict(color='black'), 
+            xaxis=dict(gridcolor='#e5e8e8', showline=True, linewidth=1, linecolor='black'),
+            yaxis=dict(title="Consumo Total Acumulado (kWh)", gridcolor='#e5e8e8', zeroline=False)
+        )
+        
+        st.plotly_chart(fig_mensual, use_container_width=True)
 
     except Exception as e:
         st.error(f"Error en el Resumen Histórico: {e}")
