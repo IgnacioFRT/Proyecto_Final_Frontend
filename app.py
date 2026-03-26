@@ -689,16 +689,16 @@ elif seccion == "🌡️ Impacto Climático":
             )
 
             fig_dual.update_layout(
-                template="plotly_white", hovermode="x unified", height=450, font=dict(color='black'),
+                template="plotly_white", hovermode="x unified", height=320, font=dict(color='black'),
                 legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-                margin=dict(l=20, r=20, t=20, b=20)
+                margin=dict(l=20, r=20, t=30, b=10)
             )
             fig_dual.update_yaxes(title_text="<b>Consumo (kWh)</b>", color="#2ca02c", secondary_y=False, gridcolor='#e5e8e8')
             fig_dual.update_yaxes(title_text="<b>Temperatura (°C)</b>", color="#ff7f0e", secondary_y=True, showgrid=False)
             fig_dual.update_xaxes(gridcolor='#e5e8e8')
 
             st.plotly_chart(fig_dual, use_container_width=True)
-            st.write("---")
+            st.markdown("<br>", unsafe_allow_html=True)
 
             # --- 3. GRÁFICO 2: DISPERSIÓN (SCATTER) Y TENDENCIA ---
             st.markdown("#### 🎯 Termosensibilidad del Edificio (Análisis de Regresión)")
