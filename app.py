@@ -154,6 +154,8 @@ st.markdown("""
     <h1 class="titulo-personalizado">⚡ Sistema de Gestión Energética ⚡</h1>
 """, unsafe_allow_html=True)
 
+
+
 # =====================================================================
 # --- VENTANA: INICIO (ESTADO EN TIEMPO REAL ANTI-CACHÉ) ---
 # =====================================================================
@@ -178,6 +180,7 @@ if seccion == "🏠 Inicio":
 
     # --- 1. LÓGICA DE ESTADO (PING DIRECTO A INFLUXDB, SIN CACHÉ) ---
     import datetime
+    import pytz
     tz_ar = pytz.timezone('America/Argentina/Buenos_Aires')
     
     url = "https://influxdb.utn.xrob.com.ar"
@@ -188,11 +191,13 @@ if seccion == "🏠 Inicio":
     banner_estado = False
     diferencia_minutos = 0
     fecha_str = "Conectando..."
+    cantidad_registros_crudos = 0
     
     try:
-        # Hacemos una consulta súper rápida solo para ver el último pulso de vida
         client = InfluxDBClient(url=url, token=token, org=org)
         query_api = client.query_api()
+        
+        # A. Consulta Ping (Última medición)
         query_ping = f'''
             from(bucket: "{bucket}")
               |> range(start: -15m) 
@@ -214,11 +219,10 @@ if seccion == "🏠 Inicio":
         
         if ultima_hora_real is not None:
             diferencia_minutos = (ahora_utc - ultima_hora_real).total_seconds() / 60
-            # CAMBIO: Sacamos los segundos del formato de hora (%H:%M en lugar de %H:%M:%S)
             fecha_str = ultima_hora_real.astimezone(tz_ar).strftime("%d/%m/%Y %H:%M")
             
             if diferencia_minutos <= 5:
-                estado_texto = "✅ SISTEMA EN LÍNEA" # Texto acortado para que entre bien en 3 columnas
+                estado_texto = "✅ SISTEMA EN LÍNEA"
                 estado_color = "#27ae60" # Verde
                 banner_estado = True
             else:
@@ -228,26 +232,35 @@ if seccion == "🏠 Inicio":
         else:
             estado_texto = "⚠️ FUERA DE LÍNEA"
             estado_color = "#e74c3c" # Rojo
+
+        # B. Consulta de Conteo Crudo (Tu código de Colab)
+        query_conteo = f'''
+            from(bucket: "{bucket}")
+              |> range(start: 0)
+              |> filter(fn: (r) => r._measurement == "pruebas_fn")
+              |> filter(fn: (r) => r.deviceID == "08B764")
+              |> filter(fn: (r) => r.proyecto == "siemens_Pac3200")
+              |> filter(fn: (r) => r._field == "freq")
+              |> count()
+        '''
+        result_conteo = query_api.query(org=org, query=query_conteo)
+        
+        for table in result_conteo:
+            for record in table.records:
+                cantidad_registros_crudos += record.get_value()
             
     except Exception as e:
         estado_texto = "⚠️ ERROR DE RED"
         estado_color = "#e74c3c" # Rojo
 
-    # --- 2. LÓGICA DE ENERGÍA TOTAL Y CANTIDAD DE DATOS ---
+    # --- 2. LÓGICA DE ENERGÍA TOTAL ---
     try:
-        # Usamos tu función que trae toda la tabla histórica
         df_inicio = obtener_datos_historicos()
         energia_total = df_inicio['EA_imp_T1_kwh'].max() - df_inicio['EA_imp_T1_kwh'].min()
-        
-        # CAMBIO: Contamos la cantidad total de filas en crudo
-        cantidad_registros = len(df_inicio)
-        
     except:
         energia_total = 0.0
-        cantidad_registros = 0
 
     # --- DISEÑO CSS PARA LAS TARJETAS ---
-    # Ajusté un poco el padding y el tamaño de fuente para que entren 3 tarjetas perfectas
     st.markdown("""
     <style>
         .kpi-card { background-color: #f4f7f9; border: 1px solid #dce4e6; border-radius: 12px; padding: 20px 10px; text-align: center; box-shadow: 0 4px 6px rgba(0,0,0,0.05); transition: transform 0.2s; height: 100%;}
@@ -259,7 +272,7 @@ if seccion == "🏠 Inicio":
     </style>
     """, unsafe_allow_html=True)
 
-    # --- RENDERIZADO DE LAS COLUMNAS (AHORA SON 3) ---
+    # --- RENDERIZADO DE LAS 3 COLUMNAS ---
     col1, col_espacio1, col2, col_espacio2, col3 = st.columns([1, 0.05, 1, 0.05, 1])
 
     with col1:
@@ -275,8 +288,8 @@ if seccion == "🏠 Inicio":
         st.markdown(f"""
         <div class="kpi-card">
             <div class="kpi-title">Volumen de Datos Crudos</div>
-            <div class="kpi-value">{cantidad_registros:,}</div>
-            <div class="kpi-delta" style="color: #3498db;">Mediciones almacenadas</div>
+            <div class="kpi-value">{cantidad_registros_crudos:,}</div>
+            <div class="kpi-delta" style="color: #3498db;">Mediciones en InfluxDB</div>
         </div>
         """, unsafe_allow_html=True)
 
@@ -289,7 +302,7 @@ if seccion == "🏠 Inicio":
         </div>
         """, unsafe_allow_html=True)
 
-    st.write("") # Un pequeño espacio
+    st.write("") 
     
     # Cartel inferior dinámico
     if banner_estado:
@@ -309,11 +322,6 @@ if seccion == "🏠 Inicio":
     with info2:
         st.info("**☁️ Software y Base de Datos**\n* **Base de Datos:** InfluxDB Cloud.\n* **Backend y Visualización:** Python, Streamlit, Plotly.\n* **Objetivo:** Auditoría energética y detección de anomalías.")
     st.write("👈 *Utilice el menú de navegación lateral para acceder a la visualización.*")
-
-
-
-
-
 
 
 # =====================================================================
