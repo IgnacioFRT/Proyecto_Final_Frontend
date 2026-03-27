@@ -154,9 +154,6 @@ st.markdown("""
     <h1 class="titulo-personalizado">⚡ Sistema de Gestión Energética ⚡</h1>
 """, unsafe_allow_html=True)
 
-
-
-
 # =====================================================================
 # --- VENTANA: INICIO (ESTADO EN TIEMPO REAL ANTI-CACHÉ) ---
 # =====================================================================
@@ -217,50 +214,58 @@ if seccion == "🏠 Inicio":
         
         if ultima_hora_real is not None:
             diferencia_minutos = (ahora_utc - ultima_hora_real).total_seconds() / 60
-            fecha_str = ultima_hora_real.astimezone(tz_ar).strftime("%d/%m/%Y %H:%M:%S")
+            # CAMBIO: Sacamos los segundos del formato de hora (%H:%M en lugar de %H:%M:%S)
+            fecha_str = ultima_hora_real.astimezone(tz_ar).strftime("%d/%m/%Y %H:%M")
             
             if diferencia_minutos <= 5:
-                estado_texto = "✅ SISTEMA ACTIVO / EN LÍNEA"
+                estado_texto = "✅ SISTEMA EN LÍNEA" # Texto acortado para que entre bien en 3 columnas
                 estado_color = "#27ae60" # Verde
                 banner_estado = True
             else:
-                estado_texto = "⚠️ SISTEMA FUERA DE LÍNEA (Posible Corte)"
+                estado_texto = "⚠️ FUERA DE LÍNEA"
                 estado_color = "#e74c3c" # Rojo
                 banner_estado = False
         else:
-            estado_texto = "⚠️ SISTEMA FUERA DE LÍNEA (Sin datos)"
+            estado_texto = "⚠️ FUERA DE LÍNEA"
             estado_color = "#e74c3c" # Rojo
             
     except Exception as e:
-        estado_texto = "⚠️ Error de conexión al servidor"
+        estado_texto = "⚠️ ERROR DE RED"
         estado_color = "#e74c3c" # Rojo
 
-    # --- 2. LÓGICA DE ENERGÍA TOTAL (USA DATOS HISTÓRICOS) ---
+    # --- 2. LÓGICA DE ENERGÍA TOTAL Y CANTIDAD DE DATOS ---
     try:
+        # Usamos tu función que trae toda la tabla histórica
         df_inicio = obtener_datos_historicos()
         energia_total = df_inicio['EA_imp_T1_kwh'].max() - df_inicio['EA_imp_T1_kwh'].min()
+        
+        # CAMBIO: Contamos la cantidad total de filas en crudo
+        cantidad_registros = len(df_inicio)
+        
     except:
         energia_total = 0.0
+        cantidad_registros = 0
 
     # --- DISEÑO CSS PARA LAS TARJETAS ---
+    # Ajusté un poco el padding y el tamaño de fuente para que entren 3 tarjetas perfectas
     st.markdown("""
     <style>
-        .kpi-card { background-color: #f4f7f9; border: 1px solid #dce4e6; border-radius: 12px; padding: 25px 20px; text-align: center; box-shadow: 0 4px 6px rgba(0,0,0,0.05); transition: transform 0.2s; }
+        .kpi-card { background-color: #f4f7f9; border: 1px solid #dce4e6; border-radius: 12px; padding: 20px 10px; text-align: center; box-shadow: 0 4px 6px rgba(0,0,0,0.05); transition: transform 0.2s; height: 100%;}
         .kpi-card:hover { transform: translateY(-2px); }
-        .kpi-title { color: #5d6d7e; font-size: 16px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px; }
-        .kpi-value { color: #2b3a4a; font-size: 42px; font-weight: 800; margin: 10px 0; }
-        .kpi-unidad { font-size: 20px; font-weight: 500; color: #7f8c8d; }
-        .kpi-delta { font-size: 14px; font-weight: bold; margin-top: 10px; }
+        .kpi-title { color: #5d6d7e; font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px; }
+        .kpi-value { color: #2b3a4a; font-size: 36px; font-weight: 800; margin: 10px 0; }
+        .kpi-unidad { font-size: 16px; font-weight: 500; color: #7f8c8d; }
+        .kpi-delta { font-size: 13px; font-weight: bold; margin-top: 10px; }
     </style>
     """, unsafe_allow_html=True)
 
-    # --- RENDERIZADO DE LAS COLUMNAS ---
-    col1, col_espacio, col2 = st.columns([1, 0.1, 1])
+    # --- RENDERIZADO DE LAS COLUMNAS (AHORA SON 3) ---
+    col1, col_espacio1, col2, col_espacio2, col3 = st.columns([1, 0.05, 1, 0.05, 1])
 
     with col1:
         st.markdown(f"""
         <div class="kpi-card">
-            <div class="kpi-title">Energía Total Registrada</div>
+            <div class="kpi-title">Energía Registrada</div>
             <div class="kpi-value">{energia_total:,.1f} <span class="kpi-unidad">kWh</span></div>
             <div class="kpi-delta" style="color: {estado_color};">{estado_texto}</div>
         </div>
@@ -269,9 +274,18 @@ if seccion == "🏠 Inicio":
     with col2:
         st.markdown(f"""
         <div class="kpi-card">
-            <div class="kpi-title">Última Medición Verificada</div>
-            <div class="kpi-value" style="font-size: 34px; padding-top: 8px;">{fecha_str}</div>
-            <div class="kpi-delta" style="color: #7f8c8d;">Sincronizado directo con InfluxDB</div>
+            <div class="kpi-title">Volumen de Datos Crudos</div>
+            <div class="kpi-value">{cantidad_registros:,}</div>
+            <div class="kpi-delta" style="color: #3498db;">Mediciones almacenadas</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with col3:
+        st.markdown(f"""
+        <div class="kpi-card">
+            <div class="kpi-title">Última Sincronización</div>
+            <div class="kpi-value" style="font-size: 30px; padding-top: 5px;">{fecha_str}</div>
+            <div class="kpi-delta" style="color: #7f8c8d;">Conexión directa InfluxDB</div>
         </div>
         """, unsafe_allow_html=True)
 
@@ -296,7 +310,15 @@ if seccion == "🏠 Inicio":
         st.info("**☁️ Software y Base de Datos**\n* **Base de Datos:** InfluxDB Cloud.\n* **Backend y Visualización:** Python, Streamlit, Plotly.\n* **Objetivo:** Auditoría energética y detección de anomalías.")
     st.write("👈 *Utilice el menú de navegación lateral para acceder a la visualización.*")
 
-# --- VENTANA TIEMPO REAL ---
+
+
+
+
+
+
+# =====================================================================
+# --- VENTANA: Tiempo real ---
+# =====================================================================
 
 elif seccion == "🕒 Tiempo Real":
     
@@ -382,7 +404,9 @@ elif seccion == "🕒 Tiempo Real":
 
 
 
-# --- VENTANA RESUMEN HISTÓRICO ---
+# =====================================================================
+# --- VENTANA: Resumen Historico ---
+# =====================================================================
 
 elif seccion == "📊 Resumen Histórico":
     try:
@@ -559,7 +583,9 @@ elif seccion == "📊 Resumen Histórico":
 
 
 
-# --- VENTANA PERFIL DE CARGA ---
+# =====================================================================
+# --- VENTANA: Perfil de Carga ---
+# =====================================================================
 
 elif seccion == "📈 Perfil de Carga Dinámico":
     try:
@@ -674,6 +700,8 @@ elif seccion == "📈 Perfil de Carga Dinámico":
 
     except Exception as e:
         st.error(f"Error al generar el perfil de carga: {e}")
+
+
 
 
 # =====================================================================
@@ -824,7 +852,9 @@ elif seccion == "🌡️ Impacto Climático":
 
 
 
-# --- VENTANA CALIDAD DE SERVICIO (QoS) ---
+# =====================================================================
+# --- VENTANA: Calidad de servicio (QoS) ---
+# =====================================================================
 
 elif seccion == "📶 Calidad (QoS)":
     try:
@@ -1004,7 +1034,9 @@ elif seccion == "📶 Calidad (QoS)":
 
     except Exception as e:
         st.error(f"Error al generar el análisis de calidad: {e}")
-        
+
+
+
 # =====================================================================
 # --- VENTANA: HUELLA DE CARBONO ---
 # =====================================================================
