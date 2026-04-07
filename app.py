@@ -324,6 +324,8 @@ if seccion == "🏠 Inicio":
     st.write("👈 *Utilice el menú de navegación lateral para acceder a la visualización.*")
 
 
+
+
 # =====================================================================
 # --- VENTANA: Tiempo real ---
 # =====================================================================
@@ -879,7 +881,7 @@ elif seccion == "📶 Calidad (QoS)":
             end = df.index.max()
             
             # A. Cálculo Global
-            esperados_global = len(pd.date_range(start, end, freq='15T'))
+            esperados_global = len(pd.date_range(start, end, freq='15min'))
             reales_global = len(df)
             registrado_global = (reales_global / esperados_global) * 100 if esperados_global > 0 else 0
             no_registrado_global = 100 - registrado_global
@@ -894,7 +896,7 @@ elif seccion == "📶 Calidad (QoS)":
                 calc_end = min(mes_end, end.replace(second=0, microsecond=0))
                 
                 if calc_start <= calc_end:
-                    esperados_m = len(pd.date_range(calc_start, calc_end, freq='15T'))
+                    esperados_m = len(pd.date_range(calc_start, calc_end, freq='15min'))
                     porc = (count / esperados_m) * 100 if esperados_m > 0 else 0
                     
                     meses_labels.append(mes_start.strftime('%b %Y').capitalize())
