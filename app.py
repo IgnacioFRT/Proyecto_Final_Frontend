@@ -78,7 +78,7 @@ def obtener_datos_historicos():
     df['P_tot_kW'] = df['P1'] + df['P2'] + df['P3']
 
     # --- C. RESAMPLE A 15 MIN ---
-    df = df.resample('15T').agg({
+    df = df.resample('15min').agg({
         'UL1L2': 'mean', 'UL2L3' : 'mean', 'UL3L1' : 'mean', 'UL1N' : 'mean', 'UL2N' : 'mean', 'UL3N' : 'mean',
         'IL1': 'mean', 'IL2': 'mean', 'IL3': 'mean', 'freq' : 'mean',
         'P1': 'mean', 'P2': 'mean', 'P3': 'mean', 'Q1': 'mean', 'Q2': 'mean', 'Q3': 'mean',
