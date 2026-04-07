@@ -5,3 +5,5 @@ openpyxl
 influxdb-client
 streamlit-autorefresh
 scikit-learn
+pytz
+numpy
