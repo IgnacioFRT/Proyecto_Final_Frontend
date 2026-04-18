@@ -22,7 +22,10 @@ def get_latest_data():
     '''
 
     with get_client() as client:
-        tables = client.query_api().query(org=st.secrets["INFLUX_ORG"], query=query)
+        tables = client.query_api().query(
+            org=st.secrets["INFLUX_ORG"],
+            query=query
+        )
 
     data = {}
     latest_time = None
@@ -55,7 +58,10 @@ def get_raw_data_count():
     total_count = 0
 
     with get_client() as client:
-        tables = client.query_api().query(org=st.secrets["INFLUX_ORG"], query=query)
+        tables = client.query_api().query(
+            org=st.secrets["INFLUX_ORG"],
+            query=query
+        )
 
     for table in tables:
         for record in table.records:
