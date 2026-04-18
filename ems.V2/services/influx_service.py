@@ -39,3 +39,26 @@ def get_latest_data():
         latest_time = latest_time.astimezone(tz)
 
     return data, latest_time
+
+
+def get_raw_data_count():
+    query = f'''
+    from(bucket: "{st.secrets["INFLUX_BUCKET"]}")
+      |> range(start: 0)
+      |> filter(fn: (r) => r._measurement == "{st.secrets["MEASUREMENT"]}")
+      |> filter(fn: (r) => r.deviceID == "{st.secrets["DEVICE_ID"]}")
+      |> filter(fn: (r) => r.proyecto == "{st.secrets["PROYECTO"]}")
+      |> filter(fn: (r) => r._field == "freq")
+      |> count()
+    '''
+
+    total_count = 0
+
+    with get_client() as client:
+        tables = client.query_api().query(org=st.secrets["INFLUX_ORG"], query=query)
+
+    for table in tables:
+        for record in table.records:
+            total_count += record.get_value()
+
+    return total_count
