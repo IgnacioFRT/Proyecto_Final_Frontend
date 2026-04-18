@@ -1,4 +1,5 @@
 import streamlit as st
+import base64
 from pathlib import Path
 from styles import load_global_styles
 from config import APP_TITLE, APP_SUBTITLE
@@ -46,7 +47,14 @@ def render_home():
     col1, col2, col3 = st.columns([1, 3, 1])
     with col2:
         logo_path = Path(__file__).parent / "assets" / "logo_utn_frt.jpeg"
-        st.image(str(logo_path), width=300)
+        st.markdown(
+            f"""
+            <div style="text-align: center;">
+                <img src="data:image/jpeg;base64,{base64.b64encode(open(logo_path, "rb").read()).decode()}" width="300">
+            </div>
+            """,
+            unsafe_allow_html=True
+    )
     st.markdown(f'<div class="sub-title">{APP_SUBTITLE}</div>', unsafe_allow_html=True)
     st.caption("Monitoreo energético y calidad de suministro en tiempo real para la UTN FRT")
 
