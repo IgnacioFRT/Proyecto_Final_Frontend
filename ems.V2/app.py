@@ -80,6 +80,11 @@ def render_home():
 
     c1, c2, c3 = st.columns(3)
 
+    if estado == "En línea":
+        st.success("Sistema operativo. Comunicación activa con el PAC3200.")
+    else:
+        st.warning("El sistema no está recibiendo datos actualmente.")
+
     with c1:
         st.markdown(f"""
         <div class="kpi-card">
@@ -128,25 +133,3 @@ def render_home():
             "- Dashboard técnico para monitoreo\n"
             "- Base para análisis de eficiencia energética"
         )
-
-    st.markdown("## Lectura rápida del sistema")
-
-    i1, i2 = st.columns(2)
-
-    with i1:
-        if estado == "En línea":
-            st.success("Sistema activo y comunicando correctamente con la base de datos.")
-        else:
-            st.warning("El sistema no está reportando datos recientes.")
-
-    with i2:
-        st.info(f"El sistema acumula **{raw_count:,} registros crudos** disponibles para análisis histórico.")
-
-if section == "Inicio":
-    render_home()
-
-elif section == "Tiempo Real":
-    render_realtime()
-
-elif section == "Resumen Histórico":
-    render_historico()
