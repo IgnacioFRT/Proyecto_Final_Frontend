@@ -3,6 +3,7 @@ from styles import load_global_styles
 from config import APP_TITLE, APP_SUBTITLE
 from services.influx_service import get_latest_data
 from views.realtime import render_realtime
+from views.historico import render_historico
 
 st.set_page_config(
     page_title="EMS - PAC3200 UTN v2",
@@ -16,7 +17,7 @@ with st.sidebar:
     st.title("EMS UTN - v2")
     section = st.radio(
         "Navegación",
-        ["Inicio", "Tiempo Real"]
+        ["Inicio", "Tiempo Real", "Resumen Histórico"]
     )
     st.markdown("---")
     st.caption("Versión nueva del dashboard")
@@ -170,3 +171,6 @@ if section == "Inicio":
 
 elif section == "Tiempo Real":
     render_realtime()
+
+elif section == "Resumen Histórico":
+    render_historico()
