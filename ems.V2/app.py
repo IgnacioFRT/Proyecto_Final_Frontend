@@ -79,7 +79,7 @@ def render_home():
         st.markdown(f"""
         <div class="kpi-card">
             <div class="kpi-title">Última sincronización</div>
-            <div class="kpi-value" style="font-size:1.2rem;">{hora_txt}</div>
+            <div class="kpi-value">{hora_txt}</div>
             <div class="kpi-sub">Hora local Argentina</div>
         </div>
         """, unsafe_allow_html=True)
