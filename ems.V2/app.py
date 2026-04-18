@@ -2,6 +2,7 @@ import streamlit as st
 from styles import load_global_styles
 from config import APP_TITLE, APP_SUBTITLE
 from services.influx_service import get_latest_data
+from views.realtime import render_realtime
 
 st.set_page_config(
     page_title="EMS - PAC3200 UTN v2",
@@ -15,7 +16,7 @@ with st.sidebar:
     st.title("EMS UTN - v2")
     section = st.radio(
         "Navegación",
-        ["Inicio"]
+        ["Inicio", "Tiempo Real"]
     )
     st.markdown("---")
     st.caption("Versión nueva del dashboard")
@@ -30,7 +31,7 @@ def render_status_banner(status_text, status_type="success"):
         st.error(f"❌ {status_text}")
 
 
-if section == "Inicio":
+def render_home():
     st.markdown(f'<div class="main-title">⚡ {APP_TITLE}</div>', unsafe_allow_html=True)
     st.markdown(f'<div class="sub-title">{APP_SUBTITLE}</div>', unsafe_allow_html=True)
 
@@ -162,3 +163,10 @@ if section == "Inicio":
             st.success("Temperatura ambiente sin anomalías visibles.")
         else:
             st.warning("Temperatura elevada. Conviene revisar impacto térmico.")
+
+
+if section == "Inicio":
+    render_home()
+
+elif section == "Tiempo Real":
+    render_realtime()
