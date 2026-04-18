@@ -33,7 +33,7 @@ def render_status_banner(status_text, status_type="success"):
         st.error(f"❌ {status_text}")
 
 def render_home():
-    st_autorefresh(interval=30000, key="refresh_home")
+    st_autorefresh(interval=60000, key="refresh_home")
     
     # Logo institucional
     try:
