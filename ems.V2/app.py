@@ -4,6 +4,7 @@ from config import APP_TITLE, APP_SUBTITLE
 from services.influx_service import get_latest_data, get_raw_data_count
 from views.realtime import render_realtime
 from views.historico import render_historico
+from streamlit_autorefresh import st_autorefresh
 
 st.set_page_config(
     page_title="EMS - PAC3200 UTN v2",
@@ -31,9 +32,9 @@ def render_status_banner(status_text, status_type="success"):
     else:
         st.error(f"❌ {status_text}")
 
-
-
 def render_home():
+    st_autorefresh(interval=30000, key="refresh_home")
+    
     # Logo institucional
     try:
         st.image("assets/LOGO-BLANCO-UTN.png", width=180)
