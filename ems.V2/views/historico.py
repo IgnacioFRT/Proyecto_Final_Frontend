@@ -167,6 +167,43 @@ def compute_energy_by_phase(df, energia_total):
     return energia_p1, energia_p2, energia_p3
 
 
+def compute_daily_phase_breakdown(df):
+    df_phase = df.resample("D").agg({
+        "P1": "mean",
+        "P2": "mean",
+        "P3": "mean",
+        "EA_imp_T1_kwh": "last"
+    }).copy()
+
+    df_phase["P_total_medio"] = df_phase["P1"] + df_phase["P2"] + df_phase["P3"]
+    df_phase["consumo_diario_total_kWh"] = df_phase["EA_imp_T1_kwh"].diff().clip(lower=0).fillna(0)
+
+    df_phase["P1_kWh"] = 0.0
+    df_phase["P2_kWh"] = 0.0
+    df_phase["P3_kWh"] = 0.0
+
+    mask = df_phase["P_total_medio"] > 0
+
+    df_phase.loc[mask, "P1_kWh"] = (
+        df_phase.loc[mask, "P1"] / df_phase.loc[mask, "P_total_medio"]
+    ) * df_phase.loc[mask, "consumo_diario_total_kWh"]
+
+    df_phase.loc[mask, "P2_kWh"] = (
+        df_phase.loc[mask, "P2"] / df_phase.loc[mask, "P_total_medio"]
+    ) * df_phase.loc[mask, "consumo_diario_total_kWh"]
+
+    df_phase.loc[mask, "P3_kWh"] = (
+        df_phase.loc[mask, "P3"] / df_phase.loc[mask, "P_total_medio"]
+    ) * df_phase.loc[mask, "consumo_diario_total_kWh"]
+
+    dias_semana_es = {
+        0: "Lunes", 1: "Martes", 2: "Miércoles", 3: "Jueves",
+        4: "Viernes", 5: "Sábado", 6: "Domingo"
+    }
+    df_phase["nombre_dia"] = df_phase.index.dayofweek.map(dias_semana_es)
+
+    return df_phase
+
 def compute_monthly_consumption(df):
     df_month = pd.DataFrame()
     df_month["EA_max"] = df["EA_imp_T1_kwh"].resample("D").max()
@@ -195,6 +232,7 @@ def render_historico():
         energia_habil, energia_sabado, energia_domfer, energia_total = compute_energy_by_day_type(df)
         energia_p1, energia_p2, energia_p3 = compute_energy_by_phase(df, energia_total)
         df_month = compute_monthly_consumption(df)
+        df_phase_daily = compute_daily_phase_breakdown(df)
 
         consumo_promedio = df_daily["consumo_diario_kWh"].mean()
         dias_con_datos = (df_daily["consumo_diario_kWh"] > 0).sum()
@@ -270,50 +308,93 @@ def render_historico():
 
     st.markdown("### Distribución eléctrica")
 
-    col_torta_fase, col_mensual = st.columns([1, 2])
+col_torta_fase, col_stack_fase = st.columns([1, 2])
 
-    with col_torta_fase:
-        fig_fase = go.Figure(data=[go.Pie(
-            labels=["Línea 1", "Línea 2", "Línea 3"],
-            values=[energia_p1, energia_p2, energia_p3],
-            marker_colors=["#1f77b4", "#ff7f0e", "#2ca02c"],
-            pull=[0.03, 0.03, 0.03],
-            textinfo="percent+label",
-            textposition="outside",
-            hovertemplate="%{label}<br>%{value:,.1f} kWh<br>%{percent}<extra></extra>"
-        )])
+with col_torta_fase:
+    fig_fase = go.Figure(data=[go.Pie(
+        labels=["Línea 1", "Línea 2", "Línea 3"],
+        values=[energia_p1, energia_p2, energia_p3],
+        marker_colors=["#1f77b4", "#ff7f0e", "#2ca02c"],
+        pull=[0.03, 0.03, 0.03],
+        textinfo="percent+label",
+        textposition="outside",
+        hovertemplate="%{label}<br>%{value:,.1f} kWh<br>%{percent}<extra></extra>"
+    )])
 
-        fig_fase.update_layout(
-            title="Distribución estimada por fase",
-            height=430,
-            showlegend=False,
-            margin=dict(l=10, r=10, t=50, b=10),
-            paper_bgcolor="rgba(0,0,0,0)"
-        )
-        st.plotly_chart(fig_fase, use_container_width=True)
+    fig_fase.update_layout(
+        title="Distribución estimada por fase",
+        height=430,
+        showlegend=False,
+        margin=dict(l=10, r=10, t=50, b=10),
+        paper_bgcolor="rgba(0,0,0,0)"
+    )
+    st.plotly_chart(fig_fase, use_container_width=True)
 
-    with col_mensual:
-        meses_nombres = df_month.index.strftime("%b %Y").str.capitalize()
+with col_stack_fase:
+    fig_stack = go.Figure()
 
-        fig_month = go.Figure()
-        fig_month.add_trace(go.Bar(
-            x=meses_nombres,
-            y=df_month.values,
-            marker_color="#2c3e50",
-            text=[f"{val:,.0f} kWh" for val in df_month.values],
-            textposition="auto",
-            hovertemplate="<b>%{x}</b><br>Consumo: %{y:,.1f} kWh<extra></extra>"
-        ))
+    fig_stack.add_trace(go.Bar(
+        x=df_phase_daily.index,
+        y=df_phase_daily["P1_kWh"],
+        name="Línea 1",
+        marker_color="#1f77b4",
+        customdata=df_phase_daily["nombre_dia"],
+        hovertemplate="<b>%{customdata}</b>, %{x|%d/%m/%Y}<br>Línea 1: %{y:.2f} kWh<extra></extra>"
+    ))
 
-        fig_month.update_layout(
-            title="Consumo mensual total",
-            template="plotly_white",
-            height=430,
-            margin=dict(l=20, r=20, t=50, b=20),
-            yaxis_title="kWh"
-        )
-        st.plotly_chart(fig_month, use_container_width=True)
+    fig_stack.add_trace(go.Bar(
+        x=df_phase_daily.index,
+        y=df_phase_daily["P2_kWh"],
+        name="Línea 2",
+        marker_color="#ff7f0e",
+        customdata=df_phase_daily["nombre_dia"],
+        hovertemplate="<b>%{customdata}</b>, %{x|%d/%m/%Y}<br>Línea 2: %{y:.2f} kWh<extra></extra>"
+    ))
 
+    fig_stack.add_trace(go.Bar(
+        x=df_phase_daily.index,
+        y=df_phase_daily["P3_kWh"],
+        name="Línea 3",
+        marker_color="#2ca02c",
+        customdata=df_phase_daily["nombre_dia"],
+        hovertemplate="<b>%{customdata}</b>, %{x|%d/%m/%Y}<br>Línea 3: %{y:.2f} kWh<extra></extra>"
+    ))
+
+    fig_stack.update_layout(
+        title="Desglose diario por fase",
+        barmode="stack",
+        height=430,
+        template="plotly_white",
+        hovermode="x unified",
+        margin=dict(l=20, r=20, t=50, b=20),
+        yaxis_title="kWh",
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+    )
+
+    st.plotly_chart(fig_stack, use_container_width=True)
+
+st.markdown("### Consumo mensual")
+
+meses_nombres = df_month.index.strftime("%b %Y").str.capitalize()
+
+fig_month = go.Figure()
+fig_month.add_trace(go.Bar(
+    x=meses_nombres,
+    y=df_month.values,
+    marker_color="#2c3e50",
+    text=[f"{val:,.0f} kWh" for val in df_month.values],
+    textposition="auto",
+    hovertemplate="<b>%{x}</b><br>Consumo: %{y:,.1f} kWh<extra></extra>"
+))
+
+fig_month.update_layout(
+    title="Consumo mensual total",
+    template="plotly_white",
+    height=430,
+    margin=dict(l=20, r=20, t=50, b=20),
+    yaxis_title="kWh"
+)
+st.plotly_chart(fig_month, use_container_width=True)
     st.markdown("### Lectura rápida")
 
     i1, i2 = st.columns(2)
