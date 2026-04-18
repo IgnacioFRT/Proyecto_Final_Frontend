@@ -14,7 +14,7 @@ def get_historical_data():
 
     query = f'''
     from(bucket: "{st.secrets["INFLUX_BUCKET"]}")
-      |> range(start: -90d)
+      |> range(start: 0d)
       |> filter(fn: (r) => r._measurement == "{st.secrets["MEASUREMENT"]}")
       |> filter(fn: (r) => r.deviceID == "{st.secrets["DEVICE_ID"]}")
       |> filter(fn: (r) => r.proyecto == "{st.secrets["PROYECTO"]}")
