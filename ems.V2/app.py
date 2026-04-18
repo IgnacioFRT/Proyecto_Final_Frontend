@@ -36,12 +36,6 @@ def render_status_banner(status_text, status_type="success"):
 
 def render_home():
     st_autorefresh(interval=60000, key="refresh_home")
-    
-    # Logo institucional
-    try:
-        st.image("assets/LOGO-BLANCO-UTN.png", width=180)
-    except Exception:
-        pass
 
     st.markdown(f'<div class="main-title">⚡ {APP_TITLE}</div>', unsafe_allow_html=True)
     col1, col2, col3 = st.columns([1, 3, 1])
@@ -133,3 +127,10 @@ def render_home():
             "- Dashboard técnico para monitoreo\n"
             "- Base para análisis de eficiencia energética"
         )
+
+if section == "Inicio":
+    render_home()
+elif section == "Tiempo Real":
+    render_realtime()
+elif section == "Resumen Histórico":
+    render_historico()
