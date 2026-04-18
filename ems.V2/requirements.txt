@@ -1,0 +1,6 @@
+streamlit
+influxdb-client
+plotly
+pandas
+numpy
+pytz
