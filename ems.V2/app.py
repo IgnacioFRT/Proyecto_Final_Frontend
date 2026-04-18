@@ -42,6 +42,9 @@ def render_home():
         pass
 
     st.markdown(f'<div class="main-title">⚡ {APP_TITLE}</div>', unsafe_allow_html=True)
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        st.image("assets/logo_utn_frt.jpeg", width=350)
     st.markdown(f'<div class="sub-title">{APP_SUBTITLE}</div>', unsafe_allow_html=True)
     st.caption("Monitoreo energético y calidad de suministro en tiempo real para la UTN FRT")
 
