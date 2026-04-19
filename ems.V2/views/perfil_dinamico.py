@@ -198,9 +198,9 @@ def render_perfil_dinamico():
 
             st.markdown(f"""
             <div style="
-                background: #dfe9f5;
-                border-radius: 10px;
-                padding: 12px 16px;
+               background: #e6eef7;
+               border-radius: 10px;
+               padding: 12px 16px;
                font-size: 0.95rem;
                color: #2c3e50;
                margin-top: 12px;
