@@ -84,8 +84,6 @@ def render_perfil_dinamico():
         df_heat = df.groupby(["nombre_dia", "hora"])["incremento_kWh"].mean().unstack().reindex(order_dias)
 
         # ===== FRONTEND =====
-        st.markdown("### Perfil de carga dinámico")
-        st.caption("Análisis de hábitos de consumo por semana, hora del día y mapa de calor")
 
         col_izq, col_espacio, col_der = st.columns([1.2, 0.08, 1.2])
 
