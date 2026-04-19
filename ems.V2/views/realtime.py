@@ -53,6 +53,7 @@ def kpi_card(title, value, subtitle=""):
     </div>
     """, unsafe_allow_html=True)
 
+
 def indicator_card(title, value, subtitle=""):
     st.markdown(f"""
     <div class="kpi-card-indicator">
@@ -61,6 +62,7 @@ def indicator_card(title, value, subtitle=""):
         <div class="kpi-sub-indicator">{subtitle}</div>
     </div>
     """, unsafe_allow_html=True)
+
 
 def render_realtime():
     st_autorefresh(interval=30000, key="refresh_realtime")
@@ -103,7 +105,6 @@ def render_realtime():
         thdi3 = data.get("THDi3", 0)
 
         hora_txt = latest_time.strftime("%d/%m/%Y %H:%M:%S") if latest_time else "--:--:--"
-
         st.success(f"Último dato recibido: {hora_txt}")
 
     except Exception as e:
@@ -129,7 +130,6 @@ def render_realtime():
         kpi_card("Velocidad de viento", f"{wind:.1f} km/h", "Entorno")
 
     st.markdown("### Variables por fase")
-
     left, right = st.columns(2)
 
     with left:
@@ -139,11 +139,10 @@ def render_realtime():
         st.plotly_chart(create_voltage_bar(ul1n, ul2n, ul3n), use_container_width=True)
 
     st.markdown("### Indicadores eléctricos")
-
     tab1, tab2, tab3 = st.tabs(["Factor de Potencia", "THD Tensión", "THD Corriente"])
 
     with tab1:
-         a, b, c = st.columns(3)
+        a, b, c = st.columns(3)
         with a:
             indicator_card("FP1", f"{fp1:.2f}", "Factor de potencia")
         with b:
@@ -151,20 +150,20 @@ def render_realtime():
         with c:
             indicator_card("FP3", f"{fp3:.2f}", "Factor de potencia")
 
-     with tab2:
-         a, b, c = st.columns(3)
-         with a:
-             indicator_card("THDv1", f"{thdv1:.1f} %", "THD tensión")
-         with b:
-             indicator_card("THDv2", f"{thdv2:.1f} %", "THD tensión")
-         with c:
-             indicator_card("THDv3", f"{thdv3:.1f} %", "THD tensión")
+    with tab2:
+        a, b, c = st.columns(3)
+        with a:
+            indicator_card("THDv1", f"{thdv1:.1f} %", "THD tensión")
+        with b:
+            indicator_card("THDv2", f"{thdv2:.1f} %", "THD tensión")
+        with c:
+            indicator_card("THDv3", f"{thdv3:.1f} %", "THD tensión")
 
-      with tab3:
-          a, b, c = st.columns(3)
-          with a:
-              indicator_card("THDi1", f"{thdi1:.1f} %", "THD corriente")
-          with b:
-              indicator_card("THDi2", f"{thdi2:.1f} %", "THD corriente")
-          with c:
-              indicator_card("THDi3", f"{thdi3:.1f} %", "THD corriente")
+    with tab3:
+        a, b, c = st.columns(3)
+        with a:
+            indicator_card("THDi1", f"{thdi1:.1f} %", "THD corriente")
+        with b:
+            indicator_card("THDi2", f"{thdi2:.1f} %", "THD corriente")
+        with c:
+            indicator_card("THDi3", f"{thdi3:.1f} %", "THD corriente")
