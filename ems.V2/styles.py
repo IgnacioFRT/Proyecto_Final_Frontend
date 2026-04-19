@@ -9,7 +9,7 @@ def load_global_styles():
 
         /* subir el contenido global */
         .block-container {
-            padding-top: 1.2rem !important;
+            padding-top: 1.5rem !important;
             padding-bottom: 2rem !important;
         }
 
