@@ -37,10 +37,7 @@ def load_global_styles():
             padding: 18px 14px;
             text-align: center;
             box-shadow: 0 2px 6px rgba(0,0,0,0.04);
-            min-height: 140px;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
+            min-height: 130px;
         }
 
         .kpi-title {
@@ -55,13 +52,7 @@ def load_global_styles():
             font-size: 1.6rem;
             font-weight: 800;
             color: #1f2d3d;
-           line-height: 1.2;
-
-           min-height: 2.5em;
-           display: flex;
-           align-items: center;
-           justify-content: center;
-           flex-direction: column;
+            line-height: 1.2;
         }
 
         .kpi-sub {
