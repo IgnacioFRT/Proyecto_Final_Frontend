@@ -8,7 +8,7 @@ from styles import load_global_styles
 from config import APP_TITLE, APP_SUBTITLE
 from services.influx_service import get_latest_data, get_raw_data_count
 from views.realtime import render_realtime
-from views.historico import render_historico, get_historico_summary
+
 
 
 st.set_page_config(
