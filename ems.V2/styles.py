@@ -7,9 +7,8 @@ def load_global_styles():
         .stAppDeployButton {display: none;}
         [data-testid="stToolbarActions"] {display: none;}
 
-        /* subir el contenido global */
         .block-container {
-            padding-top: 1.8rem !important;
+            padding-top: 1.4rem !important;
             padding-bottom: 2rem !important;
         }
 
@@ -43,7 +42,7 @@ def load_global_styles():
             padding: 18px 14px;
             text-align: center;
             box-shadow: 0 2px 6px rgba(0,0,0,0.04);
-            min-height: 145px;
+            min-height: 150px;
         }
 
         .kpi-title {
@@ -65,22 +64,6 @@ def load_global_styles():
             font-size: 0.9rem;
             color: #7f8c8d;
             margin-top: 0.4rem;
-        }
-
-        .realtime-title {
-            font-size: 2rem;
-            font-weight: 700;
-            color: #1f2d3d;
-            text-align: center;
-            margin-top: 0.2px;
-            margin-bottom: 0.2rem;
-        }
-
-        .realtime-subtitle {
-            text-align: center;
-            color: #6b7a89;
-            font-size: 0.95rem;
-            margin-bottom: 1.2rem;
         }
 
         .kpi-card-indicator {
