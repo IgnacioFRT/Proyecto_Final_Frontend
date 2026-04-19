@@ -83,14 +83,22 @@ def render_perfil_dinamico():
         df_heat = df.groupby(["nombre_dia", "hora"])["incremento_kWh"].mean().unstack().reindex(order_dias)
 
         # ===== MÉTRICAS RESUMEN =====
+        # 1) Pico del perfil horario promedio
         hora_pico = int(df_hora_avg["Total"].idxmax())
         valor_hora_pico = float(df_hora_avg["Total"].max())
 
+        # 2) Día de mayor demanda del perfil semanal promedio
         dia_pico = df_semana_avg["Total"].idxmax()
         valor_dia_pico = float(df_semana_avg["Total"].max())
 
-        promedio_perfil = float(df_semana_avg["Total"].mean())
+        # 3) Pico puntual según mapa de calor
+        heat_values = df_heat.to_numpy()
+        idx_max = np.unravel_index(np.nanargmax(heat_values), heat_values.shape)
 
+        dia_pico_heat = df_heat.index[idx_max[0]]
+        hora_pico_heat = int(df_heat.columns[idx_max[1]])
+        valor_pico_heat = float(heat_values[idx_max])
+        
         # ===== FRONTEND =====
         col_izq, col_der = st.columns([1.05, 1.35])
         colores_fase = ["#1f77b4", "#ff7f0e", "#2ca02c"]
@@ -226,13 +234,13 @@ def render_perfil_dinamico():
             """, unsafe_allow_html=True)
 
         with k3:
-            st.markdown(f"""
-            <div class="kpi-card">
-                <div class="kpi-title">Consumo diario medio</div>
-                <div class="kpi-value">{promedio_perfil:.2f} kWh</div>
-                <div class="kpi-sub">Pico: {dia_pico} a las {hora_pico:02d}:00</div>
-            </div>
-            """, unsafe_allow_html=True)
-
+           st.markdown(f"""
+           <div class="kpi-card">
+               <div class="kpi-title">Pico de demanda</div>
+               <div class="kpi-value">{dia_pico_heat}</div>
+               <div class="kpi-sub">{hora_pico_heat:02d}:00 · {valor_pico_heat:.2f} kWh</div>
+           </div>
+           """, unsafe_allow_html=True)
+            
     except Exception as e:
         st.error(f"Error al generar el perfil de carga dinámico: {e}")
