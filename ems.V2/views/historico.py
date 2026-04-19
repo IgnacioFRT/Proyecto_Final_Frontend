@@ -221,6 +221,20 @@ def compute_monthly_consumption(df):
     return mensual
 
 
+def get_historico_summary():
+    df = get_historical_data()
+
+    if df.empty:
+        return 0.0, 0
+
+    df = build_incremental_consumption(df)
+    df_daily = build_daily_data(df)
+
+    energia_total = df["EA_imp_T1_kwh"].max() - df["EA_imp_T1_kwh"].min()
+    dias_con_datos = int((df_daily["consumo_diario_kWh"] > 0).sum())
+
+    return float(energia_total), dias_con_datos
+
 def render_historico():
 
     try:
