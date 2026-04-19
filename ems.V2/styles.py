@@ -43,7 +43,7 @@ def load_global_styles():
             padding: 18px 14px;
             text-align: center;
             box-shadow: 0 2px 6px rgba(0,0,0,0.04);
-            min-height: 145px;
+            min-height: 140px;
         }
 
         .kpi-title {
