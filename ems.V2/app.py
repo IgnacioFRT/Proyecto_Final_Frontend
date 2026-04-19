@@ -118,6 +118,8 @@ def render_home() -> None:
         </div>
         """, unsafe_allow_html=True)
 
+    st.markdown("<div style='margin-top: 18px;'></div>", unsafe_allow_html=True)
+
     # ===== FILA 2 =====
     f2_c1, f2_c2, f2_c3 = st.columns(3)
 
@@ -147,6 +149,31 @@ def render_home() -> None:
             <div class="kpi-sub">Consumo acumulado</div>
         </div>
         """, unsafe_allow_html=True)
+
+
+st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True)
+
+st.markdown("## Descripción del proyecto")
+
+d1, d2 = st.columns(2)
+
+with d1:
+    st.info(
+        "**Hardware de adquisición**\n\n"
+        "- Siemens PAC3200\n"
+        "- Medición trifásica\n"
+        "- Variables eléctricas en tiempo real\n"
+        "- Supervisión de calidad de energía"
+    )
+
+with d2:
+    st.info(
+        "**Software y visualización**\n\n"
+        "- Streamlit\n"
+        "- InfluxDB\n"
+        "- Dashboard técnico para monitoreo\n"
+        "- Base para análisis de eficiencia energética"
+    )
 
 
 if section == "Inicio":
