@@ -88,7 +88,7 @@ def render_home():
         st.markdown(f"""
         <div class="kpi-card">
             <div class="kpi-title">Última sincronización</div>
-            <div class="kpi-value" style="font-size:1.4rem;">
+            <div class="kpi-value" style="font-size:1.3rem;">
                 {fecha_txt}<br>
                 {hora_txt}
             </div>
