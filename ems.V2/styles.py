@@ -60,5 +60,21 @@ def load_global_styles():
             color: #7f8c8d;
             margin-top: 0.4rem;
         }
+
+        .realtime-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1f2d3d;
+            text-align: center;
+            margin-top: -10px;
+            margin-bottom: 0.2rem;
+        }
+
+       .realtime-subtitle {
+           text-align: center;
+           color: #6b7a89;
+           font-size: 0.95rem;
+           margin-bottom: 1.2rem;
+        }
     </style>
     """, unsafe_allow_html=True)
