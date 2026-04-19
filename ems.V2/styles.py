@@ -8,7 +8,7 @@ def load_global_styles():
         [data-testid="stToolbarActions"] {display: none;}
 
         section.main > div {
-            padding-top: 0.8rem !important;
+            padding-top: 0.5rem !important;
         }
 
         .main-title {
