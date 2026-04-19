@@ -7,13 +7,6 @@ from views.historico import get_historical_data
 
 
 def render_perfil_dinamico():
-
-    st.markdown(
-        """
-        <div style="margin-top: 20px;"></div>
-        """,
-        unsafe_allow_html=True
-    )
     
     try:
         with st.spinner("Procesando perfiles de carga interactivos... ⏳"):
