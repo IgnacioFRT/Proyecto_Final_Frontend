@@ -177,14 +177,10 @@ def render_perfil_dinamico():
             )
             st.plotly_chart(fig_hora, use_container_width=True)
 
-        with col_espacio:
-            st.markdown(
-                """
-                <div style="border-left: 2px solid #e6e9ef; height: 900px; margin-left: 50%;"></div>
-                """,
-                unsafe_allow_html=True
-            )
 
+        with col_espacio:
+            st.empty()
+    
         with col_der:
             st.markdown("#### Mapa de calor de demanda")
 
