@@ -7,12 +7,10 @@ def load_global_styles():
         .stAppDeployButton {display: none;}
         [data-testid="stToolbarActions"] {display: none;}
 
-        section.main > div {
-            padding-top: 0.3rem !important;
-        }
-
-        [data-testid="stAppViewContainer"] > .main {
-            padding-top: 0.3rem !important;
+        /* subir el contenido global */
+        .block-container {
+            padding-top: 1rem !important;
+            padding-bottom: 2rem !important;
         }
 
         .main-title {
@@ -78,11 +76,11 @@ def load_global_styles():
             margin-bottom: 0.2rem;
         }
 
-       .realtime-subtitle {
-           text-align: center;
-           color: #6b7a89;
-           font-size: 0.95rem;
-           margin-bottom: 1.2rem;
+        .realtime-subtitle {
+            text-align: center;
+            color: #6b7a89;
+            font-size: 0.95rem;
+            margin-bottom: 1.2rem;
         }
     </style>
     """, unsafe_allow_html=True)
