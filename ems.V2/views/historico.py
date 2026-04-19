@@ -391,7 +391,7 @@ def render_historico():
     fig_month.add_trace(go.Bar(
         x=meses_nombres,
         y=df_month.values,
-        marker_color="#2c3e50",
+        marker_color="#1f77b4",
         text=[f"{val:,.0f} kWh" for val in df_month.values],
         textposition="auto",
         hovertemplate="<b>%{x}</b><br>Consumo: %{y:,.1f} kWh<extra></extra>"
