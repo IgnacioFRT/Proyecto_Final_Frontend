@@ -7,6 +7,10 @@ def load_global_styles():
         .stAppDeployButton {display: none;}
         [data-testid="stToolbarActions"] {display: none;}
 
+        section.main > div {
+            padding-top: 0.8rem !important;
+        }
+
         .main-title {
             font-size: 2.3rem;
             font-weight: 700;
