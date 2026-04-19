@@ -72,7 +72,7 @@ def load_global_styles():
             font-weight: 700;
             color: #1f2d3d;
             text-align: center;
-            margin-top: -10px;
+            margin-top: 0.2px;
             margin-bottom: 0.2rem;
         }
 
