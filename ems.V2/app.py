@@ -85,7 +85,7 @@ def render_home():
         """, unsafe_allow_html=True)
 
     with c2:
-    st.markdown(f"""
+        st.markdown(f"""
         <div class="kpi-card">
             <div class="kpi-title">Última sincronización</div>
             <div class="kpi-value">
