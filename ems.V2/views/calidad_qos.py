@@ -142,32 +142,14 @@ def render_calidad_qos():
             )
             st.plotly_chart(fig_pie, use_container_width=True)
 
-            st.markdown(f"""
-            <div class="kpi-card-indicator">
-                <div class="kpi-title-indicator">Período analizado</div>
-                <div class="kpi-value-indicator">{start.strftime('%d/%m/%Y')}</div>
-                <div class="kpi-sub-indicator">hasta {end.strftime('%d/%m/%Y')} · {reales_global:,}/{esperados_global:,} registros</div>
-            </div>
-            """, unsafe_allow_html=True)
-
         st.markdown("<div style='margin-top: 18px;'></div>", unsafe_allow_html=True)
 
         # ===== FILA MEDIA =====
         st.markdown("#### Análisis físico de caídas de tensión")
 
-        meses_disponibles = ["Todos los meses"] + meses_labels
-        mes_seleccionado = st.selectbox("Filtrar análisis por mes", meses_disponibles)
-
-        if mes_seleccionado != "Todos los meses":
-            df_filtrado = df_grafico[df_grafico.index.strftime("%b %Y").str.capitalize() == mes_seleccionado]
-            if not df_cortes.empty:
-                df_cortes_filtrado = df_cortes[df_cortes["Inicio_dt"].dt.strftime("%b %Y").str.capitalize() == mes_seleccionado]
-            else:
-                df_cortes_filtrado = df_cortes
-        else:
-            df_filtrado = df_grafico
-            df_cortes_filtrado = df_cortes
-
+        df_filtrado = df_grafico
+        df_cortes_filtrado = df_cortes
+        
         col_grafico, col_tabla = st.columns([2, 1])
 
         with col_grafico:
