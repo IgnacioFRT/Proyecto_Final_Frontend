@@ -86,7 +86,7 @@ def render_perfil_dinamico():
 
         # ===== FRONTEND =====
 
-        col_izq, col_espacio, col_der = st.columns([1.2, 0.08, 1.2])
+        col_izq, col_espacio, col_der = st.columns([1.05, 0.05, 1.35])
 
         colores_fase = ["#1f77b4", "#ff7f0e", "#2ca02c"]
 
