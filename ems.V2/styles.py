@@ -8,7 +8,7 @@ def load_global_styles():
         [data-testid="stToolbarActions"] {display: none;}
 
         .block-container {
-            padding-top: 1.8rem !important;
+            padding-top: 2rem !important;
             padding-bottom: 2rem !important;
         }
 
