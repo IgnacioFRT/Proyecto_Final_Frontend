@@ -53,6 +53,14 @@ def kpi_card(title, value, subtitle=""):
     </div>
     """, unsafe_allow_html=True)
 
+def indicator_card(title, value, subtitle=""):
+    st.markdown(f"""
+    <div class="kpi-card-indicator">
+        <div class="kpi-title-indicator">{title}</div>
+        <div class="kpi-value-indicator">{value}</div>
+        <div class="kpi-sub-indicator">{subtitle}</div>
+    </div>
+    """, unsafe_allow_html=True)
 
 def render_realtime():
     st_autorefresh(interval=30000, key="refresh_realtime")
@@ -135,45 +143,28 @@ def render_realtime():
     tab1, tab2, tab3 = st.tabs(["Factor de Potencia", "THD Tensión", "THD Corriente"])
 
     with tab1:
-        a, b, c = st.columns(3)
-        a.metric("FP1", f"{fp1:.2f}")
-        b.metric("FP2", f"{fp2:.2f}")
-        c.metric("FP3", f"{fp3:.2f}")
+         a, b, c = st.columns(3)
+        with a:
+            indicator_card("FP1", f"{fp1:.2f}", "Factor de potencia")
+        with b:
+            indicator_card("FP2", f"{fp2:.2f}", "Factor de potencia")
+        with c:
+            indicator_card("FP3", f"{fp3:.2f}", "Factor de potencia")
 
-    with tab2:
-        a, b, c = st.columns(3)
-        a.metric("THDv1", f"{thdv1:.1f} %")
-        b.metric("THDv2", f"{thdv2:.1f} %")
-        c.metric("THDv3", f"{thdv3:.1f} %")
+     with tab2:
+         a, b, c = st.columns(3)
+         with a:
+             indicator_card("THDv1", f"{thdv1:.1f} %", "THD tensión")
+         with b:
+             indicator_card("THDv2", f"{thdv2:.1f} %", "THD tensión")
+         with c:
+             indicator_card("THDv3", f"{thdv3:.1f} %", "THD tensión")
 
-    with tab3:
-        a, b, c = st.columns(3)
-        a.metric("THDi1", f"{thdi1:.1f} %")
-        b.metric("THDi2", f"{thdi2:.1f} %")
-        c.metric("THDi3", f"{thdi3:.1f} %")
-
-    st.markdown("### Lectura técnica rápida")
-
-    l1, l2 = st.columns(2)
-
-    with l1:
-        if 49 <= freq <= 51:
-            st.success("Frecuencia estable.")
-        else:
-            st.warning("Frecuencia fuera de rango.")
-
-        if min(ul1n, ul2n, ul3n) >= 200 and max(ul1n, ul2n, ul3n) <= 250:
-            st.success("Tensiones dentro del rango esperado.")
-        else:
-            st.warning("Hay tensiones fuera de rango.")
-
-    with l2:
-        if min(fp1, fp2, fp3) >= 0.85:
-            st.success("Factor de potencia aceptable en las tres fases.")
-        else:
-            st.warning("Alguna fase presenta factor de potencia bajo.")
-
-        if max(thdv1, thdv2, thdv3) <= 8:
-            st.success("THD de tensión dentro de valores razonables.")
-        else:
-            st.warning("THD de tensión elevado.")
+      with tab3:
+          a, b, c = st.columns(3)
+          with a:
+              indicator_card("THDi1", f"{thdi1:.1f} %", "THD corriente")
+          with b:
+              indicator_card("THDi2", f"{thdi2:.1f} %", "THD corriente")
+          with c:
+              indicator_card("THDi3", f"{thdi3:.1f} %", "THD corriente")
