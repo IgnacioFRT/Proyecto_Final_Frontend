@@ -11,6 +11,10 @@ def load_global_styles():
             padding-top: 0.5rem !important;
         }
 
+        [data-testid="stAppViewContainer"] > .main {
+            padding-top: 0.8rem !important;
+        }
+
         .main-title {
             font-size: 2.3rem;
             font-weight: 700;
