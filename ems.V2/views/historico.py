@@ -222,8 +222,6 @@ def compute_monthly_consumption(df):
 
 
 def render_historico():
-    st.markdown("## Resumen Histórico")
-    st.caption("Histórico completo con tortas, evolución diaria y consumo mensual")
 
     try:
         df = get_historical_data()
@@ -250,12 +248,6 @@ def render_historico():
     except Exception as e:
         st.error(f"Error cargando histórico: {e}")
         return
-
-    k1, k2, k3, k4 = st.columns(4)
-    k1.metric("Energía total", f"{energia_total:,.1f} kWh")
-    k2.metric("Consumo diario promedio", f"{consumo_promedio:,.1f} kWh/día")
-    k3.metric("Días con datos", f"{dias_con_datos}")
-    k4.metric("Pico diario", f"{valor_max:,.1f} kWh")
 
     st.markdown("### Análisis principal")
 
