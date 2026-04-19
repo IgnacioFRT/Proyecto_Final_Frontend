@@ -67,12 +67,6 @@ def indicator_card(title, value, subtitle=""):
 def render_realtime():
     st_autorefresh(interval=30000, key="refresh_realtime")
 
-    st.markdown('<div class="realtime-title">⚡ Tiempo Real</div>', unsafe_allow_html=True)
-    st.markdown(
-        '<div class="realtime-subtitle">Monitoreo instantáneo de variables eléctricas y ambientales</div>',
-        unsafe_allow_html=True
-    )
-
     try:
         data, latest_time = get_latest_data()
 
