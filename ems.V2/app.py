@@ -10,6 +10,7 @@ from services.influx_service import get_latest_data, get_raw_data_count
 from views.realtime import render_realtime
 from views.historico import render_historico, get_historico_summary
 from views.perfil_dinamico import render_perfil_dinamico
+from views.calidad_qos import render_calidad_qos
 
 
 st.set_page_config(
@@ -25,7 +26,7 @@ with st.sidebar:
     st.title("EMS UTN - v2")
     section = st.radio(
         "Navegación",
-        ["Inicio", "Tiempo Real", "Resumen Histórico", "Perfil Dinámico"]
+        ["Inicio", "Tiempo Real", "Resumen Histórico", "Perfil Dinámico", "Calidad QoS"]
     )
     st.markdown("---")
     st.caption("Versión nueva del dashboard")
@@ -189,3 +190,5 @@ elif section == "Resumen Histórico":
     render_historico()
 elif section == "Perfil Dinámico":
     render_perfil_dinamico()
+elif section == "Calidad QoS":
+    render_calidad_qos()
