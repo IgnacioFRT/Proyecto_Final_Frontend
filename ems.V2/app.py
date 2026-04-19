@@ -9,6 +9,7 @@ from config import APP_TITLE, APP_SUBTITLE
 from services.influx_service import get_latest_data, get_raw_data_count
 from views.realtime import render_realtime
 from views.historico import render_historico, get_historico_summary
+from views.perfil_dinamico import render_perfil_dinamico
 
 
 st.set_page_config(
@@ -24,7 +25,7 @@ with st.sidebar:
     st.title("EMS UTN - v2")
     section = st.radio(
         "Navegación",
-        ["Inicio", "Tiempo Real", "Resumen Histórico"]
+        ["Inicio", "Tiempo Real", "Resumen Histórico", "Perfil Dinámico"]
     )
     st.markdown("---")
     st.caption("Versión nueva del dashboard")
@@ -186,3 +187,5 @@ elif section == "Tiempo Real":
     render_realtime()
 elif section == "Resumen Histórico":
     render_historico()
+elif section == "Perfil Dinámico":
+    render_perfil_dinamico()
