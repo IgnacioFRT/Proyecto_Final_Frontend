@@ -91,7 +91,7 @@ def render_perfil_dinamico():
         colores_fase = ["#1f77b4", "#ff7f0e", "#2ca02c"]
 
         with col_izq:
-            st.markdown("#### Promedio diario por semana")
+            st.markdown("#### Perfil semanal promedio")
 
             fig_sem = go.Figure()
             for i, linea in enumerate(["L1", "L2", "L3"]):
@@ -133,7 +133,7 @@ def render_perfil_dinamico():
             )
             st.plotly_chart(fig_sem, use_container_width=True)
 
-            st.markdown("#### Perfil típico de 24 horas")
+            st.markdown("#### Perfil horario típico")
 
             fig_hora = go.Figure()
             horas_x = [f"{h:02d}:00" for h in range(24)]
@@ -186,7 +186,7 @@ def render_perfil_dinamico():
             )
 
         with col_der:
-            st.markdown("#### Mapa de calor de consumo (kWh)")
+            st.markdown("#### Mapa de calor de demanda")
 
             fig_heat = go.Figure(data=go.Heatmap(
                 z=df_heat.values,
