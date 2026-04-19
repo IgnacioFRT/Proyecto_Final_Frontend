@@ -4,14 +4,17 @@ from streamlit_autorefresh import st_autorefresh
 from services.influx_service import get_latest_data
 
 
+
 def create_currents_bar(il1, il2, il3):
+    colors = ["#1f77b4", "#ff7f0e", "#2ca02c"]
+
     fig = go.Figure()
     fig.add_trace(go.Bar(
         x=["L1", "L2", "L3"],
         y=[il1, il2, il3],
         text=[f"{il1:.2f} A", f"{il2:.2f} A", f"{il3:.2f} A"],
         textposition="auto",
-        marker_color=["#1f77b4", "#ff7f0e", "#2ca02c"]
+        marker=dict(color=colors)
     ))
 
     fig.update_layout(
@@ -23,15 +26,16 @@ def create_currents_bar(il1, il2, il3):
     )
     return fig
 
-
 def create_voltage_bar(v1, v2, v3):
+    colors = ["#1f77b4", "#ff7f0e", "#2ca02c"]  # MISMA PALETA
+
     fig = go.Figure()
     fig.add_trace(go.Bar(
         x=["UL1N", "UL2N", "UL3N"],
         y=[v1, v2, v3],
         text=[f"{v1:.1f} V", f"{v2:.1f} V", f"{v3:.1f} V"],
         textposition="auto",
-        marker_color=["#2E86C1", "#5DADE2", "#85C1E9"]
+        marker=dict(color=colors)
     ))
 
     fig.update_layout(
