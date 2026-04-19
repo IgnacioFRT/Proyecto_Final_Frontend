@@ -235,8 +235,8 @@ def get_historico_summary():
 
     return float(energia_total), dias_con_datos
 
-def render_historico():
 
+def render_historico():
     try:
         df = get_historical_data()
 
@@ -254,8 +254,6 @@ def render_historico():
         df_phase_daily = compute_daily_phase_breakdown(df)
         df_month = compute_monthly_consumption(df)
 
-        consumo_promedio = df_daily["consumo_diario_kWh"].mean()
-        dias_con_datos = (df_daily["consumo_diario_kWh"] > 0).sum()
         dia_max = df_daily["consumo_diario_kWh"].idxmax()
         valor_max = df_daily["consumo_diario_kWh"].max()
 
@@ -280,7 +278,7 @@ def render_historico():
 
         fig_torta.update_layout(
             title="Consumo por tipo de día",
-            height=430,
+            height=320,
             showlegend=False,
             margin=dict(l=10, r=10, t=50, b=10),
             paper_bgcolor="rgba(0,0,0,0)"
@@ -310,7 +308,7 @@ def render_historico():
 
         fig_barras.update_layout(
             title="Evolución de consumo diario",
-            height=430,
+            height=320,
             template="plotly_white",
             hovermode="x unified",
             legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
@@ -321,7 +319,7 @@ def render_historico():
 
     st.markdown("### Distribución eléctrica")
 
-    col_torta_fase, col_stack_fase = st.columns([1, 2])
+    col_torta_fase, col_mensual = st.columns([1, 2])
 
     with col_torta_fase:
         fig_fase = go.Figure(data=[go.Pie(
@@ -336,77 +334,77 @@ def render_historico():
 
         fig_fase.update_layout(
             title="Distribución estimada por fase",
-            height=430,
+            height=320,
             showlegend=False,
             margin=dict(l=10, r=10, t=50, b=10),
             paper_bgcolor="rgba(0,0,0,0)"
         )
         st.plotly_chart(fig_fase, use_container_width=True)
 
-    with col_stack_fase:
-        fig_stack = go.Figure()
+    with col_mensual:
+        meses_nombres = df_month.index.strftime("%b %Y").str.capitalize()
 
-        fig_stack.add_trace(go.Bar(
-            x=df_phase_daily.index,
-            y=df_phase_daily["P1_kWh"],
-            name="Línea 1",
-            marker_color="#1f77b4",
-            customdata=df_phase_daily["nombre_dia"],
-            hovertemplate="<b>%{customdata}</b>, %{x|%d/%m/%Y}<br>Línea 1: %{y:.2f} kWh<extra></extra>"
+        fig_month = go.Figure()
+        fig_month.add_trace(go.Bar(
+            x=meses_nombres,
+            y=df_month.values,
+            marker_color="#2c3e50",
+            text=[f"{val:,.0f} kWh" for val in df_month.values],
+            textposition="auto",
+            hovertemplate="<b>%{x}</b><br>Consumo: %{y:,.1f} kWh<extra></extra>"
         ))
 
-        fig_stack.add_trace(go.Bar(
-            x=df_phase_daily.index,
-            y=df_phase_daily["P2_kWh"],
-            name="Línea 2",
-            marker_color="#ff7f0e",
-            customdata=df_phase_daily["nombre_dia"],
-            hovertemplate="<b>%{customdata}</b>, %{x|%d/%m/%Y}<br>Línea 2: %{y:.2f} kWh<extra></extra>"
-        ))
-
-        fig_stack.add_trace(go.Bar(
-            x=df_phase_daily.index,
-            y=df_phase_daily["P3_kWh"],
-            name="Línea 3",
-            marker_color="#2ca02c",
-            customdata=df_phase_daily["nombre_dia"],
-            hovertemplate="<b>%{customdata}</b>, %{x|%d/%m/%Y}<br>Línea 3: %{y:.2f} kWh<extra></extra>"
-        ))
-
-        fig_stack.update_layout(
-            title="Desglose diario por fase",
-            barmode="stack",
-            height=430,
+        fig_month.update_layout(
+            title="Consumo mensual total",
             template="plotly_white",
-            hovermode="x unified",
+            height=300,
             margin=dict(l=20, r=20, t=50, b=20),
-            yaxis_title="kWh",
-            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+            yaxis_title="kWh"
         )
-        st.plotly_chart(fig_stack, use_container_width=True)
+        st.plotly_chart(fig_month, use_container_width=True)
 
-    st.markdown("### Consumo mensual")
+    st.markdown("### Desglose diario por fase")
 
-    meses_nombres = df_month.index.strftime("%b %Y").str.capitalize()
+    fig_stack = go.Figure()
 
-    fig_month = go.Figure()
-    fig_month.add_trace(go.Bar(
-        x=meses_nombres,
-        y=df_month.values,
-        marker_color="#2c3e50",
-        text=[f"{val:,.0f} kWh" for val in df_month.values],
-        textposition="auto",
-        hovertemplate="<b>%{x}</b><br>Consumo: %{y:,.1f} kWh<extra></extra>"
+    fig_stack.add_trace(go.Bar(
+        x=df_phase_daily.index,
+        y=df_phase_daily["P1_kWh"],
+        name="Línea 1",
+        marker_color="#1f77b4",
+        customdata=df_phase_daily["nombre_dia"],
+        hovertemplate="<b>%{customdata}</b>, %{x|%d/%m/%Y}<br>Línea 1: %{y:.2f} kWh<extra></extra>"
     ))
 
-    fig_month.update_layout(
-        title="Consumo mensual total",
+    fig_stack.add_trace(go.Bar(
+        x=df_phase_daily.index,
+        y=df_phase_daily["P2_kWh"],
+        name="Línea 2",
+        marker_color="#ff7f0e",
+        customdata=df_phase_daily["nombre_dia"],
+        hovertemplate="<b>%{customdata}</b>, %{x|%d/%m/%Y}<br>Línea 2: %{y:.2f} kWh<extra></extra>"
+    ))
+
+    fig_stack.add_trace(go.Bar(
+        x=df_phase_daily.index,
+        y=df_phase_daily["P3_kWh"],
+        name="Línea 3",
+        marker_color="#2ca02c",
+        customdata=df_phase_daily["nombre_dia"],
+        hovertemplate="<b>%{customdata}</b>, %{x|%d/%m/%Y}<br>Línea 3: %{y:.2f} kWh<extra></extra>"
+    ))
+
+    fig_stack.update_layout(
+        title="Desglose diario por fase",
+        barmode="stack",
+        height=320,
         template="plotly_white",
-        height=430,
+        hovermode="x unified",
         margin=dict(l=20, r=20, t=50, b=20),
-        yaxis_title="kWh"
+        yaxis_title="kWh",
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
     )
-    st.plotly_chart(fig_month, use_container_width=True)
+    st.plotly_chart(fig_stack, use_container_width=True)
 
     st.markdown("### Lectura rápida")
 
