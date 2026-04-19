@@ -198,16 +198,18 @@ def render_perfil_dinamico():
 
             st.markdown(f"""
             <div style="
-                background: #eaf2fb;
-                border-left: 4px solid #4a90e2;
+                background: #dfe9f5;
                 border-radius: 10px;
                 padding: 12px 16px;
-                font-size: 0.95rem;
-                color: #2c3e50;
-                margin-top: 10px;
-                width: 100%;
+               font-size: 0.95rem;
+               color: #2c3e50;
+               margin-top: 12px;
+               width: 100%;
+               display: flex;
+               align-items: center;
             ">
-                💡 <strong>Insight:</strong> El mayor consumo promedio ocurre el <strong>{dia_pico}</strong> alrededor de las <strong>{hora_pico:02d}:00</strong>.
+                <span style="font-size:1.1rem; margin-right:8px;">📌</span>
+                <span><strong>Insight:</strong> El mayor consumo promedio ocurre el <strong>{dia_pico}</strong> alrededor de las <strong>{hora_pico:02d}:00</strong>.</span>
             </div>
             """, unsafe_allow_html=True)
 
