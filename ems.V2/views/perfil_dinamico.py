@@ -1,85 +1,211 @@
 import streamlit as st
 import plotly.graph_objects as go
-from services.influx_service import get_latest_data
+import numpy as np
+
+
+from views.historico import get_historical_data
 
 
 def render_perfil_dinamico():
-    st.markdown("## Perfil dinámico")
-    st.caption("Vista de comportamiento dinámico del sistema eléctrico")
-
     try:
-        data, latest_time = get_latest_data()
+        with st.spinner("Procesando perfiles de carga interactivos... ⏳"):
+            df = get_historical_data().copy()
 
-        freq = data.get("freq", 0)
-        vmed = data.get("Vmed", 0)
-        imed = data.get("Imed", 0)
-        temp = data.get("temp", 0)
+            if df.empty:
+                st.warning("No se encontraron datos históricos para perfil dinámico.")
+                return
 
-        hora_txt = latest_time.strftime("%d/%m/%Y %H:%M:%S") if latest_time else "--:--:--"
+            df["incremento_kWh"] = df["EA_imp_T1_kwh"].diff().clip(lower=0).fillna(0)
+            df["hora"] = df.index.hour
 
-        st.success(f"Último dato recibido: {hora_txt}")
+            dias_map = {
+                0: "Lunes",
+                1: "Martes",
+                2: "Miércoles",
+                3: "Jueves",
+                4: "Viernes",
+                5: "Sábado",
+                6: "Domingo"
+            }
+            order_dias = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
+            df["nombre_dia"] = df.index.dayofweek.map(dias_map)
+
+        # ===== 1) PROMEDIO SEMANAL POR FASE =====
+        df_diario_sem = df.resample("D").agg({
+            "P1": "mean",
+            "P2": "mean",
+            "P3": "mean",
+            "EA_imp_T1_kwh": "last"
+        }).copy()
+
+        df_diario_sem["P_total"] = df_diario_sem["P1"] + df_diario_sem["P2"] + df_diario_sem["P3"]
+        diff_en_sem = df_diario_sem["EA_imp_T1_kwh"].diff().clip(lower=0).fillna(0)
+
+        df_diario_sem["L1"] = np.where(
+            df_diario_sem["P_total"] > 0,
+            (df_diario_sem["P1"] / df_diario_sem["P_total"]) * diff_en_sem,
+            0
+        )
+        df_diario_sem["L2"] = np.where(
+            df_diario_sem["P_total"] > 0,
+            (df_diario_sem["P2"] / df_diario_sem["P_total"]) * diff_en_sem,
+            0
+        )
+        df_diario_sem["L3"] = np.where(
+            df_diario_sem["P_total"] > 0,
+            (df_diario_sem["P3"] / df_diario_sem["P_total"]) * diff_en_sem,
+            0
+        )
+
+        df_diario_sem["nombre_dia"] = df_diario_sem.index.dayofweek.map(dias_map)
+        df_semana_avg = df_diario_sem.groupby("nombre_dia")[["L1", "L2", "L3"]].mean().reindex(order_dias)
+        df_semana_avg["Total"] = df_semana_avg.sum(axis=1)
+
+        # ===== 2) PERFIL HORARIO PROMEDIO =====
+        df_hora_avg = df.groupby("hora").agg({
+            "P1": "mean",
+            "P2": "mean",
+            "P3": "mean",
+            "incremento_kWh": "mean"
+        }).copy()
+
+        p_sum_h = df_hora_avg[["P1", "P2", "P3"]].sum(axis=1)
+
+        for i in range(1, 4):
+            df_hora_avg[f"L{i}_kWh"] = np.where(
+                p_sum_h > 0,
+                (df_hora_avg[f"P{i}"] / p_sum_h) * df_hora_avg["incremento_kWh"] * 4,
+                0
+            )
+
+        df_hora_avg["Total"] = df_hora_avg[["L1_kWh", "L2_kWh", "L3_kWh"]].sum(axis=1)
+
+        # ===== 3) MAPA DE CALOR =====
+        df_heat = df.groupby(["nombre_dia", "hora"])["incremento_kWh"].mean().unstack().reindex(order_dias)
+
+        # ===== FRONTEND =====
+        st.markdown("### Perfil de carga dinámico")
+        st.caption("Análisis de hábitos de consumo por semana, hora del día y mapa de calor")
+
+        col_izq, col_espacio, col_der = st.columns([1.2, 0.08, 1.2])
+
+        colores_fase = ["#1f77b4", "#ff7f0e", "#2ca02c"]
+
+        with col_izq:
+            st.markdown("#### Promedio diario por semana")
+
+            fig_sem = go.Figure()
+            for i, linea in enumerate(["L1", "L2", "L3"]):
+                fig_sem.add_trace(go.Bar(
+                    x=df_semana_avg.index,
+                    y=df_semana_avg[linea],
+                    name=f"Línea {i+1}",
+                    marker_color=colores_fase[i]
+                ))
+
+            fig_sem.add_trace(go.Scatter(
+                x=df_semana_avg.index,
+                y=df_semana_avg["Total"],
+                mode="text",
+                text=df_semana_avg["Total"].apply(lambda x: f"<b>{x:.1f}</b>"),
+                textposition="top center",
+                showlegend=False
+            ))
+
+            fig_sem.update_layout(
+                barmode="stack",
+                height=430,
+                template="plotly_white",
+                margin=dict(t=20, b=110, l=40, r=20),
+                updatemenus=[dict(
+                    type="buttons",
+                    direction="right",
+                    active=0,
+                    x=0.5,
+                    y=-0.28,
+                    xanchor="center",
+                    buttons=[
+                        dict(label="Ver Todo", method="update", args=[{"visible": [True, True, True, True]}]),
+                        dict(label="Solo L1", method="update", args=[{"visible": [True, False, False, False]}]),
+                        dict(label="Solo L2", method="update", args=[{"visible": [False, True, False, False]}]),
+                        dict(label="Solo L3", method="update", args=[{"visible": [False, False, True, False]}]),
+                    ]
+                )]
+            )
+            st.plotly_chart(fig_sem, use_container_width=True)
+
+            st.markdown("#### Perfil típico de 24 horas")
+
+            fig_hora = go.Figure()
+            horas_x = [f"{h:02d}:00" for h in range(24)]
+
+            for i in range(1, 4):
+                fig_hora.add_trace(go.Bar(
+                    x=horas_x,
+                    y=df_hora_avg[f"L{i}_kWh"],
+                    name=f"Línea {i}",
+                    marker_color=colores_fase[i-1]
+                ))
+
+            fig_hora.add_trace(go.Scatter(
+                x=horas_x,
+                y=df_hora_avg["Total"],
+                mode="text",
+                text=df_hora_avg["Total"].apply(lambda x: f"<b>{x:.1f}</b>"),
+                textposition="top center",
+                showlegend=False
+            ))
+
+            fig_hora.update_layout(
+                barmode="stack",
+                height=430,
+                template="plotly_white",
+                margin=dict(t=20, b=120, l=40, r=20),
+                updatemenus=[dict(
+                    type="buttons",
+                    direction="right",
+                    active=0,
+                    x=0.5,
+                    y=-0.30,
+                    xanchor="center",
+                    buttons=[
+                        dict(label="Ver Todo", method="update", args=[{"visible": [True, True, True, True]}]),
+                        dict(label="Solo L1", method="update", args=[{"visible": [True, False, False, False]}]),
+                        dict(label="Solo L2", method="update", args=[{"visible": [False, True, False, False]}]),
+                        dict(label="Solo L3", method="update", args=[{"visible": [False, False, True, False]}]),
+                    ]
+                )]
+            )
+            st.plotly_chart(fig_hora, use_container_width=True)
+
+        with col_espacio:
+            st.markdown(
+                """
+                <div style="border-left: 2px solid #e6e9ef; height: 900px; margin-left: 50%;"></div>
+                """,
+                unsafe_allow_html=True
+            )
+
+        with col_der:
+            st.markdown("#### Mapa de calor de consumo (kWh)")
+
+            fig_heat = go.Figure(data=go.Heatmap(
+                z=df_heat.values,
+                x=[f"{h:02d}:00" for h in range(24)],
+                y=df_heat.index,
+                colorscale="YlOrRd",
+                hoverongaps=False,
+                hovertemplate="Día: %{y}<br>Hora: %{x}<br>Consumo: <b>%{z:.2f} kWh</b><extra></extra>"
+            ))
+
+            fig_heat.update_layout(
+                height=900,
+                margin=dict(t=40, b=40, l=20, r=10),
+                yaxis_autorange="reversed"
+            )
+
+            st.plotly_chart(fig_heat, use_container_width=True)
+            st.info("💡 Las zonas más intensas indican horarios y días con mayor demanda promedio.")
 
     except Exception as e:
-        st.error(f"Error cargando perfil dinámico: {e}")
-        return
-
-    c1, c2, c3, c4 = st.columns(4)
-
-    with c1:
-        st.markdown(f"""
-        <div class="kpi-card">
-            <div class="kpi-title">Frecuencia</div>
-            <div class="kpi-value">{freq:.2f} Hz</div>
-            <div class="kpi-sub">Estado instantáneo</div>
-        </div>
-        """, unsafe_allow_html=True)
-
-    with c2:
-        st.markdown(f"""
-        <div class="kpi-card">
-            <div class="kpi-title">Tensión media</div>
-            <div class="kpi-value">{vmed:.1f} V</div>
-            <div class="kpi-sub">Promedio actual</div>
-        </div>
-        """, unsafe_allow_html=True)
-
-    with c3:
-        st.markdown(f"""
-        <div class="kpi-card">
-            <div class="kpi-title">Corriente media</div>
-            <div class="kpi-value">{imed:.2f} A</div>
-            <div class="kpi-sub">Promedio actual</div>
-        </div>
-        """, unsafe_allow_html=True)
-
-    with c4:
-        st.markdown(f"""
-        <div class="kpi-card">
-            <div class="kpi-title">Temperatura</div>
-            <div class="kpi-value">{temp:.1f} °C</div>
-            <div class="kpi-sub">Ambiente</div>
-        </div>
-        """, unsafe_allow_html=True)
-
-    st.markdown("### Vista preliminar")
-
-    fig = go.Figure()
-    fig.add_trace(go.Indicator(
-        mode="gauge+number",
-        value=freq,
-        title={"text": "Frecuencia instantánea"},
-        gauge={
-            "axis": {"range": [45, 55]},
-            "bar": {"color": "#1f77b4"},
-            "steps": [
-                {"range": [45, 49], "color": "#f8d7da"},
-                {"range": [49, 51], "color": "#d4edda"},
-                {"range": [51, 55], "color": "#fff3cd"},
-            ],
-        },
-    ))
-
-    fig.update_layout(height=350, margin=dict(l=20, r=20, t=60, b=20))
-    st.plotly_chart(fig, use_container_width=True)
-
-    st.info("Esta ventana puede evolucionar luego a perfil dinámico de carga, variación temporal y comportamiento por fase.")
+        st.error(f"Error al generar el perfil de carga dinámico: {e}")
