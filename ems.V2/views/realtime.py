@@ -3,8 +3,6 @@ import plotly.graph_objects as go
 from streamlit_autorefresh import st_autorefresh
 from services.influx_service import get_latest_data
 
-
-
 def create_currents_bar(il1, il2, il3):
     colors = ["#1f77b4", "#ff7f0e", "#2ca02c"]
 
@@ -69,7 +67,7 @@ def indicator_card(title, value, subtitle=""):
 
 
 def render_realtime():
-    st_autorefresh(interval=30000, key="refresh_realtime")
+    st_autorefresh(interval=5000, key="refresh_realtime")
 
     try:
         data, latest_time = get_latest_data()
