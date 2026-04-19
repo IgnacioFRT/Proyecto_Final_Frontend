@@ -2,12 +2,10 @@ import streamlit as st
 import plotly.graph_objects as go
 import numpy as np
 
-
 from views.historico import get_historical_data
 
 
 def render_perfil_dinamico():
-    
     try:
         with st.spinner("Procesando perfiles de carga interactivos... ⏳"):
             df = get_historical_data().copy()
@@ -26,12 +24,12 @@ def render_perfil_dinamico():
                 3: "Jueves",
                 4: "Viernes",
                 5: "Sábado",
-                6: "Domingo"
+                6: "Domingo",
             }
             order_dias = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
             df["nombre_dia"] = df.index.dayofweek.map(dias_map)
 
-        # ===== 1) PROMEDIO SEMANAL POR FASE =====
+        # ===== 1) PERFIL SEMANAL PROMEDIO =====
         df_diario_sem = df.resample("D").agg({
             "P1": "mean",
             "P2": "mean",
@@ -62,7 +60,7 @@ def render_perfil_dinamico():
         df_semana_avg = df_diario_sem.groupby("nombre_dia")[["L1", "L2", "L3"]].mean().reindex(order_dias)
         df_semana_avg["Total"] = df_semana_avg.sum(axis=1)
 
-        # ===== 2) PERFIL HORARIO PROMEDIO =====
+        # ===== 2) PERFIL HORARIO TÍPICO =====
         df_hora_avg = df.groupby("hora").agg({
             "P1": "mean",
             "P2": "mean",
@@ -85,9 +83,7 @@ def render_perfil_dinamico():
         df_heat = df.groupby(["nombre_dia", "hora"])["incremento_kWh"].mean().unstack().reindex(order_dias)
 
         # ===== FRONTEND =====
-
-        col_izq, col_espacio, col_der = st.columns([1.05, 0.05, 1.35])
-
+        col_izq, col_der = st.columns([1.05, 1.35])
         colores_fase = ["#1f77b4", "#ff7f0e", "#2ca02c"]
 
         with col_izq:
@@ -177,10 +173,6 @@ def render_perfil_dinamico():
             )
             st.plotly_chart(fig_hora, use_container_width=True)
 
-
-        with col_espacio:
-            st.empty()
-    
         with col_der:
             st.markdown("#### Mapa de calor de demanda")
 
@@ -201,6 +193,46 @@ def render_perfil_dinamico():
 
             st.plotly_chart(fig_heat, use_container_width=True)
             st.info("💡 Las zonas más intensas indican horarios y días con mayor demanda promedio.")
+
+        # ===== KPIs INFERIORES =====
+        st.markdown("<div style='margin-top: 20px;'></div>", unsafe_allow_html=True)
+
+        hora_pico = int(df_hora_avg["Total"].idxmax())
+        valor_hora_pico = float(df_hora_avg["Total"].max())
+
+        dia_pico = df_semana_avg["Total"].idxmax()
+        valor_dia_pico = float(df_semana_avg["Total"].max())
+
+        promedio_perfil = float(df_semana_avg["Total"].mean())
+
+        k1, k2, k3 = st.columns(3)
+
+        with k1:
+            st.markdown(f"""
+            <div class="kpi-card">
+                <div class="kpi-title">Hora pico promedio</div>
+                <div class="kpi-value">{hora_pico:02d}:00</div>
+                <div class="kpi-sub">{valor_hora_pico:.2f} kWh</div>
+            </div>
+            """, unsafe_allow_html=True)
+
+        with k2:
+            st.markdown(f"""
+            <div class="kpi-card">
+                <div class="kpi-title">Día de mayor demanda</div>
+                <div class="kpi-value">{dia_pico}</div>
+                <div class="kpi-sub">{valor_dia_pico:.2f} kWh</div>
+            </div>
+            """, unsafe_allow_html=True)
+
+        with k3:
+            st.markdown(f"""
+            <div class="kpi-card">
+                <div class="kpi-title">Perfil semanal medio</div>
+                <div class="kpi-value">{promedio_perfil:.2f} kWh</div>
+                <div class="kpi-sub">Promedio diario</div>
+            </div>
+            """, unsafe_allow_html=True)
 
     except Exception as e:
         st.error(f"Error al generar el perfil de carga dinámico: {e}")
