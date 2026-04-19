@@ -85,11 +85,14 @@ def render_home():
         """, unsafe_allow_html=True)
 
     with c2:
-        st.markdown(f"""
+    st.markdown(f"""
         <div class="kpi-card">
             <div class="kpi-title">Última sincronización</div>
-            <div class="kpi-value">{fecha_txt}</div>
-            <div class="kpi-sub">{hora_txt} · Hora local Argentina</div>
+            <div class="kpi-value">
+                {fecha_txt}<br>
+                {hora_txt}
+            </div>
+            <div class="kpi-sub">Hora local Argentina</div>
         </div>
         """, unsafe_allow_html=True)
 
