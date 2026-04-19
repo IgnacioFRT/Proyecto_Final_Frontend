@@ -10,10 +10,11 @@ def render_perfil_dinamico():
 
     st.markdown(
         """
-        <div style="margin-top: 12px;"></div>
+        <div style="margin-top: 20px;"></div>
         """,
         unsafe_allow_html=True
     )
+    
     try:
         with st.spinner("Procesando perfiles de carga interactivos... ⏳"):
             df = get_historical_data().copy()
