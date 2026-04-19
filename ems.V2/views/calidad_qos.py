@@ -1,165 +1,249 @@
 import streamlit as st
+import pandas as pd
 import plotly.graph_objects as go
+from pandas.tseries.offsets import MonthEnd
 
-from services.influx_service import get_latest_data
+from views.historico import get_historical_data
 
 
 def render_calidad_qos():
     try:
-        data, latest_time = get_latest_data()
+        with st.spinner("Evaluando disponibilidad y gaps de datos... ⏳"):
+            df = get_historical_data().copy()
 
-        freq = float(data.get("freq", 0))
-        vmed = float(data.get("Vmed", 0))
-        fp1 = float(data.get("FP1", 0))
-        fp2 = float(data.get("FP2", 0))
-        fp3 = float(data.get("FP3", 0))
+            if df.empty:
+                st.warning("No se encontraron datos históricos para análisis QoS.")
+                return
 
-        thdv1 = float(data.get("THDv1", 0))
-        thdv2 = float(data.get("THDv2", 0))
-        thdv3 = float(data.get("THDv3", 0))
+            start = df.index.min()
+            end = df.index.max()
 
-        thdi1 = float(data.get("THDi1", 0))
-        thdi2 = float(data.get("THDi2", 0))
-        thdi3 = float(data.get("THDi3", 0))
+            # ===== A. DISPONIBILIDAD GLOBAL =====
+            esperados_global = len(pd.date_range(start, end, freq="1h"))
+            reales_global = len(df)
+            registrado_global = (reales_global / esperados_global) * 100 if esperados_global > 0 else 0
+            no_registrado_global = 100 - registrado_global
 
-        fp_prom = (fp1 + fp2 + fp3) / 3 if any([fp1, fp2, fp3]) else 0
+            # ===== B. DISPONIBILIDAD MENSUAL =====
+            df_reales_mes = df.resample("MS").size()
+            meses_labels, porcentajes_mes, reales_lista, esperados_lista = [], [], [], []
 
-        # Estado general simple
-        if 49 <= freq <= 51 and 210 <= vmed <= 240:
-            estado = "Aceptable"
-            estado_color = "#27ae60"
-        elif 48 <= freq <= 52 and 200 <= vmed <= 250:
-            estado = "Advertencia"
-            estado_color = "#f39c12"
+            for mes_start, count in df_reales_mes.items():
+                mes_end = mes_start + MonthEnd(1) + pd.Timedelta(hours=23)
+                calc_start = max(mes_start, start.replace(minute=0, second=0, microsecond=0))
+                calc_end = min(mes_end, end.replace(minute=0, second=0, microsecond=0))
+
+                if calc_start <= calc_end:
+                    esperados_m = len(pd.date_range(calc_start, calc_end, freq="1h"))
+                    porc = (count / esperados_m) * 100 if esperados_m > 0 else 0
+
+                    meses_labels.append(mes_start.strftime("%b %Y").capitalize())
+                    porcentajes_mes.append(porc)
+                    reales_lista.append(count)
+                    esperados_lista.append(esperados_m)
+
+            # ===== C. DETECCIÓN DE GAPS =====
+            HORAS_FILTRO = 2
+
+            df_grafico = df.copy()
+            lista_cortes = []
+
+            time_diff = df.index.to_series().diff()
+            cortes_graves = df[time_diff >= pd.Timedelta(hours=HORAS_FILTRO)]
+
+            nuevos_puntos_0v = []
+
+            for idx, row in cortes_graves.iterrows():
+                duracion = time_diff[idx]
+                fin_corte = idx
+                inicio_corte = idx - duracion
+
+                horas, remainder = divmod(duracion.total_seconds(), 3600)
+                minutos, _ = divmod(remainder, 60)
+
+                lista_cortes.append({
+                    "Inicio_dt": inicio_corte,
+                    "Fecha y Hora": inicio_corte.strftime("%d/%m/%Y %H:%M"),
+                    "Hora de Reconexión": fin_corte.strftime("%d/%m/%Y %H:%M"),
+                    "Duración": f"{int(horas)}h {int(minutos)}m",
+                    "Diagnóstico": "🔴 Falla de comunicación"
+                })
+
+                for col in ["UL1N", "UL2N", "UL3N"]:
+                    if col in df.columns:
+                        nuevos_puntos_0v.append({
+                            "index": inicio_corte + pd.Timedelta(seconds=1),
+                            "UL1N": 0,
+                            "UL2N": 0,
+                            "UL3N": 0
+                        })
+                        nuevos_puntos_0v.append({
+                            "index": fin_corte - pd.Timedelta(seconds=1),
+                            "UL1N": 0,
+                            "UL2N": 0,
+                            "UL3N": 0
+                        })
+
+            df_cortes = pd.DataFrame(lista_cortes)
+
+            if nuevos_puntos_0v:
+                df_inyectado = pd.DataFrame(nuevos_puntos_0v).set_index("index")
+                df_grafico = pd.concat([df_grafico, df_inyectado]).sort_index()
+
+        # ===== FILA SUPERIOR =====
+        col_tendencia, col_torta = st.columns([1.5, 1])
+
+        with col_tendencia:
+            st.markdown("#### Tendencia de disponibilidad mensual")
+
+            fig_trend = go.Figure()
+            fig_trend.add_trace(go.Scatter(
+                x=meses_labels,
+                y=porcentajes_mes,
+                mode="lines+markers+text",
+                marker=dict(size=12, color="#1f77b4", line=dict(width=2, color="white")),
+                line=dict(width=3, color="#1f77b4"),
+                text=[f"{p:.1f}%" for p in porcentajes_mes],
+                textposition="top center",
+                customdata=list(zip(reales_lista, esperados_lista)),
+                hovertemplate="<b>%{x}</b><br>Disponibilidad: <b>%{y:.2f}%</b><br>Registros: %{customdata[0]:,} / %{customdata[1]:,}<extra></extra>"
+            ))
+
+            fig_trend.update_layout(
+                height=380,
+                margin=dict(t=30, b=20, l=40, r=20),
+                template="plotly_white",
+                yaxis=dict(
+                    title="Disponibilidad (%)",
+                    range=[max(0, min(porcentajes_mes) - 10) if porcentajes_mes else 0, 105],
+                    gridcolor="#e5e8e8"
+                ),
+                xaxis=dict(gridcolor="#e5e8e8")
+            )
+            st.plotly_chart(fig_trend, use_container_width=True)
+
+        with col_torta:
+            st.markdown("#### Resumen histórico global")
+
+            fig_pie = go.Figure(data=[go.Pie(
+                labels=["Datos registrados", "Gaps"],
+                values=[registrado_global, no_registrado_global],
+                marker_colors=["#66bb6a", "#ef5350"],
+                pull=[0.04, 0],
+                textinfo="percent+label",
+                textposition="outside"
+            )])
+
+            fig_pie.update_layout(
+                height=320,
+                margin=dict(t=30, b=20, l=20, r=20),
+                showlegend=False,
+                template="plotly_white"
+            )
+            st.plotly_chart(fig_pie, use_container_width=True)
+
+            st.markdown(f"""
+            <div class="kpi-card-indicator">
+                <div class="kpi-title-indicator">Período analizado</div>
+                <div class="kpi-value-indicator">{start.strftime('%d/%m/%Y')}</div>
+                <div class="kpi-sub-indicator">hasta {end.strftime('%d/%m/%Y')} · {reales_global:,}/{esperados_global:,} registros</div>
+            </div>
+            """, unsafe_allow_html=True)
+
+        st.markdown("<div style='margin-top: 18px;'></div>", unsafe_allow_html=True)
+
+        # ===== FILA MEDIA =====
+        st.markdown("#### Análisis físico de caídas de tensión")
+
+        meses_disponibles = ["Todos los meses"] + meses_labels
+        mes_seleccionado = st.selectbox("Filtrar análisis por mes", meses_disponibles)
+
+        if mes_seleccionado != "Todos los meses":
+            df_filtrado = df_grafico[df_grafico.index.strftime("%b %Y").str.capitalize() == mes_seleccionado]
+            if not df_cortes.empty:
+                df_cortes_filtrado = df_cortes[df_cortes["Inicio_dt"].dt.strftime("%b %Y").str.capitalize() == mes_seleccionado]
+            else:
+                df_cortes_filtrado = df_cortes
         else:
-            estado = "Crítico"
-            estado_color = "#e74c3c"
+            df_filtrado = df_grafico
+            df_cortes_filtrado = df_cortes
 
-        hora_txt = latest_time.strftime("%d/%m/%Y %H:%M") if latest_time else "--:--"
+        col_grafico, col_tabla = st.columns([2, 1])
+
+        with col_grafico:
+            fig_tension = go.Figure()
+
+            if "UL1N" in df_filtrado.columns:
+                fig_tension.add_trace(go.Scatter(
+                    x=df_filtrado.index, y=df_filtrado["UL1N"],
+                    name="Línea 1", line=dict(color="#1f77b4", width=1)
+                ))
+            if "UL2N" in df_filtrado.columns:
+                fig_tension.add_trace(go.Scatter(
+                    x=df_filtrado.index, y=df_filtrado["UL2N"],
+                    name="Línea 2", line=dict(color="#ff7f0e", width=1)
+                ))
+            if "UL3N" in df_filtrado.columns:
+                fig_tension.add_trace(go.Scatter(
+                    x=df_filtrado.index, y=df_filtrado["UL3N"],
+                    name="Línea 3", line=dict(color="#2ca02c", width=1)
+                ))
+
+            fig_tension.update_layout(
+                height=400,
+                margin=dict(t=20, b=20, l=20, r=20),
+                yaxis_title="Tensión (V)",
+                template="plotly_white",
+                xaxis=dict(rangeslider=dict(visible=True), type="date"),
+                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+            )
+            st.plotly_chart(fig_tension, use_container_width=True)
+
+        with col_tabla:
+            st.markdown(f"**Registro de apagones (gaps ≥ {HORAS_FILTRO}h)**")
+            if df_cortes_filtrado.empty:
+                st.success("No se registraron apagones reales en el período seleccionado.")
+            else:
+                df_mostrar = df_cortes_filtrado.drop(columns=["Inicio_dt"], errors="ignore")
+                st.dataframe(df_mostrar, use_container_width=True, hide_index=True)
+
+        st.markdown("<div style='margin-top: 18px;'></div>", unsafe_allow_html=True)
+
+        # ===== FILA INFERIOR =====
+        max_gap_horas = 0.0
+        if not df_cortes.empty:
+            duraciones_h = (df.index.to_series().diff()[df.index.isin(cortes_graves.index)].dt.total_seconds() / 3600)
+            if not duraciones_h.empty:
+                max_gap_horas = float(duraciones_h.max())
+
+        k1, k2, k3 = st.columns(3)
+
+        with k1:
+            st.markdown(f"""
+            <div class="kpi-card">
+                <div class="kpi-title">Disponibilidad global</div>
+                <div class="kpi-value">{registrado_global:.1f}%</div>
+                <div class="kpi-sub">Datos registrados</div>
+            </div>
+            """, unsafe_allow_html=True)
+
+        with k2:
+            st.markdown(f"""
+            <div class="kpi-card">
+                <div class="kpi-title">Gaps detectados</div>
+                <div class="kpi-value">{len(df_cortes)}</div>
+                <div class="kpi-sub">Cortes mayores a {HORAS_FILTRO}h</div>
+            </div>
+            """, unsafe_allow_html=True)
+
+        with k3:
+            st.markdown(f"""
+            <div class="kpi-card">
+                <div class="kpi-title">Gap máximo</div>
+                <div class="kpi-value">{max_gap_horas:.1f} h</div>
+                <div class="kpi-sub">Mayor interrupción detectada</div>
+            </div>
+            """, unsafe_allow_html=True)
 
     except Exception as e:
-        st.error(f"Error cargando calidad QoS: {e}")
-        return
-
-    st.success(f"Último dato recibido: {hora_txt}")
-
-    # ===== KPI SUPERIOR =====
-    k1, k2, k3, k4 = st.columns(4)
-
-    with k1:
-        st.markdown(f"""
-        <div class="kpi-card">
-            <div class="kpi-title">Frecuencia</div>
-            <div class="kpi-value">{freq:.2f} Hz</div>
-            <div class="kpi-sub">Red eléctrica</div>
-        </div>
-        """, unsafe_allow_html=True)
-
-    with k2:
-        st.markdown(f"""
-        <div class="kpi-card">
-            <div class="kpi-title">Tensión media</div>
-            <div class="kpi-value">{vmed:.1f} V</div>
-            <div class="kpi-sub">Promedio actual</div>
-        </div>
-        """, unsafe_allow_html=True)
-
-    with k3:
-        st.markdown(f"""
-        <div class="kpi-card">
-            <div class="kpi-title">FP promedio</div>
-            <div class="kpi-value">{fp_prom:.2f}</div>
-            <div class="kpi-sub">Factor de potencia</div>
-        </div>
-        """, unsafe_allow_html=True)
-
-    with k4:
-        st.markdown(f"""
-        <div class="kpi-card">
-            <div class="kpi-title">Estado de calidad</div>
-            <div class="kpi-value" style="color:{estado_color};">{estado}</div>
-            <div class="kpi-sub">Evaluación general</div>
-        </div>
-        """, unsafe_allow_html=True)
-
-    st.markdown("<div style='margin-top: 20px;'></div>", unsafe_allow_html=True)
-
-    # ===== THD TENSIÓN / THD CORRIENTE =====
-    c1, c2 = st.columns(2)
-
-    colores_fase = ["#1f77b4", "#ff7f0e", "#2ca02c"]
-
-    with c1:
-        st.markdown("#### THD de tensión por fase")
-
-        fig_thdv = go.Figure()
-        fig_thdv.add_trace(go.Bar(
-            x=["L1", "L2", "L3"],
-            y=[thdv1, thdv2, thdv3],
-            marker_color=colores_fase,
-            text=[f"{thdv1:.2f}%", f"{thdv2:.2f}%", f"{thdv3:.2f}%"],
-            textposition="auto"
-        ))
-
-        fig_thdv.update_layout(
-            height=360,
-            template="plotly_white",
-            margin=dict(t=30, b=20, l=20, r=20),
-            yaxis_title="%"
-        )
-        st.plotly_chart(fig_thdv, use_container_width=True)
-
-    with c2:
-        st.markdown("#### THD de corriente por fase")
-
-        fig_thdi = go.Figure()
-        fig_thdi.add_trace(go.Bar(
-            x=["L1", "L2", "L3"],
-            y=[thdi1, thdi2, thdi3],
-            marker_color=colores_fase,
-            text=[f"{thdi1:.2f}%", f"{thdi2:.2f}%", f"{thdi3:.2f}%"],
-            textposition="auto"
-        ))
-
-        fig_thdi.update_layout(
-            height=360,
-            template="plotly_white",
-            margin=dict(t=30, b=20, l=20, r=20),
-            yaxis_title="%"
-        )
-        st.plotly_chart(fig_thdi, use_container_width=True)
-
-    st.markdown("<div style='margin-top: 20px;'></div>", unsafe_allow_html=True)
-
-    # ===== RESUMEN INFERIOR =====
-    r1, r2, r3 = st.columns(3)
-
-    with r1:
-        texto_freq = "Dentro de rango" if 49 <= freq <= 51 else "Fuera de rango"
-        st.markdown(f"""
-        <div class="kpi-card">
-            <div class="kpi-title">Frecuencia</div>
-            <div class="kpi-value">{texto_freq}</div>
-            <div class="kpi-sub">{freq:.2f} Hz medidos</div>
-        </div>
-        """, unsafe_allow_html=True)
-
-    with r2:
-        mayor_thdv = max(thdv1, thdv2, thdv3)
-        st.markdown(f"""
-        <div class="kpi-card">
-            <div class="kpi-title">Máximo THD tensión</div>
-            <div class="kpi-value">{mayor_thdv:.2f}%</div>
-            <div class="kpi-sub">Peor fase medida</div>
-        </div>
-        """, unsafe_allow_html=True)
-
-    with r3:
-        mayor_thdi = max(thdi1, thdi2, thdi3)
-        st.markdown(f"""
-        <div class="kpi-card">
-            <div class="kpi-title">Máximo THD corriente</div>
-            <div class="kpi-value">{mayor_thdi:.2f}%</div>
-            <div class="kpi-sub">Peor fase medida</div>
-        </div>
-        """, unsafe_allow_html=True)
+        st.error(f"Error al generar el análisis de calidad QoS: {e}")
