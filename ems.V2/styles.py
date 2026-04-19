@@ -82,5 +82,36 @@ def load_global_styles():
             font-size: 0.95rem;
             margin-bottom: 1.2rem;
         }
+
+        .kpi-card-indicator {
+            background: #ffffff;
+            border: 1px solid #dce3ea;
+            border-radius: 12px;
+            padding: 14px 10px;
+            text-align: center;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+            min-height: 105px;
+        }
+
+        .kpi-title-indicator {
+            font-size: 0.8rem;
+            font-weight: 700;
+            color: #6b7a89;
+            text-transform: uppercase;
+            margin-bottom: 0.35rem;
+        }
+
+        .kpi-value-indicator {
+            font-size: 1.4rem;
+            font-weight: 800;
+            color: #1f2d3d;
+            line-height: 1.2;
+        }
+
+        .kpi-sub-indicator {
+            font-size: 0.75rem;
+            color: #8b97a3;
+            margin-top: 0.35rem;
+        }
     </style>
     """, unsafe_allow_html=True)
