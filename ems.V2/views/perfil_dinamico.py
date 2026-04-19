@@ -192,17 +192,30 @@ def render_perfil_dinamico():
             )
 
             st.plotly_chart(fig_heat, use_container_width=True)
-            st.info("💡 Las zonas más intensas indican horarios y días con mayor demanda promedio.")
+
+            hora_pico = int(df_hora_avg["Total"].idxmax())
+            dia_pico = df_semana_avg["Total"].idxmax()
+
+            st.markdown(f"""
+            <div style="
+                background: #eaf2fb;
+                border-left: 4px solid #4a90e2;
+                border-radius: 10px;
+                padding: 12px 16px;
+                font-size: 0.95rem;
+                color: #2c3e50;
+                margin-top: 10px;
+                width: 100%;
+            ">
+                💡 <strong>Insight:</strong> El mayor consumo promedio ocurre el <strong>{dia_pico}</strong> alrededor de las <strong>{hora_pico:02d}:00</strong>.
+            </div>
+            """, unsafe_allow_html=True)
 
         # ===== KPIs INFERIORES =====
         st.markdown("<div style='margin-top: 20px;'></div>", unsafe_allow_html=True)
 
-        hora_pico = int(df_hora_avg["Total"].idxmax())
         valor_hora_pico = float(df_hora_avg["Total"].max())
-
-        dia_pico = df_semana_avg["Total"].idxmax()
         valor_dia_pico = float(df_semana_avg["Total"].max())
-
         promedio_perfil = float(df_semana_avg["Total"].mean())
 
         k1, k2, k3 = st.columns(3)
@@ -228,9 +241,9 @@ def render_perfil_dinamico():
         with k3:
             st.markdown(f"""
             <div class="kpi-card">
-                <div class="kpi-title">Perfil semanal medio</div>
+                <div class="kpi-title">Consumo diario medio</div>
                 <div class="kpi-value">{promedio_perfil:.2f} kWh</div>
-                <div class="kpi-sub">Promedio diario</div>
+                <div class="kpi-sub">Promedio semanal</div>
             </div>
             """, unsafe_allow_html=True)
 
