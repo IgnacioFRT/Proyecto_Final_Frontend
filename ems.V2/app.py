@@ -88,13 +88,13 @@ def render_home():
         st.markdown(f"""
         <div class="kpi-card">
             <div class="kpi-title">Última sincronización</div>
-            <div class="kpi-value">
+            <div class="kpi-value" style="font-size:1.4rem;">
                 {fecha_txt}<br>
                 {hora_txt}
             </div>
             <div class="kpi-sub">Hora local Argentina</div>
-        </div>
-        """, unsafe_allow_html=True)
+       </div>
+       """, unsafe_allow_html=True)
 
     with c3:
         st.markdown(f"""
