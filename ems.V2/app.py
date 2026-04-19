@@ -58,7 +58,8 @@ def render_home():
 
         estado = "En línea" if latest_time else "Sin datos"
         estado_color = "#27ae60" if latest_time else "#e74c3c"
-        hora_txt = latest_time.strftime("%d/%m/%Y %H:%M") if latest_time else "--:--"
+        fecha_txt = latest_time.strftime("%d/%m/%Y") if latest_time else "--/--/----"
+        hora_txt = latest_time.strftime("%H:%M") if latest_time else "--:--"
 
         if latest_time:
             render_status_banner("Sistema operativo. Se están recibiendo datos del PAC3200.", "success")
@@ -74,11 +75,6 @@ def render_home():
 
     c1, c2, c3 = st.columns(3)
 
-    if estado == "En línea":
-        st.success("Sistema operativo. Comunicación activa con el PAC3200.")
-    else:
-        st.warning("El sistema no está recibiendo datos actualmente.")
-
     with c1:
         st.markdown(f"""
         <div class="kpi-card">
@@ -92,8 +88,8 @@ def render_home():
         st.markdown(f"""
         <div class="kpi-card">
             <div class="kpi-title">Última sincronización</div>
-            <div class="kpi-value">{hora_txt}</div>
-            <div class="kpi-sub">Hora local Argentina</div>
+            <div class="kpi-value">{fecha_txt}</div>
+            <div class="kpi-sub">{hora_txt} · Hora local Argentina</div>
         </div>
         """, unsafe_allow_html=True)
 
