@@ -52,14 +52,16 @@ def load_global_styles():
         }
 
         .kpi-value {
-            font-size: 1.8rem;
+            font-size: 1.6rem;
             font-weight: 800;
             color: #1f2d3d;
-            line-height: 1.2;
-            min-height: 2.4rem;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+           line-height: 1.2;
+
+           min-height: 2.5em;
+           display: flex;
+           align-items: center;
+           justify-content: center;
+           flex-direction: column;
         }
 
         .kpi-sub {
