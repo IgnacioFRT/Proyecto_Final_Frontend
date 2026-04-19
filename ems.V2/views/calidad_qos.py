@@ -69,26 +69,29 @@ def render_calidad_qos():
                     "Diagnóstico": "🔴 Falla de comunicación"
                 })
 
-                for col in ["UL1N", "UL2N", "UL3N"]:
-                    if col in df.columns:
-                        nuevos_puntos_0v.append({
-                            "index": inicio_corte + pd.Timedelta(seconds=1),
-                            "UL1N": 0,
-                            "UL2N": 0,
-                            "UL3N": 0
-                        })
-                        nuevos_puntos_0v.append({
-                            "index": fin_corte - pd.Timedelta(seconds=1),
-                            "UL1N": 0,
-                            "UL2N": 0,
-                            "UL3N": 0
-                        })
+                if all(col in df.columns for col in ["UL1N", "UL2N", "UL3N"]):
+                    nuevos_puntos_0v.append({
+                        "index": inicio_corte + pd.Timedelta(seconds=1),
+                        "UL1N": 0,
+                        "UL2N": 0,
+                        "UL3N": 0
+                    })
+                    nuevos_puntos_0v.append({
+                        "index": fin_corte - pd.Timedelta(seconds=1),
+                        "UL1N": 0,
+                        "UL2N": 0,
+                        "UL3N": 0
+                    })
 
             df_cortes = pd.DataFrame(lista_cortes)
 
             if nuevos_puntos_0v:
                 df_inyectado = pd.DataFrame(nuevos_puntos_0v).set_index("index")
                 df_grafico = pd.concat([df_grafico, df_inyectado]).sort_index()
+
+            # sin filtro por mes
+            df_filtrado = df_grafico
+            df_cortes_filtrado = df_cortes
 
         # ===== FILA SUPERIOR =====
         col_tendencia, col_torta = st.columns([1.5, 1])
@@ -147,9 +150,6 @@ def render_calidad_qos():
         # ===== FILA MEDIA =====
         st.markdown("#### Análisis físico de caídas de tensión")
 
-        df_filtrado = df_grafico
-        df_cortes_filtrado = df_cortes
-        
         col_grafico, col_tabla = st.columns([2, 1])
 
         with col_grafico:
@@ -172,19 +172,32 @@ def render_calidad_qos():
                 ))
 
             fig_tension.update_layout(
-                height=400,
+                height=430,
                 margin=dict(t=20, b=20, l=20, r=20),
-                yaxis_title="Tensión (V)",
+                yaxis=dict(
+                    title="Tensión (V)",
+                    range=[0, 260],
+                    gridcolor="#e5e8e8"
+                ),
                 template="plotly_white",
-                xaxis=dict(rangeslider=dict(visible=True), type="date"),
-                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+                xaxis=dict(
+                    rangeslider=dict(visible=True),
+                    type="date"
+                ),
+                legend=dict(
+                    orientation="h",
+                    yanchor="bottom",
+                    y=1.02,
+                    xanchor="right",
+                    x=1
+                )
             )
             st.plotly_chart(fig_tension, use_container_width=True)
 
         with col_tabla:
             st.markdown(f"**Registro de apagones (gaps ≥ {HORAS_FILTRO}h)**")
             if df_cortes_filtrado.empty:
-                st.success("No se registraron apagones reales en el período seleccionado.")
+                st.success("No se registraron apagones reales en el período analizado.")
             else:
                 df_mostrar = df_cortes_filtrado.drop(columns=["Inicio_dt"], errors="ignore")
                 st.dataframe(df_mostrar, use_container_width=True, hide_index=True)
