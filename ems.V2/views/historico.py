@@ -406,24 +406,12 @@ def render_historico():
     )
     st.plotly_chart(fig_month, use_container_width=True)
 
-    st.markdown("<div style='margin-top: 16px;'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='margin-top: 10px;'></div>", unsafe_allow_html=True)
 
-    r1, r2 = st.columns(2)
+    i1, i2 = st.columns(2)
+ 
+    with i1:
+        st.info(f"📌 Mayor consumo diario: **{valor_max:.1f} kWh** el **{dia_max.strftime('%d/%m/%Y')}**")
 
-    with r1:
-        st.markdown(f"""
-        <div class="kpi-card">
-            <div class="kpi-title">Mayor consumo diario</div>
-            <div class="kpi-value">{valor_max:.1f} kWh</div>
-            <div class="kpi-sub">Fecha: {dia_max.strftime('%d/%m/%Y')}</div>
-        </div>
-        """, unsafe_allow_html=True)
-
-    with r2:
-        st.markdown(f"""
-        <div class="kpi-card">
-            <div class="kpi-title">Período analizado</div>
-            <div class="kpi-value">{df.index.min().strftime('%d/%m/%Y')}</div>
-           <div class="kpi-sub">hasta {df.index.max().strftime('%d/%m/%Y')}</div>
-       </div>
-       """, unsafe_allow_html=True)
+    with i2:
+        st.info(f"📌 Período analizado: **desde {df.index.min().strftime('%d/%m/%Y')} hasta {df.index.max().strftime('%d/%m/%Y')}**")
