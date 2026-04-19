@@ -406,10 +406,12 @@ def render_historico():
     )
     st.plotly_chart(fig_month, use_container_width=True)
 
-    st.markdown("### Lectura rápida")
+    st.markdown("<div style='margin-top: 10px;'></div>", unsafe_allow_html=True)
 
     i1, i2 = st.columns(2)
+
     with i1:
         st.info(f"📌 Mayor consumo diario: **{valor_max:.1f} kWh** el **{dia_max.strftime('%d/%m/%Y')}**")
+
     with i2:
         st.info(f"📌 Período analizado: **desde {df.index.min().strftime('%d/%m/%Y')} hasta {df.index.max().strftime('%d/%m/%Y')}**")
