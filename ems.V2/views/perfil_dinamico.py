@@ -82,6 +82,15 @@ def render_perfil_dinamico():
         # ===== 3) MAPA DE CALOR =====
         df_heat = df.groupby(["nombre_dia", "hora"])["incremento_kWh"].mean().unstack().reindex(order_dias)
 
+        # ===== MÉTRICAS RESUMEN =====
+        hora_pico = int(df_hora_avg["Total"].idxmax())
+        valor_hora_pico = float(df_hora_avg["Total"].max())
+
+        dia_pico = df_semana_avg["Total"].idxmax()
+        valor_dia_pico = float(df_semana_avg["Total"].max())
+
+        promedio_perfil = float(df_semana_avg["Total"].mean())
+
         # ===== FRONTEND =====
         col_izq, col_der = st.columns([1.05, 1.35])
         colores_fase = ["#1f77b4", "#ff7f0e", "#2ca02c"]
@@ -139,7 +148,7 @@ def render_perfil_dinamico():
                     x=horas_x,
                     y=df_hora_avg[f"L{i}_kWh"],
                     name=f"Línea {i}",
-                    marker_color=colores_fase[i-1]
+                    marker_color=colores_fase[i - 1]
                 ))
 
             fig_hora.add_trace(go.Scatter(
@@ -193,45 +202,37 @@ def render_perfil_dinamico():
 
             st.plotly_chart(fig_heat, use_container_width=True)
 
-            hora_pico = int(df_hora_avg["Total"].idxmax())
-            dia_pico = df_semana_avg["Total"].idxmax()
-
         # ===== KPIs INFERIORES =====
         st.markdown("<div style='margin-top: 20px;'></div>", unsafe_allow_html=True)
 
-        hora_pico = int(df_hora_avg["Total"].idxmax())
-        valor_hora_pico = float(df_hora_avg["Total"].max())
-
-        dia_pico = df_semana_avg["Total"].idxmax()
-        valor_dia_pico = float(df_semana_avg["Total"].max())
-
-        promedio_perfil = float(df_semana_avg["Total"].mean())
-
         k1, k2, k3 = st.columns(3)
 
-       with k1:
-           st.markdown(f"""
+        with k1:
+            st.markdown(f"""
             <div class="kpi-card">
-               <div class="kpi-title">Hora pico promedio</div>
-               <div class="kpi-value">{hora_pico:02d}:00</div>
-               <div class="kpi-sub">{valor_hora_pico:.2f} kWh</div>
-           </div>
-           """, unsafe_allow_html=True)
+                <div class="kpi-title">Hora pico promedio</div>
+                <div class="kpi-value">{hora_pico:02d}:00</div>
+                <div class="kpi-sub">{valor_hora_pico:.2f} kWh</div>
+            </div>
+            """, unsafe_allow_html=True)
 
-       with k2:
-          st.markdown(f"""
-          <div class="kpi-card">
-             <div class="kpi-title">Día de mayor demanda</div>
-             <div class="kpi-value">{dia_pico}</div>
-             <div class="kpi-sub">{valor_dia_pico:.2f} kWh</div>
-          </div>
-          """, unsafe_allow_html=True)
+        with k2:
+            st.markdown(f"""
+            <div class="kpi-card">
+                <div class="kpi-title">Día de mayor demanda</div>
+                <div class="kpi-value">{dia_pico}</div>
+                <div class="kpi-sub">{valor_dia_pico:.2f} kWh</div>
+            </div>
+            """, unsafe_allow_html=True)
 
-       with k3:
-          st.markdown(f"""
-          <div class="kpi-card">
-              <div class="kpi-title">Consumo diario medio</div>
-              <div class="kpi-value">{promedio_perfil:.2f} kWh</div>
-              <div class="kpi-sub">Pico: {dia_pico} a las {hora_pico:02d}:00</div>
-          </div>
-          """, unsafe_allow_html=True)
+        with k3:
+            st.markdown(f"""
+            <div class="kpi-card">
+                <div class="kpi-title">Consumo diario medio</div>
+                <div class="kpi-value">{promedio_perfil:.2f} kWh</div>
+                <div class="kpi-sub">Pico: {dia_pico} a las {hora_pico:02d}:00</div>
+            </div>
+            """, unsafe_allow_html=True)
+
+    except Exception as e:
+        st.error(f"Error al generar el perfil de carga dinámico: {e}")
