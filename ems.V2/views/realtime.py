@@ -44,17 +44,33 @@ def create_voltage_bar(v1, v2, v3):
     return fig
 
 
+def kpi_card(title, value, subtitle=""):
+    st.markdown(f"""
+    <div class="kpi-card">
+        <div class="kpi-title">{title}</div>
+        <div class="kpi-value">{value}</div>
+        <div class="kpi-sub">{subtitle}</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+
 def render_realtime():
     st_autorefresh(interval=30000, key="refresh_realtime")
 
-    st.markdown("## Tiempo Real")
-    st.caption("Monitoreo instantáneo de variables eléctricas y ambientales")
+    st.markdown('<div class="realtime-title">⚡ Tiempo Real</div>', unsafe_allow_html=True)
+    st.markdown(
+        '<div class="realtime-subtitle">Monitoreo instantáneo de variables eléctricas y ambientales</div>',
+        unsafe_allow_html=True
+    )
 
     try:
         data, latest_time = get_latest_data()
 
         freq = data.get("freq", 0)
         temp = data.get("temp", 0)
+        hum = data.get("hum", 0)
+        wind = data.get("wind", 0)
+
         vmed = data.get("Vmed", 0)
         imed = data.get("Imed", 0)
 
@@ -86,11 +102,23 @@ def render_realtime():
         st.error(f"Error cargando datos en tiempo real: {e}")
         return
 
-    c1, c2, c3, c4 = st.columns(4)
-    c1.metric("Frecuencia", f"{freq:.2f} Hz")
-    c2.metric("Tensión media", f"{vmed:.1f} V")
-    c3.metric("Corriente media", f"{imed:.2f} A")
-    c4.metric("Temperatura", f"{temp:.1f} °C")
+    st.markdown("### Variables eléctricas principales")
+    c1, c2, c3 = st.columns(3)
+    with c1:
+        kpi_card("Frecuencia", f"{freq:.2f} Hz", "Red eléctrica")
+    with c2:
+        kpi_card("Tensión media", f"{vmed:.1f} V", "Promedio actual")
+    with c3:
+        kpi_card("Corriente media", f"{imed:.2f} A", "Promedio actual")
+
+    st.markdown("### Variables ambientales")
+    a1, a2, a3 = st.columns(3)
+    with a1:
+        kpi_card("Temperatura", f"{temp:.1f} °C", "Ambiente")
+    with a2:
+        kpi_card("Humedad", f"{hum:.1f} %", "Ambiente")
+    with a3:
+        kpi_card("Velocidad de viento", f"{wind:.1f} km/h", "Entorno")
 
     st.markdown("### Variables por fase")
 
