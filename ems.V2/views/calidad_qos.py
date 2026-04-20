@@ -4,6 +4,7 @@ import plotly.graph_objects as go
 from pandas.tseries.offsets import MonthEnd
 from influxdb_client import InfluxDBClient
 import pytz
+import calendar
 
 
 @st.cache_data(ttl=60, show_spinner=False)
@@ -142,16 +143,24 @@ def render_calidad_qos():
             df_cortes_filtrado = df_cortes
 
             # ===== KPI QoS OPERATIVOS =====
-            mes_actual_inicio = end.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-            df_mes_actual = df[df.index >= mes_actual_inicio]
+            # Integridad mensual = datos reales del mes actual vs todos los datos esperados del mes calendario completo
+            year_actual = end.year
+            month_actual = end.month
+            dias_del_mes = calendar.monthrange(year_actual, month_actual)[1]
 
-            esperados_mes_actual = len(pd.date_range(mes_actual_inicio, end, freq="15min"))
+            mes_actual_inicio = end.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+            mes_actual_fin = end.replace(day=dias_del_mes, hour=23, minute=45, second=0, microsecond=0)
+
+            df_mes_actual = df[(df.index >= mes_actual_inicio) & (df.index <= end)]
+            esperados_mes_actual = dias_del_mes * 24 * 4
             reales_mes_actual = len(df_mes_actual)
 
+            # Integridad diaria = datos reales de hoy vs todos los datos esperados del día completo
             dia_actual_inicio = end.replace(hour=0, minute=0, second=0, microsecond=0)
-            df_dia_actual = df[df.index >= dia_actual_inicio]
+            dia_actual_fin = end.replace(hour=23, minute=45, second=0, microsecond=0)
 
-            esperados_dia_actual = len(pd.date_range(dia_actual_inicio, end, freq="15min"))
+            df_dia_actual = df[(df.index >= dia_actual_inicio) & (df.index <= end)]
+            esperados_dia_actual = 24 * 4
             reales_dia_actual = len(df_dia_actual)
 
         # ===== FILA 1 =====
@@ -169,18 +178,19 @@ def render_calidad_qos():
                 line=dict(width=3, color="#1f77b4"),
                 text=[f"{p:.1f}%" for p in porcentajes_mes],
                 textposition="top center",
+                textfont=dict(color="#333333", size=11),
+                cliponaxis=False,
                 customdata=list(zip(reales_lista, esperados_lista)),
-                hovertemplate="<b>%{x}</b><br>Disponibilidad: <b>%{y:.2f}%</b><br>Registros: %{customdata[0]:,} / %{customdata[1]:,}<extra></extra>",
-                textfont=dict(color="#333333")
+                hovertemplate="<b>%{x}</b><br>Disponibilidad: <b>%{y:.2f}%</b><br>Registros: %{customdata[0]:,} / %{customdata[1]:,}<extra></extra>"
             ))
 
             fig_trend.update_layout(
-                height=380,
-                margin=dict(t=50, b=30, l=40, r=20),
+                height=390,
+                margin=dict(t=70, b=30, l=40, r=20),
                 font=dict(color="#333333"),
                 yaxis=dict(
                     title="Disponibilidad (%)",
-                    range=[max(0, min(porcentajes_mes) - 10) if porcentajes_mes else 0, 105],
+                    range=[max(0, min(porcentajes_mes) - 10) if porcentajes_mes else 0, 110],
                     gridcolor="#e5e8e8"
                 ),
                 xaxis=dict(gridcolor="#e5e8e8"),
@@ -268,7 +278,7 @@ def render_calidad_qos():
             <div class="kpi-card">
                 <div class="kpi-title">Integridad mensual</div>
                 <div class="kpi-value">{reales_mes_actual:,} / {esperados_mes_actual:,}</div>
-                <div class="kpi-sub">Recolectados vs esperados</div>
+                <div class="kpi-sub">Mes completo: {mes_actual_inicio.strftime('%d/%m')} al {mes_actual_fin.strftime('%d/%m')}</div>
             </div>
             """, unsafe_allow_html=True)
 
@@ -277,7 +287,7 @@ def render_calidad_qos():
             <div class="kpi-card">
                 <div class="kpi-title">Integridad diaria</div>
                 <div class="kpi-value">{reales_dia_actual:,} / {esperados_dia_actual:,}</div>
-                <div class="kpi-sub">Recolectados hoy vs esperados</div>
+                <div class="kpi-sub">Día completo: 00:00 a 23:45</div>
             </div>
             """, unsafe_allow_html=True)
 
