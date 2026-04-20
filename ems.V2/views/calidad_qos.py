@@ -205,10 +205,11 @@ def render_calidad_qos():
                 textinfo="percent+label",
                 textposition="outside",
                 textfont=dict(color="black")
+                domain=dict(x=[0.1, 0.9], y=[0.05, 0.95])
             )])
 
             fig_pie.update_layout(
-                height=320,
+                height=380,
                 margin=dict(t=30, b=20, l=20, r=20),
                 showlegend=False,
                 template="plotly_white"
