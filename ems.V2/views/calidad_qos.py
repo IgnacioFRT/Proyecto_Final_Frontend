@@ -249,7 +249,7 @@ def render_calidad_qos():
                 xaxis=dict(
                     rangeslider=dict(visible=True),
                     type="date"
-                    range=[df_filtrado.index.min(), df_filtadro.index.max()]
+                    range=[df_filtrado.index.min(), df_filtrado.index.max()]
                 ),
                 legend=dict(
                     orientation="h",
