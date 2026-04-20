@@ -46,7 +46,6 @@ def get_qos_data():
     cols = [c for c in ["UL1N", "UL2N", "UL3N"] if c in df.columns]
     df = df[cols].copy()
 
-    # resample como en tu lógica original
     df = df.resample("15min").agg({
         "UL1N": "mean",
         "UL2N": "mean",
@@ -104,7 +103,7 @@ def render_calidad_qos():
 
             nuevos_puntos_0v = []
 
-            for idx, row in cortes_graves.iterrows():
+            for idx, _row in cortes_graves.iterrows():
                 duracion = time_diff[idx]
                 fin_corte = idx
                 inicio_corte = idx - duracion
@@ -139,9 +138,21 @@ def render_calidad_qos():
                 df_inyectado = pd.DataFrame(nuevos_puntos_0v).set_index("index")
                 df_grafico = pd.concat([df_grafico, df_inyectado]).sort_index()
 
-            # sin filtro por mes
             df_filtrado = df_grafico
             df_cortes_filtrado = df_cortes
+
+            # ===== KPI QoS OPERATIVOS =====
+            mes_actual_inicio = end.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+            df_mes_actual = df[df.index >= mes_actual_inicio]
+
+            esperados_mes_actual = len(pd.date_range(mes_actual_inicio, end, freq="15min"))
+            reales_mes_actual = len(df_mes_actual)
+
+            dia_actual_inicio = end.replace(hour=0, minute=0, second=0, microsecond=0)
+            df_dia_actual = df[df.index >= dia_actual_inicio]
+
+            esperados_dia_actual = len(pd.date_range(dia_actual_inicio, end, freq="15min"))
+            reales_dia_actual = len(df_dia_actual)
 
         # ===== FILA 1 =====
         col_tendencia, col_torta = st.columns([1.5, 1])
@@ -154,8 +165,8 @@ def render_calidad_qos():
                 x=meses_labels,
                 y=porcentajes_mes,
                 mode="lines+markers+text",
-                marker=dict(size=14, color="#1f77b4", line=dict(width=2, color="white")),
-                line=dict(width=4, color="#1f77b4"),
+                marker=dict(size=12, color="#1f77b4", line=dict(width=2, color="white")),
+                line=dict(width=3, color="#1f77b4"),
                 text=[f"{p:.1f}%" for p in porcentajes_mes],
                 textposition="top center",
                 customdata=list(zip(reales_lista, esperados_lista)),
@@ -165,7 +176,7 @@ def render_calidad_qos():
 
             fig_trend.update_layout(
                 height=360,
-                margin=dict(t=40, b=40, l=40, r=20),
+                margin=dict(t=30, b=30, l=40, r=20),
                 font=dict(color="#333333"),
                 yaxis=dict(
                     title="Disponibilidad (%)",
@@ -192,7 +203,7 @@ def render_calidad_qos():
 
             fig_pie.update_layout(
                 height=320,
-                margin=dict(t=40, b=20, l=20, r=20),
+                margin=dict(t=30, b=20, l=20, r=20),
                 showlegend=False,
                 template="plotly_white"
             )
@@ -249,25 +260,13 @@ def render_calidad_qos():
 
         st.markdown("<div style='margin-top: 18px;'></div>", unsafe_allow_html=True)
 
-        # ===== KPIs QoS OPERATIVOS =====
-        mes_actual_inicio = end.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-        df_mes_actual = df[df.index >= mes_actual_inicio]
-
-        esperados_mes_actual = len(pd.date_range(mes_actual_inicio, end, freq="15min"))
-        reales_mes_actual = len(df_mes_actual)
-
-        dia_actual_inicio = end.replace(hour=0, minute=0, second=0, microsecond=0)
-        df_dia_actual = df[df.index >= dia_actual_inicio]
-
-        esperados_dia_actual = len(pd.date_range(dia_actual_inicio, end, freq="15min"))
-        reales_dia_actual = len(df_dia_actual)
-
+        # ===== FILA 3 =====
         k1, k2 = st.columns(2)
 
         with k1:
             st.markdown(f"""
             <div class="kpi-card">
-                <div class="kpi-title">Datos del mes actual</div>
+                <div class="kpi-title">Integridad mensual</div>
                 <div class="kpi-value">{reales_mes_actual:,} / {esperados_mes_actual:,}</div>
                 <div class="kpi-sub">Recolectados vs esperados</div>
             </div>
@@ -276,8 +275,11 @@ def render_calidad_qos():
         with k2:
             st.markdown(f"""
             <div class="kpi-card">
-               <div class="kpi-title">Datos del día actual</div>
-               <div class="kpi-value">{reales_dia_actual:,} / {esperados_dia_actual:,}</div>
-               <div class="kpi-sub">Recolectados hoy vs esperados</div>
+                <div class="kpi-title">Integridad diaria</div>
+                <div class="kpi-value">{reales_dia_actual:,} / {esperados_dia_actual:,}</div>
+                <div class="kpi-sub">Recolectados hoy vs esperados</div>
             </div>
             """, unsafe_allow_html=True)
+
+    except Exception as e:
+        st.error(f"Error al generar el análisis de calidad QoS: {e}")
