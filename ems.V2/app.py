@@ -11,7 +11,7 @@ from views.realtime import render_realtime
 from views.historico import render_historico, get_historico_summary
 from views.perfil_dinamico import render_perfil_dinamico
 from views.calidad_qos import render_calidad_qos
-
+from views.huella_carbono import render_huella_carbono
 
 st.set_page_config(
     page_title="EMS - PAC3200 UTN v2",
@@ -26,7 +26,7 @@ with st.sidebar:
     st.title("EMS UTN - v2")
     section = st.radio(
         "Navegación",
-        ["Inicio", "Tiempo Real", "Resumen Histórico", "Perfil Dinámico", "Calidad QoS"]
+        ["Inicio", "Tiempo Real", "Resumen Histórico", "Perfil Dinámico", "Calidad QoS", "Huella de Carbono"]
     )
     st.markdown("---")
     st.caption("Versión nueva del dashboard")
@@ -192,3 +192,5 @@ elif section == "Perfil Dinámico":
     render_perfil_dinamico()
 elif section == "Calidad QoS":
     render_calidad_qos()
+elif section == "Huella de Carbono":
+    render_huella_carbono()
