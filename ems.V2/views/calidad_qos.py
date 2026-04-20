@@ -210,7 +210,7 @@ def render_calidad_qos():
 
             fig_pie.update_layout(
                 height=380,
-                margin=dict(t=30, b=20, l=20, r=20),
+                margin=dict(t=10, b=10, l=10, r=10),
                 showlegend=False,
                 template="plotly_white"
             )
