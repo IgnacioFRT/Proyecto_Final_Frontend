@@ -204,7 +204,7 @@ def render_calidad_qos():
                 pull=[0.05, 0],
                 textinfo="percent+label",
                 textposition="outside",
-                textfont=dict(color="black")
+                textfont=dict(color="black"),
                 domain=dict(x=[0.1, 0.9], y=[0.05, 0.95])
             )])
 
