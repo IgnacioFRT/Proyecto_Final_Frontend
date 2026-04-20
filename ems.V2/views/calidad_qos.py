@@ -164,7 +164,7 @@ def render_calidad_qos():
             ))
 
             fig_trend.update_layout(
-                height=420,
+                height=360,
                 margin=dict(t=40, b=40, l=40, r=20),
                 font=dict(color="#333333"),
                 yaxis=dict(
@@ -191,7 +191,7 @@ def render_calidad_qos():
             )])
 
             fig_pie.update_layout(
-                height=380,
+                height=320,
                 margin=dict(t=40, b=20, l=20, r=20),
                 showlegend=False,
                 template="plotly_white"
@@ -221,7 +221,7 @@ def render_calidad_qos():
             ))
 
             fig_tension.update_layout(
-                height=400,
+                height=340,
                 margin=dict(t=20, b=20, l=20, r=20),
                 yaxis_title="Tensión (V)",
                 template="plotly_dark",
