@@ -238,7 +238,7 @@ def render_calidad_qos():
             ))
 
             fig_tension.update_layout(
-                height=340,
+                height=440,
                 margin=dict(t=20, b=20, l=20, r=20),
                 yaxis_title="Tensión (V)",
                 template="plotly_dark",
