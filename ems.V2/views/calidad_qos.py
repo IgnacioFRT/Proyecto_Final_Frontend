@@ -249,44 +249,35 @@ def render_calidad_qos():
 
         st.markdown("<div style='margin-top: 18px;'></div>", unsafe_allow_html=True)
 
-        # ===== FILA 3 =====
-        max_gap_horas = 0.0
-        if not df_cortes.empty:
-            max_gap_horas = max(
-                pd.to_timedelta(
-                    df_cortes["Duración"].str.replace("h", " hours ").str.replace("m", " minutes"),
-                    errors="coerce"
-                ).dt.total_seconds().fillna(0) / 3600
-            )
+        # ===== KPIs QoS OPERATIVOS =====
+        mes_actual_inicio = end.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        df_mes_actual = df[df.index >= mes_actual_inicio]
 
-        k1, k2, k3 = st.columns(3)
+        esperados_mes_actual = len(pd.date_range(mes_actual_inicio, end, freq="15min"))
+        reales_mes_actual = len(df_mes_actual)
+
+        dia_actual_inicio = end.replace(hour=0, minute=0, second=0, microsecond=0)
+        df_dia_actual = df[df.index >= dia_actual_inicio]
+
+        esperados_dia_actual = len(pd.date_range(dia_actual_inicio, end, freq="15min"))
+        reales_dia_actual = len(df_dia_actual)
+
+        k1, k2 = st.columns(2)
 
         with k1:
             st.markdown(f"""
             <div class="kpi-card">
-                <div class="kpi-title">Disponibilidad global</div>
-                <div class="kpi-value">{registrado_global:.1f}%</div>
-                <div class="kpi-sub">Datos registrados</div>
+                <div class="kpi-title">Datos del mes actual</div>
+                <div class="kpi-value">{reales_mes_actual:,} / {esperados_mes_actual:,}</div>
+                <div class="kpi-sub">Recolectados vs esperados</div>
             </div>
             """, unsafe_allow_html=True)
 
         with k2:
             st.markdown(f"""
             <div class="kpi-card">
-                <div class="kpi-title">Gaps detectados</div>
-                <div class="kpi-value">{len(df_cortes)}</div>
-                <div class="kpi-sub">Cortes mayores a {HORAS_FILTRO}h</div>
+               <div class="kpi-title">Datos del día actual</div>
+               <div class="kpi-value">{reales_dia_actual:,} / {esperados_dia_actual:,}</div>
+               <div class="kpi-sub">Recolectados hoy vs esperados</div>
             </div>
             """, unsafe_allow_html=True)
-
-        with k3:
-            st.markdown(f"""
-            <div class="kpi-card">
-                <div class="kpi-title">Gap máximo</div>
-                <div class="kpi-value">{max_gap_horas:.1f} h</div>
-                <div class="kpi-sub">Mayor interrupción detectada</div>
-            </div>
-            """, unsafe_allow_html=True)
-
-    except Exception as e:
-        st.error(f"Error al generar el análisis de calidad QoS: {e}")
