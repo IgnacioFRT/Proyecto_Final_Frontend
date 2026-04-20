@@ -143,7 +143,6 @@ def render_calidad_qos():
             df_cortes_filtrado = df_cortes
 
             # ===== KPI QoS OPERATIVOS =====
-            # Integridad mensual = datos reales del mes actual vs todos los datos esperados del mes calendario completo
             year_actual = end.year
             month_actual = end.month
             dias_del_mes = calendar.monthrange(year_actual, month_actual)[1]
@@ -155,10 +154,7 @@ def render_calidad_qos():
             esperados_mes_actual = dias_del_mes * 24 * 4
             reales_mes_actual = len(df_mes_actual)
 
-            # Integridad diaria = datos reales de hoy vs todos los datos esperados del día completo
             dia_actual_inicio = end.replace(hour=0, minute=0, second=0, microsecond=0)
-            dia_actual_fin = end.replace(hour=23, minute=45, second=0, microsecond=0)
-
             df_dia_actual = df[(df.index >= dia_actual_inicio) & (df.index <= end)]
             esperados_dia_actual = 24 * 4
             reales_dia_actual = len(df_dia_actual)
@@ -248,7 +244,7 @@ def render_calidad_qos():
                 template="plotly_dark",
                 xaxis=dict(
                     rangeslider=dict(visible=True),
-                    type="date"
+                    type="date",
                     range=[df_filtrado.index.min(), df_filtrado.index.max()]
                 ),
                 legend=dict(
