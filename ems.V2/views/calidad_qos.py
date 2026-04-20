@@ -175,7 +175,7 @@ def render_calidad_qos():
             ))
 
             fig_trend.update_layout(
-                height=360,
+                height=380,
                 margin=dict(t=30, b=30, l=40, r=20),
                 font=dict(color="#333333"),
                 yaxis=dict(
