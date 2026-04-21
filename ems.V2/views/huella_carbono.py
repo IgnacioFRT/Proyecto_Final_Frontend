@@ -34,90 +34,136 @@ def render_huella_carbono():
             # ===== 3. DATOS MENSUALES =====
             df_mensual = df_diario.resample("MS")["emisiones_diarias"].sum()
             df_mensual = df_mensual[df_mensual > 0]
-
             meses_nombres = df_mensual.index.strftime("%b %Y").str.capitalize()
 
-            # ===== 4. MÉTRICAS EXTRA =====
+            # ===== 4. KPIs EXTRA =====
             pico_diario_co2 = float(df_diario["emisiones_diarias"].max()) if not df_diario.empty else 0.0
             fecha_pico = (
                 df_diario["emisiones_diarias"].idxmax().strftime("%d/%m/%Y")
                 if not df_diario.empty else "--/--/----"
             )
+            promedio_diario_co2 = float(df_diario["emisiones_diarias"].mean()) if not df_diario.empty else 0.0
 
-        # ===== FILA 1: HUELLA EN EL TIEMPO =====
-        st.markdown("#### Huella de carbono en el tiempo")
+        # ===== FILA 1: DOS GRÁFICOS SEPARADOS =====
+        g1, g2 = st.columns(2)
 
-        fig_tiempo = go.Figure()
+        with g1:
+            st.markdown("#### Emisión diaria")
 
-        fig_tiempo.add_trace(go.Bar(
-            x=df_diario.index,
-            y=df_diario["emisiones_diarias"],
-            name="Emisión diaria",
-            marker_color="#66bb6a",
-            hovertemplate="<b>%{x|%d/%m/%Y}</b><br>Emisión diaria: <b>%{y:,.2f} kg CO₂</b><extra></extra>"
-        ))
+            fig_diaria = go.Figure()
+            fig_diaria.add_trace(go.Bar(
+                x=df_diario.index,
+                y=df_diario["emisiones_diarias"],
+                name="Emisión diaria",
+                marker_color="#66bb6a",
+                hovertemplate="<b>%{x|%d/%m/%Y}</b><br>Emisión diaria: <b>%{y:,.2f} kg CO₂</b><extra></extra>"
+            ))
 
-        fig_tiempo.add_trace(go.Scatter(
-            x=df_diario.index,
-            y=df_diario["emisiones_acumuladas"],
-            mode="lines",
-            name="Huella acumulada",
-            line=dict(color="#1f77b4", width=3),
-            fill="tozeroy",
-            fillcolor="rgba(31,119,180,0.18)",
-            hovertemplate="<b>%{x|%d/%m/%Y}</b><br>Acumulado: <b>%{y:,.2f} kg CO₂</b><extra></extra>"
-        ))
+            fig_diaria.update_layout(
+                height=350,
+                margin=dict(t=30, b=20, l=20, r=20),
+                template="plotly_white",
+                yaxis=dict(title="kg CO₂", gridcolor="#e5e8e8"),
+                xaxis=dict(gridcolor="#e5e8e8"),
+                showlegend=False
+            )
+            st.plotly_chart(fig_diaria, use_container_width=True)
 
-        fig_tiempo.update_layout(
-            height=420,
-            margin=dict(t=30, b=20, l=20, r=20),
-            template="plotly_white",
-            hovermode="x unified",
-            yaxis=dict(title="kg CO₂", gridcolor="#e5e8e8"),
-            xaxis=dict(gridcolor="#e5e8e8"),
-            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
-        )
-        st.plotly_chart(fig_tiempo, use_container_width=True)
+        with g2:
+            st.markdown("#### Huella acumulada")
+
+            fig_acum = go.Figure()
+            fig_acum.add_trace(go.Scatter(
+                x=df_diario.index,
+                y=df_diario["emisiones_acumuladas"],
+                mode="lines",
+                name="Huella acumulada",
+                line=dict(color="#1f77b4", width=3),
+                fill="tozeroy",
+                fillcolor="rgba(31,119,180,0.18)",
+                hovertemplate="<b>%{x|%d/%m/%Y}</b><br>Acumulado: <b>%{y:,.2f} kg CO₂</b><extra></extra>"
+            ))
+
+            fig_acum.update_layout(
+                height=350,
+                margin=dict(t=30, b=20, l=20, r=20),
+                template="plotly_white",
+                yaxis=dict(title="kg CO₂", gridcolor="#e5e8e8"),
+                xaxis=dict(gridcolor="#e5e8e8"),
+                showlegend=False
+            )
+            st.plotly_chart(fig_acum, use_container_width=True)
 
         st.markdown("<div style='margin-top: 18px;'></div>", unsafe_allow_html=True)
 
-        # ===== FILA 2: KPIs GLOBALES =====
+        # ===== FILA 2: KPI PRINCIPALES =====
         k1, k2, k3 = st.columns(3)
 
         with k1:
             st.markdown(f"""
             <div class="kpi-card">
-                <div class="kpi-title">Huella de Carbono Total</div>
-                <div class="kpi-value">{total_co2_kg:,.1f} kg CO₂</div>
-                <div class="kpi-sub">Factor: {FACTOR_EMISION:.2f} kg/kWh</div>
+                <div class="kpi-title">Pico diario de emisión</div>
+                <div class="kpi-value">{pico_diario_co2:,.1f} kg CO₂</div>
+                <div class="kpi-sub">Máximo diario detectado</div>
             </div>
             """, unsafe_allow_html=True)
 
         with k2:
             st.markdown(f"""
             <div class="kpi-card">
-                <div class="kpi-title">Equivalencia Forestal</div>
-                <div class="kpi-value">{arboles_equivalentes:,.0f}</div>
-                <div class="kpi-sub">Árboles equivalentes / año</div>
+                <div class="kpi-title">Fecha de mayor impacto</div>
+                <div class="kpi-value">{fecha_pico}</div>
+                <div class="kpi-sub">Máxima emisión diaria</div>
             </div>
             """, unsafe_allow_html=True)
 
         with k3:
             st.markdown(f"""
             <div class="kpi-card">
-                <div class="kpi-title">Equivalencia Vehicular</div>
-                <div class="kpi-value">{km_auto_equivalente:,.0f} km</div>
-                <div class="kpi-sub">Vehículo a combustión</div>
+                <div class="kpi-title">Huella de carbono total</div>
+                <div class="kpi-value">{total_co2_kg:,.1f} kg CO₂</div>
+                <div class="kpi-sub">Factor: {FACTOR_EMISION:.2f} kg/kWh</div>
             </div>
             """, unsafe_allow_html=True)
 
         st.markdown("<div style='margin-top: 18px;'></div>", unsafe_allow_html=True)
 
-        # ===== FILA 3: TENDENCIA MENSUAL =====
+        # ===== FILA 3: KPI SECUNDARIOS =====
+        s1, s2, s3 = st.columns(3)
+
+        with s1:
+            st.markdown(f"""
+            <div class="kpi-card">
+                <div class="kpi-title">Equivalencia forestal</div>
+                <div class="kpi-value">{arboles_equivalentes:,.0f}</div>
+                <div class="kpi-sub">Árboles equivalentes / año</div>
+            </div>
+            """, unsafe_allow_html=True)
+
+        with s2:
+            st.markdown(f"""
+            <div class="kpi-card">
+                <div class="kpi-title">Equivalencia vehicular</div>
+                <div class="kpi-value">{km_auto_equivalente:,.0f} km</div>
+                <div class="kpi-sub">Vehículo a combustión</div>
+            </div>
+            """, unsafe_allow_html=True)
+
+        with s3:
+            st.markdown(f"""
+            <div class="kpi-card">
+                <div class="kpi-title">Promedio diario de emisión</div>
+                <div class="kpi-value">{promedio_diario_co2:,.1f} kg CO₂</div>
+                <div class="kpi-sub">Promedio del período analizado</div>
+            </div>
+            """, unsafe_allow_html=True)
+
+        st.markdown("<div style='margin-top: 18px;'></div>", unsafe_allow_html=True)
+
+        # ===== FILA 4: TENDENCIA MENSUAL =====
         st.markdown("#### Tendencia mensual de la huella de carbono")
 
         fig_mensual = go.Figure()
-
         fig_mensual.add_trace(go.Scatter(
             x=meses_nombres,
             y=df_mensual.values,
@@ -136,31 +182,7 @@ def render_huella_carbono():
             yaxis=dict(title="kg CO₂", gridcolor="#e5e8e8"),
             xaxis=dict(gridcolor="#e5e8e8")
         )
-
         st.plotly_chart(fig_mensual, use_container_width=True)
-
-        st.markdown("<div style='margin-top: 18px;'></div>", unsafe_allow_html=True)
-
-        # ===== FILA 4: KPIs INFERIORES =====
-        b1, b2 = st.columns(2)
-
-        with b1:
-            st.markdown(f"""
-            <div class="kpi-card">
-                <div class="kpi-title">Pico Diario de Emisión</div>
-                <div class="kpi-value">{pico_diario_co2:,.1f} kg CO₂</div>
-                <div class="kpi-sub">Máximo diario detectado</div>
-            </div>
-            """, unsafe_allow_html=True)
-
-        with b2:
-            st.markdown(f"""
-            <div class="kpi-card">
-                <div class="kpi-title">Fecha de Mayor Impacto</div>
-                <div class="kpi-value">{fecha_pico}</div>
-                <div class="kpi-sub">Máxima emisión diaria</div>
-            </div>
-            """, unsafe_allow_html=True)
 
     except Exception as e:
         st.error(f"Error al generar la ventana de huella de carbono: {e}")
