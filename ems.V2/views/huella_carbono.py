@@ -80,12 +80,15 @@ def render_huella_carbono():
         st.markdown("#### Tendencia mensual de la huella de carbono")
 
         fig_mensual = go.Figure()
-        fig_mensual.add_trace(go.Bar(
+
+        fig_mensual.add_trace(go.Scatter(
             x=meses_nombres,
             y=df_mensual.values,
-            marker_color="#27ae60",
+            mode="lines+markers+text",
+            line=dict(color="#27ae60", width=3),
+            marker=dict(size=8),
             text=[f"{v:,.1f} kg" for v in df_mensual.values],
-            textposition="auto",
+            textposition="top center",
             hovertemplate="<b>%{x}</b><br>Emisiones: <b>%{y:,.2f} kg CO₂</b><extra></extra>"
         ))
 
@@ -96,9 +99,8 @@ def render_huella_carbono():
             yaxis=dict(title="kg CO₂", gridcolor="#e5e8e8"),
             xaxis=dict(gridcolor="#e5e8e8")
         )
-        st.plotly_chart(fig_mensual, use_container_width=True)
 
-        st.markdown("<div style='margin-top: 10px;'></div>", unsafe_allow_html=True)
+        st.plotly_chart(fig_mensual, use_container_width=True)
 
         # ===== FILA 3: DIARIO + ACUMULADO =====
         st.markdown("#### Huella de carbono en el tiempo")
