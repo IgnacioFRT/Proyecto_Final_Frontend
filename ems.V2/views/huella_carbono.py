@@ -50,7 +50,7 @@ def render_huella_carbono():
         with g1:
             st.markdown("#### Emisión diaria")
 
-            # Barra máxima en rojo
+            # Colorear el día de máxima emisión en rojo
             colors = [
                 "#e74c3c" if idx == idx_pico else "#66bb6a"
                 for idx in df_diario.index
@@ -88,6 +88,15 @@ def render_huella_carbono():
                 fillcolor="rgba(31,119,180,0.18)",
                 hovertemplate="<b>%{x|%d/%m/%Y}</b><br>Acumulado: <b>%{y:,.2f} kg CO₂</b><extra></extra>"
             ))
+
+            # Línea vertical en el día de mayor impacto
+            if idx_pico is not None:
+                fig_acum.add_vline(
+                    x=idx_pico,
+                    line_dash="dot",
+                    line_color="#e74c3c",
+                    opacity=0.9
+                )
 
             fig_acum.update_layout(
                 height=340,
