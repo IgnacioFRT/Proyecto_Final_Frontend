@@ -37,10 +37,14 @@ def render_huella_carbono():
             meses_nombres = df_mensual.index.strftime("%b %Y").str.capitalize()
 
             # ===== 4. KPIs EXTRA =====
-            pico_diario_co2 = float(df_diario["emisiones_diarias"].max()) if not df_diario.empty else 0.0
             idx_pico = df_diario["emisiones_diarias"].idxmax() if not df_diario.empty else None
+            pico_diario_co2 = float(df_diario["emisiones_diarias"].max()) if not df_diario.empty else 0.0
             fecha_pico = idx_pico.strftime("%d/%m/%Y") if idx_pico is not None else "--/--/----"
             promedio_diario_co2 = float(df_diario["emisiones_diarias"].mean()) if not df_diario.empty else 0.0
+
+            mes_pico_idx = df_mensual.idxmax() if not df_mensual.empty else None
+            mes_pico_nombre = mes_pico_idx.strftime("%B %Y") if mes_pico_idx is not None else "--"
+            mes_pico_valor = float(df_mensual.max()) if not df_mensual.empty else 0.0
 
         # =========================================================
         # FILA 1: DOS GRÁFICOS SEPARADOS
@@ -50,7 +54,6 @@ def render_huella_carbono():
         with g1:
             st.markdown("#### Emisión diaria")
 
-            # Colorear el día de máxima emisión en rojo
             colors = [
                 "#e74c3c" if idx == idx_pico else "#66bb6a"
                 for idx in df_diario.index
@@ -89,15 +92,6 @@ def render_huella_carbono():
                 hovertemplate="<b>%{x|%d/%m/%Y}</b><br>Acumulado: <b>%{y:,.2f} kg CO₂</b><extra></extra>"
             ))
 
-            # Línea vertical en el día de mayor impacto
-            if idx_pico is not None:
-                fig_acum.add_vline(
-                    x=idx_pico,
-                    line_dash="dot",
-                    line_color="#e74c3c",
-                    opacity=0.9
-                )
-
             fig_acum.update_layout(
                 height=340,
                 margin=dict(t=30, b=20, l=20, r=20),
@@ -118,9 +112,9 @@ def render_huella_carbono():
         with k1:
             st.markdown(f"""
             <div class="kpi-card">
-                <div class="kpi-title">Pico diario de emisión</div>
-                <div class="kpi-value">{pico_diario_co2:,.1f} kg CO₂</div>
-                <div class="kpi-sub">Máximo diario detectado</div>
+                <div class="kpi-title">Mes de mayor emisión</div>
+                <div class="kpi-value">{mes_pico_nombre}</div>
+                <div class="kpi-sub">{mes_pico_valor:,.1f} kg CO₂</div>
             </div>
             """, unsafe_allow_html=True)
 
