@@ -27,8 +27,6 @@ def clasificar_anomalia(row: pd.Series) -> str:
 
 def render_deteccion_anomalias():
     try:
-        st.caption("DET_ANOM_V2")
-
         with st.spinner("Analizando anomalías del consumo... ⏳"):
             df = get_historical_data().copy()
 
@@ -134,7 +132,6 @@ def render_deteccion_anomalias():
         perfil["upper_ref"] = perfil["mean"] + 2 * perfil["std"]
         perfil["lower_ref"] = (perfil["mean"] - 2 * perfil["std"]).clip(lower=0)
 
-        # Sin timestamp, sin reset_index problemático
         df_eval = df_eval.join(
             perfil.set_index("hora")[["mean", "upper_ref", "lower_ref"]],
             on="hora"
@@ -216,8 +213,57 @@ def render_deteccion_anomalias():
         else:
             st.success("No se detectaron anomalías con la sensibilidad seleccionada.")
 
+        # =========================================================
+        # SERIE AUDITADA CON ANOMALÍAS - VERSIÓN MEJORADA
+        # =========================================================
         st.markdown("#### Serie auditada con anomalías")
 
+        # Media móvil de 24 registros
+        df_eval["media_movil"] = df_eval["consumo_kwh"].rolling(window=24, min_periods=1).mean()
+
+        fig_serie = go.Figure()
+
+        # Señal original
+        fig_serie.add_trace(go.Scatter(
+            x=df_eval.index,
+            y=df_eval["consumo_kwh"],
+            mode="lines",
+            name="Consumo",
+            line=dict(color="#1f77b4", width=1),
+            opacity=0.65
+        ))
+
+        # Media móvil
+        fig_serie.add_trace(go.Scatter(
+            x=df_eval.index,
+            y=df_eval["media_movil"],
+            mode="lines",
+            name="Media móvil (24)",
+            line=dict(color="#2c3e50", width=2.4)
+        ))
+
+        # Banda esperada
+        fig_serie.add_trace(go.Scatter(
+            x=df_eval.index,
+            y=df_eval["upper_ref"],
+            mode="lines",
+            line=dict(width=0),
+            showlegend=False,
+            hoverinfo="skip"
+        ))
+
+        fig_serie.add_trace(go.Scatter(
+            x=df_eval.index,
+            y=df_eval["lower_ref"],
+            mode="lines",
+            fill="tonexty",
+            fillcolor="rgba(31,119,180,0.12)",
+            line=dict(width=0),
+            name="Banda esperada",
+            hoverinfo="skip"
+        ))
+
+        # Anomalías por tipo
         color_map = {
             "Pico de consumo": "#e74c3c",
             "Consumo anormalmente bajo": "#8e44ad",
@@ -225,16 +271,6 @@ def render_deteccion_anomalias():
             "Fin de semana atípico": "#c0392b",
             "Desvío general": "#ff6b6b"
         }
-
-        fig_serie = go.Figure()
-
-        fig_serie.add_trace(go.Scatter(
-            x=normales.index,
-            y=normales["consumo_kwh"],
-            mode="markers",
-            name="Normal",
-            marker=dict(color="#66bb6a", size=4, opacity=0.45)
-        ))
 
         for tipo, color in color_map.items():
             sub = anomalias[anomalias["tipo_anomalia"] == tipo]
@@ -252,9 +288,21 @@ def render_deteccion_anomalias():
             height=430,
             template="plotly_white",
             margin=dict(t=20, b=20, l=20, r=20),
-            yaxis=dict(title="Consumo incremental (kWh)", gridcolor="#e5e8e8"),
-            xaxis=dict(title="Fecha", gridcolor="#e5e8e8"),
-            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+            yaxis=dict(
+                title="Consumo incremental (kWh)",
+                gridcolor="#e5e8e8"
+            ),
+            xaxis=dict(
+                title="Fecha",
+                gridcolor="#e5e8e8"
+            ),
+            legend=dict(
+                orientation="h",
+                yanchor="bottom",
+                y=1.02,
+                xanchor="right",
+                x=1
+            )
         )
 
         st.plotly_chart(fig_serie, use_container_width=True)
