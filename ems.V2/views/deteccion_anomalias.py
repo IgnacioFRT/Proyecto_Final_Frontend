@@ -1,6 +1,5 @@
 import streamlit as st
 import pandas as pd
-import numpy as np
 import plotly.graph_objects as go
 
 from sklearn.ensemble import IsolationForest
@@ -28,6 +27,8 @@ def clasificar_anomalia(row: pd.Series) -> str:
 
 def render_deteccion_anomalias():
     try:
+        st.caption("DET_ANOM_V2")
+
         with st.spinner("Analizando anomalías del consumo... ⏳"):
             df = get_historical_data().copy()
 
@@ -39,11 +40,8 @@ def render_deteccion_anomalias():
                 st.warning("No se encontró EA_imp_T1_kwh en los datos históricos.")
                 return
 
-            # =========================================================
-            # 1. PREPARACIÓN BASE
-            # =========================================================
-            df_work = pd.DataFrame(index=df.index)
-            df_work["EA_imp_T1_kwh"] = df["EA_imp_T1_kwh"]
+            df_work = pd.DataFrame(index=pd.to_datetime(df.index))
+            df_work["EA_imp_T1_kwh"] = df["EA_imp_T1_kwh"].values
             df_work["consumo_kwh"] = df_work["EA_imp_T1_kwh"].diff().clip(lower=0)
             df_work = df_work.dropna()
 
@@ -51,10 +49,8 @@ def render_deteccion_anomalias():
                 st.warning("No hay suficientes datos para construir la serie de consumo.")
                 return
 
-            df_work.index = pd.to_datetime(df_work.index)
             df_work["hora"] = df_work.index.hour
             df_work["dia_semana"] = df_work.index.dayofweek
-            df_work["mes"] = df_work.index.month
 
             dias_map = {
                 0: "Lunes", 1: "Martes", 2: "Miércoles",
@@ -69,9 +65,6 @@ def render_deteccion_anomalias():
             df_work["nombre_dia"] = df_work["dia_semana"].map(dias_map)
             df_work["nombre_mes"] = df_work.index.month.map(meses_map) + " " + df_work.index.year.astype(str)
 
-        # =========================================================
-        # 2. CONFIGURACIÓN
-        # =========================================================
         st.markdown("### Configuración del análisis")
 
         meses_disponibles = df_work["nombre_mes"].drop_duplicates().tolist()
@@ -100,9 +93,6 @@ def render_deteccion_anomalias():
                 step=0.005
             )
 
-        # =========================================================
-        # 3. ENTRENAMIENTO / EVALUACIÓN
-        # =========================================================
         df_train = df_work[df_work["nombre_mes"] == mes_ref].copy()
 
         if df_train.empty:
@@ -134,9 +124,6 @@ def render_deteccion_anomalias():
         df_eval["score"] = model.decision_function(X_eval)
         df_eval["es_anomalia"] = df_eval["anomalia_flag"] == -1
 
-        # =========================================================
-        # 4. PERFIL IDEAL DE REFERENCIA
-        # =========================================================
         perfil = (
             df_train.groupby("hora")["consumo_kwh"]
             .agg(["mean", "std"])
@@ -147,22 +134,11 @@ def render_deteccion_anomalias():
         perfil["upper_ref"] = perfil["mean"] + 2 * perfil["std"]
         perfil["lower_ref"] = (perfil["mean"] - 2 * perfil["std"]).clip(lower=0)
 
-        # Merge sin perder el índice temporal
-        idx_original = df_eval.index.copy()
-
-        df_eval_merge = df_eval.reset_index(drop=True).copy()
-        df_eval_merge["__fecha__"] = idx_original
-
-        df_eval_merge = df_eval_merge.merge(
-            perfil[["hora", "mean", "upper_ref", "lower_ref"]],
-            on="hora",
-            how="left"
+        # Sin timestamp, sin reset_index problemático
+        df_eval = df_eval.join(
+            perfil.set_index("hora")[["mean", "upper_ref", "lower_ref"]],
+            on="hora"
         )
-
-        df_eval_merge = df_eval_merge.set_index("__fecha__")
-        df_eval_merge.index = pd.to_datetime(df_eval_merge.index)
-
-        df_eval = df_eval_merge.copy()
 
         anomalias = df_eval[df_eval["es_anomalia"]].copy()
         normales = df_eval[~df_eval["es_anomalia"]].copy()
@@ -172,9 +148,6 @@ def render_deteccion_anomalias():
         else:
             anomalias["tipo_anomalia"] = pd.Series(dtype="object")
 
-        # =========================================================
-        # 5. KPIs
-        # =========================================================
         total_registros = len(df_eval)
         total_anomalias = len(anomalias)
         porcentaje_anomalias = (total_anomalias / total_registros * 100) if total_registros > 0 else 0
@@ -234,9 +207,6 @@ def render_deteccion_anomalias():
 
         st.markdown("<div style='margin-top:18px;'></div>", unsafe_allow_html=True)
 
-        # =========================================================
-        # 6. INSIGHT AUTOMÁTICO
-        # =========================================================
         if total_anomalias > 0 and hora_mas_conflictiva is not None:
             st.info(
                 f"Se detectaron **{total_anomalias} anomalías** en **{mes_eval}**. "
@@ -246,9 +216,6 @@ def render_deteccion_anomalias():
         else:
             st.success("No se detectaron anomalías con la sensibilidad seleccionada.")
 
-        # =========================================================
-        # 7. SERIE TEMPORAL
-        # =========================================================
         st.markdown("#### Serie auditada con anomalías")
 
         color_map = {
@@ -294,9 +261,6 @@ def render_deteccion_anomalias():
 
         st.markdown("<div style='margin-top:18px;'></div>", unsafe_allow_html=True)
 
-        # =========================================================
-        # 8. PERFIL IDEAL + HEATMAP
-        # =========================================================
         st.markdown("#### Perfil ideal y mapa de concentración")
 
         col_g1, col_g2 = st.columns(2)
@@ -375,9 +339,6 @@ def render_deteccion_anomalias():
 
         st.markdown("<div style='margin-top:18px;'></div>", unsafe_allow_html=True)
 
-        # =========================================================
-        # 9. BARRAS POR HORA + 3D
-        # =========================================================
         st.markdown("#### Concentración horaria y visualización 3D")
 
         col_h1, col_h2 = st.columns(2)
@@ -458,9 +419,6 @@ def render_deteccion_anomalias():
 
         st.markdown("<div style='margin-top:18px;'></div>", unsafe_allow_html=True)
 
-        # =========================================================
-        # 10. TABLA
-        # =========================================================
         st.markdown("#### Detalle de anomalías detectadas")
 
         if not anomalias.empty:
