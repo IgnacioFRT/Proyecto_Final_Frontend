@@ -147,7 +147,9 @@ def render_deteccion_anomalias():
         perfil["upper_ref"] = perfil["mean"] + 2 * perfil["std"]
         perfil["lower_ref"] = (perfil["mean"] - 2 * perfil["std"]).clip(lower=0)
 
-        df_eval = df_eval.reset_index().rename(columns={"index": "timestamp"})
+        # Merge sin perder el índice temporal
+        df_eval = df_eval.reset_index()
+        col_fecha = df_eval.columns[0]
 
         df_eval = df_eval.merge(
             perfil[["hora", "mean", "upper_ref", "lower_ref"]],
@@ -155,7 +157,7 @@ def render_deteccion_anomalias():
             how="left"
         )
 
-        df_eval = df_eval.set_index("timestamp")
+        df_eval = df_eval.set_index(col_fecha)
         df_eval.index = pd.to_datetime(df_eval.index)
 
         anomalias = df_eval[df_eval["es_anomalia"]].copy()
@@ -164,7 +166,7 @@ def render_deteccion_anomalias():
         if not anomalias.empty:
             anomalias["tipo_anomalia"] = anomalias.apply(clasificar_anomalia, axis=1)
         else:
-            anomalias["tipo_anomalia"] = []
+            anomalias["tipo_anomalia"] = pd.Series(dtype="object")
 
         # =========================================================
         # 5. KPIs
@@ -236,7 +238,7 @@ def render_deteccion_anomalias():
         # =========================================================
         # 6. INSIGHT AUTOMÁTICO
         # =========================================================
-        if total_anomalias > 0:
+        if total_anomalias > 0 and hora_mas_conflictiva is not None:
             st.info(
                 f"Se detectaron **{total_anomalias} anomalías** en **{mes_eval}**. "
                 f"La hora con mayor concentración fue **{hora_mas_conflictiva:02d}:00** "
