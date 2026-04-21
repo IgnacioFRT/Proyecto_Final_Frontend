@@ -44,7 +44,6 @@ def render_deteccion_anomalias():
             # =========================================================
             df_work = pd.DataFrame(index=df.index)
             df_work["EA_imp_T1_kwh"] = df["EA_imp_T1_kwh"]
-
             df_work["consumo_kwh"] = df_work["EA_imp_T1_kwh"].diff().clip(lower=0)
             df_work = df_work.dropna()
 
@@ -52,6 +51,7 @@ def render_deteccion_anomalias():
                 st.warning("No hay suficientes datos para construir la serie de consumo.")
                 return
 
+            df_work.index = pd.to_datetime(df_work.index)
             df_work["hora"] = df_work.index.hour
             df_work["dia_semana"] = df_work.index.dayofweek
             df_work["mes"] = df_work.index.month
@@ -148,17 +148,21 @@ def render_deteccion_anomalias():
         perfil["lower_ref"] = (perfil["mean"] - 2 * perfil["std"]).clip(lower=0)
 
         # Merge sin perder el índice temporal
-        df_eval = df_eval.reset_index()
-        col_fecha = df_eval.columns[0]
+        idx_original = df_eval.index.copy()
 
-        df_eval = df_eval.merge(
+        df_eval_merge = df_eval.reset_index(drop=True).copy()
+        df_eval_merge["__fecha__"] = idx_original
+
+        df_eval_merge = df_eval_merge.merge(
             perfil[["hora", "mean", "upper_ref", "lower_ref"]],
             on="hora",
             how="left"
         )
 
-        df_eval = df_eval.set_index(col_fecha)
-        df_eval.index = pd.to_datetime(df_eval.index)
+        df_eval_merge = df_eval_merge.set_index("__fecha__")
+        df_eval_merge.index = pd.to_datetime(df_eval_merge.index)
+
+        df_eval = df_eval_merge.copy()
 
         anomalias = df_eval[df_eval["es_anomalia"]].copy()
         normales = df_eval[~df_eval["es_anomalia"]].copy()
@@ -176,15 +180,10 @@ def render_deteccion_anomalias():
         porcentaje_anomalias = (total_anomalias / total_registros * 100) if total_registros > 0 else 0
 
         if not anomalias.empty:
-            fila_max = anomalias.loc[anomalias["consumo_kwh"].idxmax()]
-            max_anomalia = float(fila_max["consumo_kwh"])
-
-            if isinstance(fila_max.name, pd.Timestamp):
-                fecha_max_anomalia = fila_max.name.strftime("%d/%m/%Y %H:%M")
-            else:
-                fecha_max_anomalia = str(fila_max.name)
-
-            hora_mas_conflictiva = int(pd.to_datetime(anomalias.index).hour.value_counts().idxmax())
+            idx_max = anomalias["consumo_kwh"].idxmax()
+            max_anomalia = float(anomalias.loc[idx_max, "consumo_kwh"])
+            fecha_max_anomalia = pd.to_datetime(idx_max).strftime("%d/%m/%Y %H:%M")
+            hora_mas_conflictiva = int(anomalias.index.hour.value_counts().idxmax())
             tipo_principal = anomalias["tipo_anomalia"].value_counts().idxmax()
         else:
             max_anomalia = 0.0
