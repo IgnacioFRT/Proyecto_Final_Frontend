@@ -38,10 +38,8 @@ def render_huella_carbono():
 
             # ===== 4. KPIs EXTRA =====
             pico_diario_co2 = float(df_diario["emisiones_diarias"].max()) if not df_diario.empty else 0.0
-            fecha_pico = (
-                df_diario["emisiones_diarias"].idxmax().strftime("%d/%m/%Y")
-                if not df_diario.empty else "--/--/----"
-            )
+            idx_pico = df_diario["emisiones_diarias"].idxmax() if not df_diario.empty else None
+            fecha_pico = idx_pico.strftime("%d/%m/%Y") if idx_pico is not None else "--/--/----"
             promedio_diario_co2 = float(df_diario["emisiones_diarias"].mean()) if not df_diario.empty else 0.0
 
         # =========================================================
@@ -52,12 +50,17 @@ def render_huella_carbono():
         with g1:
             st.markdown("#### Emisión diaria")
 
+            # Barra máxima en rojo
+            colors = [
+                "#e74c3c" if idx == idx_pico else "#66bb6a"
+                for idx in df_diario.index
+            ]
+
             fig_diaria = go.Figure()
             fig_diaria.add_trace(go.Bar(
                 x=df_diario.index,
                 y=df_diario["emisiones_diarias"],
-                name="Emisión diaria",
-                marker_color="#66bb6a",
+                marker_color=colors,
                 hovertemplate="<b>%{x|%d/%m/%Y}</b><br>Emisión diaria: <b>%{y:,.2f} kg CO₂</b><extra></extra>"
             ))
 
@@ -114,10 +117,10 @@ def render_huella_carbono():
 
         with k2:
             st.markdown(f"""
-            <div class="kpi-card">
+            <div class="kpi-card" style="border: 1px solid #e74c3c;">
                 <div class="kpi-title">Fecha de mayor impacto</div>
                 <div class="kpi-value">{fecha_pico}</div>
-                <div class="kpi-sub">Máxima emisión diaria</div>
+                <div class="kpi-sub" style="color:#e74c3c;">{pico_diario_co2:,.1f} kg CO₂ (máximo)</div>
             </div>
             """, unsafe_allow_html=True)
 
