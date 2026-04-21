@@ -44,7 +44,9 @@ def render_huella_carbono():
             )
             promedio_diario_co2 = float(df_diario["emisiones_diarias"].mean()) if not df_diario.empty else 0.0
 
-        # ===== FILA 1: DOS GRÁFICOS SEPARADOS =====
+        # =========================================================
+        # FILA 1: DOS GRÁFICOS SEPARADOS
+        # =========================================================
         g1, g2 = st.columns(2)
 
         with g1:
@@ -60,7 +62,7 @@ def render_huella_carbono():
             ))
 
             fig_diaria.update_layout(
-                height=350,
+                height=340,
                 margin=dict(t=30, b=20, l=20, r=20),
                 template="plotly_white",
                 yaxis=dict(title="kg CO₂", gridcolor="#e5e8e8"),
@@ -85,7 +87,7 @@ def render_huella_carbono():
             ))
 
             fig_acum.update_layout(
-                height=350,
+                height=340,
                 margin=dict(t=30, b=20, l=20, r=20),
                 template="plotly_white",
                 yaxis=dict(title="kg CO₂", gridcolor="#e5e8e8"),
@@ -96,7 +98,9 @@ def render_huella_carbono():
 
         st.markdown("<div style='margin-top: 18px;'></div>", unsafe_allow_html=True)
 
-        # ===== FILA 2: KPI PRINCIPALES =====
+        # =========================================================
+        # FILA 2: 3 KPI
+        # =========================================================
         k1, k2, k3 = st.columns(3)
 
         with k1:
@@ -128,7 +132,9 @@ def render_huella_carbono():
 
         st.markdown("<div style='margin-top: 18px;'></div>", unsafe_allow_html=True)
 
-        # ===== FILA 3: KPI SECUNDARIOS =====
+        # =========================================================
+        # FILA 3: 3 KPI
+        # =========================================================
         s1, s2, s3 = st.columns(3)
 
         with s1:
@@ -160,7 +166,9 @@ def render_huella_carbono():
 
         st.markdown("<div style='margin-top: 18px;'></div>", unsafe_allow_html=True)
 
-        # ===== FILA 4: TENDENCIA MENSUAL =====
+        # =========================================================
+        # FILA 4: TENDENCIA MENSUAL
+        # =========================================================
         st.markdown("#### Tendencia mensual de la huella de carbono")
 
         fig_mensual = go.Figure()
