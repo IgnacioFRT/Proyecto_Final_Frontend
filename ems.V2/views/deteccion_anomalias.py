@@ -25,6 +25,7 @@ def clasificar_anomalia(row: pd.Series) -> str:
 
     return "Desvío general"
 
+st.warning("VERSION KW ACTIVA")
 
 def render_deteccion_anomalias():
     try:
