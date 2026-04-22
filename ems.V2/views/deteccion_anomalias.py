@@ -1,10 +1,10 @@
 import streamlit as st
 import pandas as pd
+import numpy as np
 import plotly.graph_objects as go
 
-from sklearn.ensemble import IsolationForest
+from sklearn.ensemble import IsolationForest, RandomForestRegressor
 from sklearn.preprocessing import StandardScaler
-from sklearn.linear_model import LinearRegression
 
 from views.historico import get_historical_data
 
@@ -26,8 +26,6 @@ def clasificar_anomalia(row: pd.Series) -> str:
     return "Desvío general"
 
 
-st.warning("VERSION KW ACTIVA")
-
 def render_deteccion_anomalias():
     try:
         with st.spinner("Analizando anomalías de demanda... ⏳"):
@@ -47,27 +45,42 @@ def render_deteccion_anomalias():
             df_work = pd.DataFrame(index=pd.to_datetime(df.index))
             df_work["EA_imp_T1_kwh"] = df["EA_imp_T1_kwh"].values
 
-            # Energía incremental por intervalo
             df_work["energia_kwh"] = df_work["EA_imp_T1_kwh"].diff().clip(lower=0)
 
-            # Duración real del intervalo en horas
             df_work["delta_horas"] = (
                 df_work.index.to_series().diff().dt.total_seconds() / 3600
             )
 
-            # Potencia media del intervalo: kW = kWh / h
             df_work["potencia_kw"] = df_work["energia_kwh"] / df_work["delta_horas"]
 
-            # Limpieza
-            df_work = df_work.replace([float("inf"), -float("inf")], pd.NA)
+            df_work = df_work.replace([np.inf, -np.inf], np.nan)
             df_work = df_work.dropna(subset=["potencia_kw"])
 
             if df_work.empty:
                 st.warning("No hay suficientes datos para construir la serie de potencia.")
                 return
 
+            # Variables temporales base
             df_work["hora"] = df_work.index.hour
             df_work["dia_semana"] = df_work.index.dayofweek
+            df_work["mes_num"] = df_work.index.month
+            df_work["es_fin_semana"] = (df_work["dia_semana"] >= 5).astype(int)
+
+            # Variables cíclicas
+            df_work["hora_sin"] = np.sin(2 * np.pi * df_work["hora"] / 24)
+            df_work["hora_cos"] = np.cos(2 * np.pi * df_work["hora"] / 24)
+            df_work["dow_sin"] = np.sin(2 * np.pi * df_work["dia_semana"] / 7)
+            df_work["dow_cos"] = np.cos(2 * np.pi * df_work["dia_semana"] / 7)
+
+            # Lags y medias móviles
+            df_work["lag_1"] = df_work["potencia_kw"].shift(1)
+            df_work["lag_2"] = df_work["potencia_kw"].shift(2)
+            df_work["lag_4"] = df_work["potencia_kw"].shift(4)
+            df_work["lag_96"] = df_work["potencia_kw"].shift(96)  # aprox. mismo horario día previo si es 15 min
+
+            df_work["mm_4"] = df_work["potencia_kw"].rolling(4, min_periods=1).mean()
+            df_work["mm_12"] = df_work["potencia_kw"].rolling(12, min_periods=1).mean()
+            df_work["mm_24"] = df_work["potencia_kw"].rolling(24, min_periods=1).mean()
 
             dias_map = {
                 0: "Lunes", 1: "Martes", 2: "Miércoles",
@@ -81,6 +94,13 @@ def render_deteccion_anomalias():
 
             df_work["nombre_dia"] = df_work["dia_semana"].map(dias_map)
             df_work["nombre_mes"] = df_work.index.month.map(meses_map) + " " + df_work.index.year.astype(str)
+
+            # Después de construir features con shift
+            df_work = df_work.dropna()
+
+            if df_work.empty:
+                st.warning("No hay suficientes datos tras generar las variables del modelo.")
+                return
 
         # =========================================================
         # 2. CONFIGURACIÓN
@@ -134,7 +154,7 @@ def render_deteccion_anomalias():
         # =========================================================
         # 4. ISOLATION FOREST
         # =========================================================
-        features_if = ["potencia_kw", "hora", "dia_semana"]
+        features_if = ["potencia_kw", "hora", "dia_semana", "es_fin_semana"]
 
         scaler = StandardScaler()
         X_train_if = scaler.fit_transform(df_train[features_if])
@@ -169,16 +189,29 @@ def render_deteccion_anomalias():
         )
 
         # =========================================================
-        # 6. REGRESIÓN LINEAL
+        # 6. MODELO PREDICTIVO MEJORADO
         # =========================================================
-        features_reg = ["hora", "dia_semana"]
+        features_reg = [
+            "hora_sin", "hora_cos",
+            "dow_sin", "dow_cos",
+            "es_fin_semana",
+            "mes_num",
+            "lag_1", "lag_2", "lag_4", "lag_96",
+            "mm_4", "mm_12", "mm_24"
+        ]
 
         X_train_reg = df_train[features_reg]
         y_train_reg = df_train["potencia_kw"]
 
         X_eval_reg = df_eval[features_reg]
 
-        modelo_reg = LinearRegression()
+        modelo_reg = RandomForestRegressor(
+            n_estimators=300,
+            max_depth=12,
+            min_samples_leaf=3,
+            random_state=42,
+            n_jobs=-1
+        )
         modelo_reg.fit(X_train_reg, y_train_reg)
 
         df_eval["prediccion"] = modelo_reg.predict(X_eval_reg)
@@ -188,11 +221,10 @@ def render_deteccion_anomalias():
         umbral_error = df_eval["error"].std() * 2 if df_eval["error"].std() > 0 else 0.1
         df_eval["anomalia_regresion"] = df_eval["error"].abs() > umbral_error
 
-        # Media móvil para visualización
+        # Media móvil solo para visualización complementaria
         df_eval["media_movil"] = df_eval["potencia_kw"].rolling(window=24, min_periods=1).mean()
 
         anomalias = df_eval[df_eval["es_anomalia"]].copy()
-        normales = df_eval[~df_eval["es_anomalia"]].copy()
 
         if not anomalias.empty:
             anomalias["tipo_anomalia"] = anomalias.apply(clasificar_anomalia, axis=1)
@@ -205,16 +237,23 @@ def render_deteccion_anomalias():
         # 7. KPIs
         # =========================================================
         total_registros = len(df_eval)
-        total_anomalias = len(anomalias)
+        total_anomalias = len(anomalias_reg)
         porcentaje_anomalias = (total_anomalias / total_registros * 100) if total_registros > 0 else 0
         error_medio = df_eval["error"].abs().mean()
 
-        if not anomalias.empty:
-            idx_max = anomalias["potencia_kw"].idxmax()
-            max_anomalia = float(anomalias.loc[idx_max, "potencia_kw"])
+        if not anomalias_reg.empty:
+            idx_max = anomalias_reg["potencia_kw"].idxmax()
+            max_anomalia = float(anomalias_reg.loc[idx_max, "potencia_kw"])
             fecha_max_anomalia = pd.to_datetime(idx_max).strftime("%d/%m/%Y %H:%M")
-            hora_mas_conflictiva = int(anomalias.index.hour.value_counts().idxmax())
-            tipo_principal = anomalias["tipo_anomalia"].value_counts().idxmax()
+            hora_mas_conflictiva = int(anomalias_reg.index.hour.value_counts().idxmax())
+
+            anomalias_reg["tipo_tmp"] = anomalias_reg.apply(
+                lambda row: clasificar_anomalia(row)
+                if pd.notna(row["upper_ref"]) and pd.notna(row["lower_ref"])
+                else "Desvío general",
+                axis=1
+            )
+            tipo_principal = anomalias_reg["tipo_tmp"].value_counts().idxmax()
         else:
             max_anomalia = 0.0
             fecha_max_anomalia = "--"
@@ -284,7 +323,7 @@ def render_deteccion_anomalias():
             st.success("No se detectaron anomalías con la sensibilidad seleccionada.")
 
         # =========================================================
-        # 8. SERIE AUDITADA - REGRESIÓN
+        # 8. SERIE AUDITADA - PREDICCIÓN MEJORADA
         # =========================================================
         st.markdown("#### Serie auditada con anomalías")
 
@@ -399,9 +438,9 @@ def render_deteccion_anomalias():
             st.plotly_chart(fig_perfil, use_container_width=True)
 
         with col_g2:
-            if not anomalias.empty:
+            if not anomalias_reg.empty:
                 heat = (
-                    anomalias.assign(hora=anomalias.index.hour, dia=anomalias.index.dayofweek)
+                    anomalias_reg.assign(hora=anomalias_reg.index.hour, dia=anomalias_reg.index.dayofweek)
                     .groupby(["dia", "hora"])
                     .size()
                     .unstack(fill_value=0)
@@ -438,9 +477,9 @@ def render_deteccion_anomalias():
         col_h1, col_h2 = st.columns(2)
 
         with col_h1:
-            if not anomalias.empty:
+            if not anomalias_reg.empty:
                 anom_hora = (
-                    anomalias.groupby(anomalias.index.hour)
+                    anomalias_reg.groupby(anomalias_reg.index.hour)
                     .size()
                     .reindex(range(24), fill_value=0)
                 )
