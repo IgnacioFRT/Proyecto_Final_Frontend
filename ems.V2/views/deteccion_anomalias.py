@@ -9,7 +9,7 @@ from sklearn.preprocessing import StandardScaler
 from views.historico import get_historical_data
 
 
-st.warning("VERSION KW ACTIVA - SOLO ML")
+
 
 
 def clasificar_anomalia_ml(row: pd.Series) -> str:
