@@ -9,9 +9,6 @@ from sklearn.preprocessing import StandardScaler
 from views.historico import get_historical_data
 
 
-
-
-
 def clasificar_anomalia_ml(row: pd.Series) -> str:
     """
     Clasificación simple basada en:
@@ -301,12 +298,13 @@ def render_deteccion_anomalias():
         st.markdown("<div style='margin-top:18px;'></div>", unsafe_allow_html=True)
 
         st.info(
-            f"Isolation Forest detectó **{total_if}** eventos, Random Forest por error detectó **{total_reg}** "
-            f"y la combinación final marcó **{total_anomalias}** anomalías en **{mes_eval}**."
+            f"Se detectaron **{total_anomalias} anomalías** en **{mes_eval}**. "
+            f"La curva azul muestra la demanda real, la línea oscura la demanda esperada por el modelo, "
+            f"y las cruces rojas los eventos anómalos identificados por la combinación de modelos."
         )
 
         # =========================================================
-        # 8. SERIE AUDITADA - SOLO ML
+        # 8. SERIE AUDITADA - VERSIÓN LIMPIA
         # =========================================================
         st.markdown("#### Serie auditada con anomalías")
 
@@ -317,47 +315,27 @@ def render_deteccion_anomalias():
             y=df_eval["potencia_kw"],
             mode="lines",
             name="Demanda real",
-            line=dict(color="#1f77b4", width=1),
-            opacity=0.70
+            line=dict(color="#5DADE2", width=1.5),
+            opacity=0.9
         ))
 
         fig_serie.add_trace(go.Scatter(
             x=df_eval.index,
             y=df_eval["prediccion"],
             mode="lines",
-            name="Predicción (Random Forest)",
-            line=dict(color="#2c3e50", width=2.5)
+            name="Predicción esperada",
+            line=dict(color="#2C3E50", width=2.5)
         ))
 
-        anom_if_only = df_eval[df_eval["es_anomalia_if"] & ~df_eval["es_anomalia_reg"]]
-        anom_reg_only = df_eval[df_eval["es_anomalia_reg"] & ~df_eval["es_anomalia_if"]]
-        anom_both = df_eval[df_eval["es_anomalia_reg"] & df_eval["es_anomalia_if"]]
+        anom_final = df_eval[df_eval["es_anomalia_final"]]
 
-        if not anom_if_only.empty:
+        if not anom_final.empty:
             fig_serie.add_trace(go.Scatter(
-                x=anom_if_only.index,
-                y=anom_if_only["potencia_kw"],
+                x=anom_final.index,
+                y=anom_final["potencia_kw"],
                 mode="markers",
-                name="Isolation Forest",
-                marker=dict(color="#f39c12", size=7, symbol="diamond")
-            ))
-
-        if not anom_reg_only.empty:
-            fig_serie.add_trace(go.Scatter(
-                x=anom_reg_only.index,
-                y=anom_reg_only["potencia_kw"],
-                mode="markers",
-                name="Random Forest (error)",
-                marker=dict(color="#e74c3c", size=7, symbol="x")
-            ))
-
-        if not anom_both.empty:
-            fig_serie.add_trace(go.Scatter(
-                x=anom_both.index,
-                y=anom_both["potencia_kw"],
-                mode="markers",
-                name="Coincidencia IF + RF",
-                marker=dict(color="#8e44ad", size=9, symbol="star")
+                name="Anomalía detectada",
+                marker=dict(color="#E74C3C", size=8, symbol="x")
             ))
 
         fig_serie.update_layout(
@@ -366,7 +344,13 @@ def render_deteccion_anomalias():
             margin=dict(t=20, b=20, l=20, r=20),
             yaxis=dict(title="Demanda media (kW)", gridcolor="#e5e8e8"),
             xaxis=dict(title="Fecha", gridcolor="#e5e8e8"),
-            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+            legend=dict(
+                orientation="h",
+                yanchor="bottom",
+                y=1.02,
+                xanchor="right",
+                x=1
+            )
         )
 
         st.plotly_chart(fig_serie, use_container_width=True)
