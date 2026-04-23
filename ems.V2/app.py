@@ -13,6 +13,7 @@ from views.perfil_dinamico import render_perfil_dinamico
 from views.calidad_qos import render_calidad_qos
 from views.huella_carbono import render_huella_carbono
 from views.deteccion_anomalias import render_deteccion_anomalias
+from views.impacto_climatico import render_impacto_climatico
 
 st.set_page_config(
     page_title="EMS - PAC3200 UTN v2",
@@ -27,7 +28,7 @@ with st.sidebar:
     st.title("EMS UTN - v2")
     section = st.radio(
         "Navegación",
-        ["Inicio", "Tiempo Real", "Resumen Histórico", "Perfil Dinámico", "Calidad QoS", "Huella de Carbono", "Detección de Anomalías"]
+        ["Inicio", "Tiempo Real", "Resumen Histórico", "Perfil Dinámico", "Calidad QoS", "Huella de Carbono", "Impacto Climatico", "Detección de Anomalías"]
     )
     st.markdown("---")
     st.caption("Versión nueva del dashboard")
@@ -197,3 +198,5 @@ elif section == "Huella de Carbono":
     render_huella_carbono()
 elif section == "Detección de Anomalías":
     render_deteccion_anomalias()
+elif seccion == "Impacto Climático":
+    render_impacto_climatico()
