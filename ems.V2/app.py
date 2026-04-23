@@ -198,5 +198,5 @@ elif section == "Huella de Carbono":
     render_huella_carbono()
 elif section == "Detección de Anomalías":
     render_deteccion_anomalias()
-elif seccion == "Impacto Climático":
+elif section == "Impacto Climático":
     render_impacto_climatico()
