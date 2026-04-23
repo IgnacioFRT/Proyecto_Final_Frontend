@@ -9,7 +9,7 @@ from sklearn.preprocessing import StandardScaler
 from views.historico import get_historical_data
 
 
-st.warning("VERSION KW ACTIVA - SOLO ML")
+
 
 
 def clasificar_anomalia_ml(row: pd.Series) -> str:
@@ -209,9 +209,8 @@ def render_deteccion_anomalias():
         df_eval["prediccion"] = df_eval["prediccion"].clip(lower=0)
 
         df_eval["error"] = df_eval["potencia_kw"] - df_eval["prediccion"]
-        df_eval["error_abs"] = df_eval["error"].abs()
         umbral_error = df_eval["error"].std() * 2 if df_eval["error"].std() > 0 else 0.1
-        df_eval["es_anomalia_reg"] = df_eval["error_abs"] > umbral_error
+        df_eval["es_anomalia_reg"] = df_eval["error"].abs() > umbral_error
 
         # =========================================================
         # 6. ANOMALÍA FINAL = COMBINACIÓN ML
@@ -219,6 +218,7 @@ def render_deteccion_anomalias():
         df_eval["es_anomalia_final"] = df_eval["es_anomalia_if"] | df_eval["es_anomalia_reg"]
 
         anomalias_final = df_eval[df_eval["es_anomalia_final"]].copy()
+        normales = df_eval[~df_eval["es_anomalia_final"]].copy()
 
         if not anomalias_final.empty:
             anomalias_final["tipo_anomalia"] = anomalias_final.apply(clasificar_anomalia_ml, axis=1)
@@ -231,7 +231,7 @@ def render_deteccion_anomalias():
         total_registros = len(df_eval)
         total_anomalias = len(anomalias_final)
         porcentaje_anomalias = (total_anomalias / total_registros * 100) if total_registros > 0 else 0
-        error_medio = df_eval["error_abs"].mean()
+        error_medio = df_eval["error"].abs().mean()
 
         total_if = int(df_eval["es_anomalia_if"].sum())
         total_reg = int(df_eval["es_anomalia_reg"].sum())
@@ -370,58 +370,6 @@ def render_deteccion_anomalias():
         )
 
         st.plotly_chart(fig_serie, use_container_width=True)
-
-        # =========================================================
-        # 8.1 ERROR DEL MODELO + UMBRAL
-        # =========================================================
-        st.markdown("#### Error del modelo y umbral de decisión")
-
-        fig_error = go.Figure()
-
-        fig_error.add_trace(go.Scatter(
-            x=df_eval.index,
-            y=df_eval["error_abs"],
-            mode="lines",
-            name="Error absoluto |Real - Predicción|",
-            line=dict(color="#1f77b4", width=1.8)
-        ))
-
-        fig_error.add_trace(go.Scatter(
-            x=df_eval.index,
-            y=[umbral_error] * len(df_eval),
-            mode="lines",
-            name="Umbral de anomalía",
-            line=dict(color="#e74c3c", width=2, dash="dash")
-        ))
-
-        if not anom_reg_only.empty:
-            fig_error.add_trace(go.Scatter(
-                x=anom_reg_only.index,
-                y=anom_reg_only["error_abs"],
-                mode="markers",
-                name="RF supera umbral",
-                marker=dict(color="#e74c3c", size=7, symbol="x")
-            ))
-
-        if not anom_both.empty:
-            fig_error.add_trace(go.Scatter(
-                x=anom_both.index,
-                y=anom_both["error_abs"],
-                mode="markers",
-                name="IF + RF supera umbral",
-                marker=dict(color="#8e44ad", size=9, symbol="star")
-            ))
-
-        fig_error.update_layout(
-            height=280,
-            template="plotly_white",
-            margin=dict(t=20, b=20, l=20, r=20),
-            yaxis=dict(title="Error absoluto (kW)", gridcolor="#e5e8e8"),
-            xaxis=dict(title="Fecha", gridcolor="#e5e8e8"),
-            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
-        )
-
-        st.plotly_chart(fig_error, use_container_width=True)
 
         st.markdown("<div style='margin-top:18px;'></div>", unsafe_allow_html=True)
 
