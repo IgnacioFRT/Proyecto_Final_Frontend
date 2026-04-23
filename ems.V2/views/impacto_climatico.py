@@ -34,13 +34,12 @@ def render_impacto_climatico():
             # Temperatura promedio diaria
             df_diario["temp_promedio"] = df.resample("D")["temp"].mean()
 
-            # Limpieza de temperatura absurda
+            # Limpieza de temperaturas absurdas
             df_diario.loc[
                 (df_diario["temp_promedio"] < 0) | (df_diario["temp_promedio"] > 50),
                 "temp_promedio"
             ] = np.nan
 
-            # Calendario simple
             dias_semana_es = {
                 0: "Lunes",
                 1: "Martes",
@@ -57,7 +56,7 @@ def render_impacto_climatico():
             # Dataframe limpio general
             df_limpio = df_diario.copy()
 
-            # Para regresión: solo hábiles y fuera del receso
+            # Para regresión: días hábiles, con datos válidos, excluyendo enero y febrero
             df_temp = df_limpio[df_limpio["es_habil"]].dropna(
                 subset=["temp_promedio", "consumo_diario_kWh"]
             )
@@ -134,8 +133,7 @@ def render_impacto_climatico():
 
             if dia_max is not None:
                 st.info(
-                    f"El análisis muestra una pendiente térmica de **{pendiente:.2f} kWh/°C** "
-                    f"con un ajuste **R² = {r_squared:.2f}**. "
+                    f"La pendiente térmica estimada es **{pendiente:.2f} kWh/°C** con un ajuste **R² = {r_squared:.2f}**. "
                     f"El mayor consumo diario detectado fue **{valor_max:.1f} kWh** el **{dia_max.strftime('%d/%m/%Y')}**."
                 )
 
@@ -207,7 +205,7 @@ def render_impacto_climatico():
             st.markdown("<div style='margin-top:18px;'></div>", unsafe_allow_html=True)
 
             # =========================================================
-            # 4. GRÁFICO 2: DISPERSIÓN + TENDENCIA
+            # 4. GRÁFICO 2: DISPERSIÓN + TENDENCIA MEJORADA
             # =========================================================
             st.markdown("#### Termosensibilidad del edificio")
 
@@ -216,16 +214,23 @@ def render_impacto_climatico():
             with col_disp:
                 fig_scatter = go.Figure()
 
+                x = df_habiles["temp_promedio"]
+                y = df_habiles["consumo_diario_kWh"]
+
+                # Puntos coloreados por nivel de consumo
                 fig_scatter.add_trace(
                     go.Scatter(
-                        x=df_habiles["temp_promedio"],
-                        y=df_habiles["consumo_diario_kWh"],
+                        x=x,
+                        y=y,
                         mode="markers",
                         name="Días hábiles",
                         marker=dict(
                             size=9,
-                            color="rgba(0, 102, 204, 0.40)",
-                            line=dict(width=1, color="rgba(0, 51, 102, 1)"),
+                            color=y,
+                            colorscale="Viridis",
+                            showscale=True,
+                            colorbar=dict(title="kWh"),
+                            line=dict(width=0.8, color="rgba(40,40,40,0.6)")
                         ),
                         customdata=np.stack(
                             (
@@ -243,12 +248,20 @@ def render_impacto_climatico():
                 )
 
                 if len(df_habiles) > 1:
-                    x = df_habiles["temp_promedio"]
-                    y = df_habiles["consumo_diario_kWh"]
                     coeffs = np.polyfit(x, y, 1)
                     p = np.poly1d(coeffs)
                     x_trend = np.linspace(x.min(), x.max(), 100)
 
+                    pendiente = coeffs[0]
+                    intercepto = coeffs[1]
+
+                    y_pred = p(x)
+                    y_bar = np.mean(y)
+                    ss_res = np.sum((y - y_pred) ** 2)
+                    ss_tot = np.sum((y - y_bar) ** 2)
+                    r_squared = 1 - (ss_res / ss_tot) if ss_tot != 0 else 0
+
+                    # Línea de tendencia
                     fig_scatter.add_trace(
                         go.Scatter(
                             x=x_trend,
@@ -256,33 +269,53 @@ def render_impacto_climatico():
                             mode="lines",
                             name="Tendencia lineal",
                             line=dict(color="#e74c3c", width=3),
-                            hoverinfo="skip",
+                            hovertemplate="Tendencia: %{y:.1f} kWh<extra></extra>"
                         )
                     )
 
+                    # Línea horizontal del promedio
+                    fig_scatter.add_hline(
+                        y=y.mean(),
+                        line_dash="dash",
+                        line_color="gray",
+                        annotation_text="Consumo promedio",
+                        annotation_position="top left"
+                    )
+
+                    titulo_graf = (
+                        f"Dispersión y tendencia lineal hábil "
+                        f"(R² = {r_squared:.2f} | pendiente = {pendiente:.2f} kWh/°C)"
+                    )
+                else:
+                    titulo_graf = "Dispersión de consumo"
+
                 fig_scatter.update_layout(
                     title=dict(
-                        text=f"Dispersión y tendencia lineal hábil (R² = {r_squared:.2f})",
+                        text=titulo_graf,
                         x=0.5,
                         xanchor="center",
-                        font=dict(size=14, color="black"),
+                        font=dict(size=15, color="black")
                     ),
                     template="plotly_white",
-                    height=320,
-                    margin=dict(l=10, r=20, t=40, b=10),
+                    height=360,
+                    margin=dict(l=10, r=20, t=45, b=10),
                     font=dict(color="black"),
                     xaxis=dict(
                         title="Temperatura promedio diaria (°C)",
                         gridcolor="#e5e8e8",
-                        zeroline=False,
+                        zeroline=False
                     ),
                     yaxis=dict(
                         title="Consumo diario (kWh)",
                         gridcolor="#e5e8e8",
-                        zeroline=False,
+                        zeroline=False
                     ),
                     legend=dict(
-                        orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1
+                        orientation="h",
+                        yanchor="bottom",
+                        y=1.02,
+                        xanchor="right",
+                        x=1
                     ),
                 )
 
@@ -290,19 +323,11 @@ def render_impacto_climatico():
 
             with col_info:
                 st.info("¿Cómo leer este análisis?")
-                st.write(
-                    "Cada punto representa un día hábil con temperatura y consumo válidos."
-                )
-                st.write(
-                    "La línea roja muestra la tendencia matemática entre temperatura y consumo."
-                )
-                st.write(
-                    "Si la pendiente es positiva y marcada, el edificio es termosensible: "
-                    "a mayor temperatura, mayor demanda energética."
-                )
-                st.write(
-                    "Excluir enero y febrero ayuda a no contaminar la pendiente con el receso académico."
-                )
+                st.write("Cada punto representa un día hábil con temperatura y consumo válidos.")
+                st.write("La recta roja muestra la tendencia matemática entre temperatura y consumo.")
+                st.write("La pendiente indica cuánto cambia el consumo por cada °C adicional.")
+                st.write("Si el R² es bajo, la temperatura explica poco el consumo: eso sugiere que el comportamiento depende más de la operación del edificio que del clima.")
+                st.write("Excluir enero y febrero evita contaminar el análisis con el receso académico.")
 
             st.markdown("<div style='margin-top:18px;'></div>", unsafe_allow_html=True)
 
