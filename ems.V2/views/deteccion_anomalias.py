@@ -9,23 +9,32 @@ from sklearn.preprocessing import StandardScaler
 from views.historico import get_historical_data
 
 
-def clasificar_anomalia(row: pd.Series) -> str:
-    if row["potencia_kw"] > row["upper_ref"]:
-        if row["dia_semana"] >= 5:
-            return "Fin de semana atípico"
-        if row["hora"] < 6 or row["hora"] >= 22:
-            return "Fuera de horario"
+st.warning("VERSION KW ACTIVA - SOLO ML")
+
+
+def clasificar_anomalia_ml(row: pd.Series) -> str:
+    """
+    Clasificación simple basada en:
+    - signo del error
+    - horario
+    - fin de semana
+    """
+    if row["dia_semana"] >= 5 and abs(row["error"]) > 0:
+        return "Fin de semana atípico"
+
+    if row["hora"] < 6 or row["hora"] >= 22:
+        if row["error"] > 0:
+            return "Demanda fuera de horario"
+        return "Baja fuera de horario"
+
+    if row["error"] > 0:
         return "Pico de demanda"
 
-    if row["potencia_kw"] < row["lower_ref"]:
+    if row["error"] < 0:
         return "Demanda anormalmente baja"
-
-    if row["dia_semana"] >= 5:
-        return "Fin de semana atípico"
 
     return "Desvío general"
 
-st.warning("VERSION KW ACTIVA")
 
 def render_deteccion_anomalias():
     try:
@@ -77,7 +86,7 @@ def render_deteccion_anomalias():
             df_work["lag_1"] = df_work["potencia_kw"].shift(1)
             df_work["lag_2"] = df_work["potencia_kw"].shift(2)
             df_work["lag_4"] = df_work["potencia_kw"].shift(4)
-            df_work["lag_96"] = df_work["potencia_kw"].shift(96)  # aprox. mismo horario día previo si es 15 min
+            df_work["lag_96"] = df_work["potencia_kw"].shift(96)
 
             df_work["mm_4"] = df_work["potencia_kw"].rolling(4, min_periods=1).mean()
             df_work["mm_12"] = df_work["potencia_kw"].rolling(12, min_periods=1).mean()
@@ -96,7 +105,6 @@ def render_deteccion_anomalias():
             df_work["nombre_dia"] = df_work["dia_semana"].map(dias_map)
             df_work["nombre_mes"] = df_work.index.month.map(meses_map) + " " + df_work.index.year.astype(str)
 
-            # Después de construir features con shift
             df_work = df_work.dropna()
 
             if df_work.empty:
@@ -168,29 +176,11 @@ def render_deteccion_anomalias():
         model_if.fit(X_train_if)
 
         df_eval["anomalia_flag"] = model_if.predict(X_eval_if)
-        df_eval["score"] = model_if.decision_function(X_eval_if)
-        df_eval["es_anomalia"] = df_eval["anomalia_flag"] == -1
+        df_eval["score_if"] = model_if.decision_function(X_eval_if)
+        df_eval["es_anomalia_if"] = df_eval["anomalia_flag"] == -1
 
         # =========================================================
-        # 5. PERFIL IDEAL DE REFERENCIA
-        # =========================================================
-        perfil = (
-            df_train.groupby("hora")["potencia_kw"]
-            .agg(["mean", "std"])
-            .reset_index()
-            .fillna(0)
-        )
-
-        perfil["upper_ref"] = perfil["mean"] + 2 * perfil["std"]
-        perfil["lower_ref"] = (perfil["mean"] - 2 * perfil["std"]).clip(lower=0)
-
-        df_eval = df_eval.join(
-            perfil.set_index("hora")[["mean", "upper_ref", "lower_ref"]],
-            on="hora"
-        )
-
-        # =========================================================
-        # 6. MODELO PREDICTIVO MEJORADO
+        # 5. RANDOM FOREST REGRESSOR
         # =========================================================
         features_reg = [
             "hora_sin", "hora_cos",
@@ -220,41 +210,38 @@ def render_deteccion_anomalias():
 
         df_eval["error"] = df_eval["potencia_kw"] - df_eval["prediccion"]
         umbral_error = df_eval["error"].std() * 2 if df_eval["error"].std() > 0 else 0.1
-        df_eval["anomalia_regresion"] = df_eval["error"].abs() > umbral_error
+        df_eval["es_anomalia_reg"] = df_eval["error"].abs() > umbral_error
 
-        # Media móvil solo para visualización complementaria
-        df_eval["media_movil"] = df_eval["potencia_kw"].rolling(window=24, min_periods=1).mean()
+        # =========================================================
+        # 6. ANOMALÍA FINAL = COMBINACIÓN ML
+        # =========================================================
+        df_eval["es_anomalia_final"] = df_eval["es_anomalia_if"] | df_eval["es_anomalia_reg"]
 
-        anomalias = df_eval[df_eval["es_anomalia"]].copy()
+        anomalias_final = df_eval[df_eval["es_anomalia_final"]].copy()
+        normales = df_eval[~df_eval["es_anomalia_final"]].copy()
 
-        if not anomalias.empty:
-            anomalias["tipo_anomalia"] = anomalias.apply(clasificar_anomalia, axis=1)
+        if not anomalias_final.empty:
+            anomalias_final["tipo_anomalia"] = anomalias_final.apply(clasificar_anomalia_ml, axis=1)
         else:
-            anomalias["tipo_anomalia"] = pd.Series(dtype="object")
-
-        anomalias_reg = df_eval[df_eval["anomalia_regresion"]].copy()
+            anomalias_final["tipo_anomalia"] = pd.Series(dtype="object")
 
         # =========================================================
         # 7. KPIs
         # =========================================================
         total_registros = len(df_eval)
-        total_anomalias = len(anomalias_reg)
+        total_anomalias = len(anomalias_final)
         porcentaje_anomalias = (total_anomalias / total_registros * 100) if total_registros > 0 else 0
         error_medio = df_eval["error"].abs().mean()
 
-        if not anomalias_reg.empty:
-            idx_max = anomalias_reg["potencia_kw"].idxmax()
-            max_anomalia = float(anomalias_reg.loc[idx_max, "potencia_kw"])
-            fecha_max_anomalia = pd.to_datetime(idx_max).strftime("%d/%m/%Y %H:%M")
-            hora_mas_conflictiva = int(anomalias_reg.index.hour.value_counts().idxmax())
+        total_if = int(df_eval["es_anomalia_if"].sum())
+        total_reg = int(df_eval["es_anomalia_reg"].sum())
 
-            anomalias_reg["tipo_tmp"] = anomalias_reg.apply(
-                lambda row: clasificar_anomalia(row)
-                if pd.notna(row["upper_ref"]) and pd.notna(row["lower_ref"])
-                else "Desvío general",
-                axis=1
-            )
-            tipo_principal = anomalias_reg["tipo_tmp"].value_counts().idxmax()
+        if not anomalias_final.empty:
+            idx_max = anomalias_final["potencia_kw"].idxmax()
+            max_anomalia = float(anomalias_final.loc[idx_max, "potencia_kw"])
+            fecha_max_anomalia = pd.to_datetime(idx_max).strftime("%d/%m/%Y %H:%M")
+            hora_mas_conflictiva = int(anomalias_final.index.hour.value_counts().idxmax())
+            tipo_principal = anomalias_final["tipo_anomalia"].value_counts().idxmax()
         else:
             max_anomalia = 0.0
             fecha_max_anomalia = "--"
@@ -277,7 +264,7 @@ def render_deteccion_anomalias():
         with k2:
             st.markdown(f"""
             <div class="kpi-card">
-                <div class="kpi-title">Anomalías detectadas</div>
+                <div class="kpi-title">Anomalías finales</div>
                 <div class="kpi-value">{total_anomalias}</div>
                 <div class="kpi-sub">{porcentaje_anomalias:.2f}% del total</div>
             </div>
@@ -287,7 +274,7 @@ def render_deteccion_anomalias():
             subt = f"Hora crítica: {hora_mas_conflictiva:02d}:00" if hora_mas_conflictiva is not None else "Sin anomalías"
             st.markdown(f"""
             <div class="kpi-card">
-                <div class="kpi-title">Mayor anomalía</div>
+                <div class="kpi-title">Mayor demanda anómala</div>
                 <div class="kpi-value">{max_anomalia:.2f} kW</div>
                 <div class="kpi-sub">{subt}</div>
             </div>
@@ -305,26 +292,21 @@ def render_deteccion_anomalias():
         with k5:
             st.markdown(f"""
             <div class="kpi-card">
-                <div class="kpi-title">Error medio del modelo</div>
+                <div class="kpi-title">Error medio RF</div>
                 <div class="kpi-value">{error_medio:.2f} kW</div>
-                <div class="kpi-sub">Real vs predicción</div>
+                <div class="kpi-sub">Demanda real vs predicción</div>
             </div>
             """, unsafe_allow_html=True)
 
         st.markdown("<div style='margin-top:18px;'></div>", unsafe_allow_html=True)
 
-        if total_anomalias > 0 and hora_mas_conflictiva is not None:
-            st.info(
-                f"Se detectaron **{total_anomalias} anomalías** en **{mes_eval}**. "
-                f"La hora con mayor concentración fue **{hora_mas_conflictiva:02d}:00**, "
-                f"el tipo predominante fue **{tipo_principal}** "
-                f"y el error medio del modelo fue **{error_medio:.2f} kW**."
-            )
-        else:
-            st.success("No se detectaron anomalías con la sensibilidad seleccionada.")
+        st.info(
+            f"Isolation Forest detectó **{total_if}** eventos, Random Forest por error detectó **{total_reg}** "
+            f"y la combinación final marcó **{total_anomalias}** anomalías en **{mes_eval}**."
+        )
 
         # =========================================================
-        # 8. SERIE AUDITADA - PREDICCIÓN MEJORADA
+        # 8. SERIE AUDITADA - SOLO ML
         # =========================================================
         st.markdown("#### Serie auditada con anomalías")
 
@@ -336,44 +318,46 @@ def render_deteccion_anomalias():
             mode="lines",
             name="Demanda real",
             line=dict(color="#1f77b4", width=1),
-            opacity=0.65
+            opacity=0.70
         ))
 
         fig_serie.add_trace(go.Scatter(
             x=df_eval.index,
             y=df_eval["prediccion"],
             mode="lines",
-            name="Predicción (modelo)",
+            name="Predicción (Random Forest)",
             line=dict(color="#2c3e50", width=2.5)
         ))
 
-        fig_serie.add_trace(go.Scatter(
-            x=df_eval.index,
-            y=df_eval["upper_ref"],
-            mode="lines",
-            line=dict(width=0),
-            showlegend=False,
-            hoverinfo="skip"
-        ))
+        anom_if_only = df_eval[df_eval["es_anomalia_if"] & ~df_eval["es_anomalia_reg"]]
+        anom_reg_only = df_eval[df_eval["es_anomalia_reg"] & ~df_eval["es_anomalia_if"]]
+        anom_both = df_eval[df_eval["es_anomalia_reg"] & df_eval["es_anomalia_if"]]
 
-        fig_serie.add_trace(go.Scatter(
-            x=df_eval.index,
-            y=df_eval["lower_ref"],
-            mode="lines",
-            fill="tonexty",
-            fillcolor="rgba(31,119,180,0.12)",
-            line=dict(width=0),
-            name="Banda esperada",
-            hoverinfo="skip"
-        ))
-
-        if not anomalias_reg.empty:
+        if not anom_if_only.empty:
             fig_serie.add_trace(go.Scatter(
-                x=anomalias_reg.index,
-                y=anomalias_reg["potencia_kw"],
+                x=anom_if_only.index,
+                y=anom_if_only["potencia_kw"],
                 mode="markers",
-                name="Desvío detectado",
-                marker=dict(color="red", size=7, symbol="x")
+                name="Isolation Forest",
+                marker=dict(color="#f39c12", size=7, symbol="diamond")
+            ))
+
+        if not anom_reg_only.empty:
+            fig_serie.add_trace(go.Scatter(
+                x=anom_reg_only.index,
+                y=anom_reg_only["potencia_kw"],
+                mode="markers",
+                name="Random Forest (error)",
+                marker=dict(color="#e74c3c", size=7, symbol="x")
+            ))
+
+        if not anom_both.empty:
+            fig_serie.add_trace(go.Scatter(
+                x=anom_both.index,
+                y=anom_both["potencia_kw"],
+                mode="markers",
+                name="Coincidencia IF + RF",
+                marker=dict(color="#8e44ad", size=9, symbol="star")
             ))
 
         fig_serie.update_layout(
@@ -390,58 +374,16 @@ def render_deteccion_anomalias():
         st.markdown("<div style='margin-top:18px;'></div>", unsafe_allow_html=True)
 
         # =========================================================
-        # 9. PERFIL IDEAL + HEATMAP
+        # 9. MAPA DE CONCENTRACIÓN - SOLO ML
         # =========================================================
-        st.markdown("#### Perfil ideal y mapa de concentración")
+        st.markdown("#### Concentración de anomalías")
 
         col_g1, col_g2 = st.columns(2)
 
         with col_g1:
-            fig_perfil = go.Figure()
-
-            fig_perfil.add_trace(go.Scatter(
-                x=perfil["hora"],
-                y=perfil["mean"],
-                mode="lines",
-                name="Perfil ideal",
-                line=dict(color="#1f77b4", width=3)
-            ))
-
-            fig_perfil.add_trace(go.Scatter(
-                x=perfil["hora"],
-                y=perfil["upper_ref"],
-                mode="lines",
-                line=dict(width=0),
-                showlegend=False,
-                hoverinfo="skip"
-            ))
-
-            fig_perfil.add_trace(go.Scatter(
-                x=perfil["hora"],
-                y=perfil["lower_ref"],
-                mode="lines",
-                fill="tonexty",
-                fillcolor="rgba(31,119,180,0.15)",
-                line=dict(width=0),
-                name="Banda esperada",
-                hoverinfo="skip"
-            ))
-
-            fig_perfil.update_layout(
-                height=360,
-                template="plotly_white",
-                margin=dict(t=20, b=20, l=20, r=20),
-                xaxis=dict(title="Hora del día", tickmode="linear", dtick=1, gridcolor="#e5e8e8"),
-                yaxis=dict(title="Demanda media (kW)", gridcolor="#e5e8e8"),
-                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
-            )
-
-            st.plotly_chart(fig_perfil, use_container_width=True)
-
-        with col_g2:
-            if not anomalias_reg.empty:
+            if not anomalias_final.empty:
                 heat = (
-                    anomalias_reg.assign(hora=anomalias_reg.index.hour, dia=anomalias_reg.index.dayofweek)
+                    anomalias_final.assign(hora=anomalias_final.index.hour, dia=anomalias_final.index.dayofweek)
                     .groupby(["dia", "hora"])
                     .size()
                     .unstack(fill_value=0)
@@ -468,6 +410,28 @@ def render_deteccion_anomalias():
             else:
                 st.success("No hay anomalías para construir el mapa de calor.")
 
+        with col_g2:
+            if not anomalias_final.empty:
+                tipo_count = anomalias_final["tipo_anomalia"].value_counts()
+
+                fig_tipos = go.Figure()
+                fig_tipos.add_trace(go.Bar(
+                    x=tipo_count.index,
+                    y=tipo_count.values
+                ))
+
+                fig_tipos.update_layout(
+                    height=360,
+                    template="plotly_white",
+                    margin=dict(t=20, b=20, l=20, r=20),
+                    xaxis_title="Tipo de anomalía",
+                    yaxis_title="Cantidad"
+                )
+
+                st.plotly_chart(fig_tipos, use_container_width=True)
+            else:
+                st.info("No hay anomalías para clasificar.")
+
         st.markdown("<div style='margin-top:18px;'></div>", unsafe_allow_html=True)
 
         # =========================================================
@@ -478,9 +442,9 @@ def render_deteccion_anomalias():
         col_h1, col_h2 = st.columns(2)
 
         with col_h1:
-            if not anomalias_reg.empty:
+            if not anomalias_final.empty:
                 anom_hora = (
-                    anomalias_reg.groupby(anomalias_reg.index.hour)
+                    anomalias_final.groupby(anomalias_final.index.hour)
                     .size()
                     .reindex(range(24), fill_value=0)
                 )
@@ -510,8 +474,8 @@ def render_deteccion_anomalias():
             df_3d["x_hora"] = df_3d.index.hour
             df_3d["y_dia"] = df_3d.index.dayofweek
 
-            normales_3d = df_3d[~df_3d["anomalia_regresion"]]
-            anomalias_3d = df_3d[df_3d["anomalia_regresion"]]
+            normales_3d = df_3d[~df_3d["es_anomalia_final"]]
+            anomalias_3d = df_3d[df_3d["es_anomalia_final"]]
 
             fig_3d = go.Figure()
 
@@ -530,7 +494,7 @@ def render_deteccion_anomalias():
                     y=anomalias_3d["y_dia"],
                     z=anomalias_3d["potencia_kw"],
                     mode="markers",
-                    name="Outliers",
+                    name="Anomalías",
                     marker=dict(size=4, color="#ff4136", symbol="cross")
                 ))
 
@@ -558,19 +522,14 @@ def render_deteccion_anomalias():
         # =========================================================
         st.markdown("#### Detalle de anomalías detectadas")
 
-        if not anomalias_reg.empty:
-            tabla = anomalias_reg.copy()
+        if not anomalias_final.empty:
+            tabla = anomalias_final.copy()
             tabla["Fecha y Hora"] = tabla.index.strftime("%d/%m/%Y %H:%M")
             tabla["Demanda media (kW)"] = tabla["potencia_kw"].round(3)
             tabla["Predicción (kW)"] = tabla["prediccion"].round(3)
             tabla["Error (kW)"] = tabla["error"].round(3)
-
-            tabla["Tipo"] = tabla.apply(
-                lambda row: clasificar_anomalia(row)
-                if pd.notna(row["upper_ref"]) and pd.notna(row["lower_ref"])
-                else "Desvío general",
-                axis=1
-            )
+            tabla["Score IF"] = tabla["score_if"].round(4)
+            tabla["Tipo"] = tabla["tipo_anomalia"]
 
             tabla["Día"] = tabla["dia_semana"].map({
                 0: "Lunes", 1: "Martes", 2: "Miércoles",
@@ -583,15 +542,23 @@ def render_deteccion_anomalias():
                 9: "Septiembre", 10: "Octubre", 11: "Noviembre", 12: "Diciembre"
             }) + " " + tabla.index.year.astype(str)
 
+            tabla["Detectado por"] = tabla.apply(
+                lambda row: "IF + RF" if row["es_anomalia_if"] and row["es_anomalia_reg"]
+                else ("IF" if row["es_anomalia_if"] else "RF"),
+                axis=1
+            )
+
             tabla_mostrar = tabla[[
                 "Fecha y Hora",
                 "Día",
                 "Mes",
                 "hora",
                 "Tipo",
+                "Detectado por",
                 "Demanda media (kW)",
                 "Predicción (kW)",
-                "Error (kW)"
+                "Error (kW)",
+                "Score IF"
             ]].rename(columns={"hora": "Hora"})
 
             st.dataframe(
@@ -600,7 +567,7 @@ def render_deteccion_anomalias():
                 hide_index=True
             )
         else:
-            st.info("No se registraron desvíos relevantes según la regresión.")
+            st.info("No se registraron anomalías relevantes según los modelos.")
 
     except Exception as e:
         st.error(f"Error al renderizar la detección de anomalías: {e}")
