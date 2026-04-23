@@ -28,7 +28,7 @@ with st.sidebar:
     st.title("EMS UTN - v2")
     section = st.radio(
         "Navegación",
-        ["Inicio", "Tiempo Real", "Resumen Histórico", "Perfil Dinámico", "Calidad QoS", "Huella de Carbono", "Impacto Climático", "Detección de Anomalías"]
+        ["Inicio", "Tiempo Real", "Resumen Histórico", "Perfil Dinámico", "Calidad QoS", "Huella de Carbono", "Detección de Anomalías", "Impacto Climático"]
     )
     st.markdown("---")
     st.caption("Versión nueva del dashboard")
