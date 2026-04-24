@@ -12,10 +12,10 @@ def nav_button(label: str, key: str) -> None:
                 padding: 10px 12px;
                 margin-bottom: 8px;
                 border-radius: 8px;
-                background-color: rgba(76,154,255,0.15);
+                background-color: rgba(76,154,255,0.28);
                 color: #ffffff;
-                border-left: 3px solid #4c9aff;
-                box-shadow: 0 0 8px rgba(76,154,255,0.3);
+                border-left: 3px solid #6ea8fe;
+                box-shadow: 0 0 8px rgba(76,154,255,0.25);
                 font-weight: 700;
                 text-align: center;
                 border-left: 1px solid #b6d4fe;
