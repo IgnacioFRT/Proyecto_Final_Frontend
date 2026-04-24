@@ -23,6 +23,8 @@ st.set_page_config(
 
 load_global_styles()
 
+st.warning("VERSION KW ACTIVA")
+
 with st.sidebar:
     st.title("EMS UTN - v2")
 
