@@ -24,37 +24,44 @@ st.set_page_config(
 load_global_styles()
 
 with st.sidebar:
-
     st.title("EMS UTN - v2")
 
+    # Inicializar estado
+    if "seccion" not in st.session_state:
+        st.session_state.seccion = "Inicio"
+
+    # 🔹 MONITOREO
     st.markdown("### Monitoreo")
-    section = st.radio(
-        "Navegación",
+    if st.radio(
+        "",
         ["Inicio", "Tiempo Real"],
-        label_visibility="collapsed"
-    )
+        key="monitoreo",
+        index=["Inicio", "Tiempo Real"].index(st.session_state.seccion)
+        if st.session_state.seccion in ["Inicio", "Tiempo Real"] else 0
+    ):
+        st.session_state.seccion = st.session_state.monitoreo
 
+    # 🔹 ANÁLISIS
     st.markdown("### Análisis energético")
-    section2 = st.radio(
-        "Análisis",
+    if st.radio(
+        "",
         ["Resumen Histórico", "Perfil Dinámico", "Detección de Anomalías"],
-        label_visibility="collapsed"
-    )
+        key="analisis",
+        index=["Resumen Histórico", "Perfil Dinámico", "Detección de Anomalías"].index(st.session_state.seccion)
+        if st.session_state.seccion in ["Resumen Histórico", "Perfil Dinámico", "Detección de Anomalías"] else 0
+    ):
+        st.session_state.seccion = st.session_state.analisis
 
+    # 🔹 IMPACTO
     st.markdown("### Impacto y gestión")
-    section3 = st.radio(
-        "Impacto",
+    if st.radio(
+        "",
         ["Calidad QoS", "Huella de Carbono", "Impacto Climático"],
-        label_visibility="collapsed"
-    )
-
-    # Unificar selección
-    if section:
-        seccion = section
-    elif section2:
-        seccion = section2
-    else:
-        seccion = section3
+        key="impacto",
+        index=["Calidad QoS", "Huella de Carbono", "Impacto Climático"].index(st.session_state.seccion)
+        if st.session_state.seccion in ["Calidad QoS", "Huella de Carbono", "Impacto Climático"] else 0
+    ):
+        st.session_state.seccion = st.session_state.impacto
 
     st.markdown("---")
     st.caption("Versión nueva del dashboard")
