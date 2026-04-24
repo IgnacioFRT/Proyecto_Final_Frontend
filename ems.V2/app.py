@@ -199,7 +199,7 @@ def render_home() -> None:
         )
 
 if section == "🏠 Inicio":
-    render_inicio()
+    render_home()
 
 elif section == "⚡ Tiempo Real":
     render_realtime()
