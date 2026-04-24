@@ -18,7 +18,6 @@ def nav_button(label: str, key: str) -> None:
                 box-shadow: 0 0 8px rgba(76,154,255,0.25);
                 font-weight: 700;
                 text-align: center;
-                border-left: 1px solid #b6d4fe;
             ">
                 {label}
             </div>
