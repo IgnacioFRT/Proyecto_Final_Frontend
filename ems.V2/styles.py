@@ -12,6 +12,7 @@ def load_global_styles():
             padding-bottom: 2rem !important;
         }
 
+        /* TITULOS */
         .main-title {
             font-size: 2.3rem;
             font-weight: 700;
@@ -35,6 +36,7 @@ def load_global_styles():
             margin-bottom: 0.8rem;
         }
 
+        /* KPI CARDS */
         .kpi-card {
             background: #f8fafc;
             border: 1px solid #dce3ea;
@@ -66,6 +68,7 @@ def load_global_styles():
             margin-top: 0.4rem;
         }
 
+        /* KPI CHICOS */
         .kpi-card-indicator {
             background: #ffffff;
             border: 1px solid #dce3ea;
@@ -96,5 +99,20 @@ def load_global_styles():
             color: #8b97a3;
             margin-top: 0.35rem;
         }
+
+        /* 🔥 BOTONES SIDEBAR (NUEVO) */
+        .stButton > button {
+            width: 100%;
+            border-radius: 8px;
+            height: 42px;
+            font-weight: 500;
+            transition: 0.2s;
+        }
+
+        .stButton > button:hover {
+            background-color: #e6f0ff;
+            border-color: #9bbcff;
+        }
+
     </style>
     """, unsafe_allow_html=True)
