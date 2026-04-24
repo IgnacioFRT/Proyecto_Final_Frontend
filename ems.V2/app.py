@@ -15,7 +15,7 @@ from views.huella_carbono import render_huella_carbono
 from views.deteccion_anomalias import render_deteccion_anomalias
 from views.impacto_climatico import render_impacto_climatico
 
-st.warning("VERSION KW ACTIVA")
+
 
 st.set_page_config(
     page_title="EMS - PAC3200 UTN v2",
