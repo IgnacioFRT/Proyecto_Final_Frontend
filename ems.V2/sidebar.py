@@ -45,9 +45,6 @@ def render_sidebar() -> str:
         st.markdown(
             f"""
             <div style="
-                background-color: #1e2a38;
-                border-radius: 10px;
-                padding: 15px 10px;
                 text-align: center;
                 margin-bottom: 20px;
             ">
