@@ -7,21 +7,26 @@ def nav_button(label: str, key: str) -> None:
     if active:
         st.markdown(
             f"""
-            <style>
-            div[data-testid="stButton"] button[kind="secondary"][title="{label}"] {{
-                background-color: #ff4b4b !important;
-                color: white !important;
-                border: 1px solid #ff4b4b !important;
-                font-weight: 700 !important;
-            }}
-            </style>
+            <div style="
+                width:100%;
+                padding: 10px 12px;
+                margin-bottom: 8px;
+                border-radius: 8px;
+                background-color: #ff4b4b;
+                color: white;
+                font-weight: 700;
+                text-align: center;
+                border: 1px solid #ff4b4b;
+            ">
+                {label}
+            </div>
             """,
             unsafe_allow_html=True
         )
-
-    if st.button(label, key=key, use_container_width=True):
-        st.session_state.section = label
-        st.rerun()
+    else:
+        if st.button(label, key=key, use_container_width=True):
+            st.session_state.section = label
+            st.rerun()
 
 
 def render_sidebar() -> str:
