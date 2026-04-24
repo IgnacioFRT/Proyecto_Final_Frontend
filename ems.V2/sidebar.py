@@ -61,7 +61,7 @@ def render_sidebar() -> str:
         font-weight: 600;
         margin-top: 10px;
     ">
-        Ingeniería Electrónica - UTN FRT
+        Departamento Ingeniería Electrónica
     </div>
     """,
     unsafe_allow_html=True
