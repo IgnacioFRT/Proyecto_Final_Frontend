@@ -117,8 +117,8 @@ def load_global_styles():
             border-radius: 8px;
             height: 42px;
             font-weight: 500;
-            background-color: #1e3a5f;
-            color: white;
+            background-color: #e7f0ff;
+            color: #0d47a1;
             border: 1px solid #2c5282;
             transition: 0.2s;
         }
