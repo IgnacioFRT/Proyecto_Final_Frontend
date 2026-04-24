@@ -34,7 +34,28 @@ def render_sidebar() -> str:
         st.session_state.section = "Inicio"
 
     with st.sidebar:
-        st.title("EMS UTN - v2")
+        import base64
+        from pathlib import Path
+
+        logo_path = Path(__file__).parent / "assets" / "utn_logo.png"
+
+        with open(logo_path, "rb") as img_file:
+            logo_b64 = base64.b64encode(img_file.read()).decode()
+
+        st.markdown(
+            f"""
+            <div style="
+                background-color: #1e2a38;
+                border-radius: 10px;
+                padding: 15px 10px;
+                text-align: center;
+                margin-bottom: 20px;
+            ">
+                <img src="data:image/png;base64,{logo_b64}" width="160">
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
 
         st.markdown("### Monitoreo")
         nav_button("Inicio", "btn_inicio")
