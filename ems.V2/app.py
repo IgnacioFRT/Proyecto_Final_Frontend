@@ -23,15 +23,42 @@ st.set_page_config(
 
 load_global_styles()
 
-
 with st.sidebar:
+
     st.title("EMS UTN - v2")
+
+    st.markdown("### Monitoreo")
     section = st.radio(
         "Navegación",
-        ["Inicio", "Tiempo Real", "Resumen Histórico", "Perfil Dinámico", "Calidad QoS", "Huella de Carbono", "Detección de Anomalías", "Impacto Climático"]
+        ["Inicio", "Tiempo Real"],
+        label_visibility="collapsed"
     )
+
+    st.markdown("### Análisis energético")
+    section2 = st.radio(
+        "Análisis",
+        ["Resumen Histórico", "Perfil Dinámico", "Detección de Anomalías"],
+        label_visibility="collapsed"
+    )
+
+    st.markdown("### Impacto y gestión")
+    section3 = st.radio(
+        "Impacto",
+        ["Calidad QoS", "Huella de Carbono", "Impacto Climático"],
+        label_visibility="collapsed"
+    )
+
+    # Unificar selección
+    if section:
+        seccion = section
+    elif section2:
+        seccion = section2
+    else:
+        seccion = section3
+
     st.markdown("---")
     st.caption("Versión nueva del dashboard")
+
 
 
 def render_status_banner(status_text: str, status_type: str = "success") -> None:
