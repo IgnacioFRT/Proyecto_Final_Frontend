@@ -26,49 +26,25 @@ load_global_styles()
 with st.sidebar:
     st.title("EMS UTN - v2")
 
-    # Inicializar estado
-    if "seccion" not in st.session_state:
-        st.session_state.seccion = "Inicio"
+    st.markdown("### Navegación")
 
-    # 🔹 MONITOREO
-    st.markdown("### Monitoreo")
-    if st.radio(
-        "",
-        ["Inicio", "Tiempo Real"],
-        key="monitoreo",
-        index=["Inicio", "Tiempo Real"].index(st.session_state.seccion)
-        if st.session_state.seccion in ["Inicio", "Tiempo Real"] else 0
-    ):
-        st.session_state.seccion = st.session_state.monitoreo
-
-    # 🔹 ANÁLISIS
-    st.markdown("### Análisis energético")
-    if st.radio(
-        "",
-        ["Resumen Histórico", "Perfil Dinámico", "Detección de Anomalías"],
-        key="analisis",
-        index=["Resumen Histórico", "Perfil Dinámico", "Detección de Anomalías"].index(st.session_state.seccion)
-        if st.session_state.seccion in ["Resumen Histórico", "Perfil Dinámico", "Detección de Anomalías"] else 0
-    ):
-        st.session_state.seccion = st.session_state.analisis
-
-    # 🔹 IMPACTO
-    st.markdown("### Impacto y gestión")
-    if st.radio(
-        "",
-        ["Calidad QoS", "Huella de Carbono", "Impacto Climático"],
-        key="impacto",
-        index=["Calidad QoS", "Huella de Carbono", "Impacto Climático"].index(st.session_state.seccion)
-        if st.session_state.seccion in ["Calidad QoS", "Huella de Carbono", "Impacto Climático"] else 0
-    ):
-        st.session_state.seccion = st.session_state.impacto
+    section = st.radio(
+        "Seleccionar ventana",
+        [
+            "🏠 Inicio",
+            "⚡ Tiempo Real",
+            "📊 Resumen Histórico",
+            "📈 Perfil Dinámico",
+            "🧠 Detección de Anomalías",
+            "📶 Calidad QoS",
+            "🌱 Huella de Carbono",
+            "🌡️ Impacto Climático",
+        ],
+        label_visibility="collapsed"
+    )
 
     st.markdown("---")
     st.caption("Versión nueva del dashboard")
-
-section = st.session_state.seccion
-
-
 
 def render_status_banner(status_text: str, status_type: str = "success") -> None:
     if status_type == "success":
@@ -220,19 +196,26 @@ def render_home() -> None:
             "- Base para análisis de eficiencia energética"
         )
 
-if section == "Inicio":
-    render_home()
-elif section == "Tiempo Real":
+if section == "🏠 Inicio":
+    render_inicio()
+
+elif section == "⚡ Tiempo Real":
     render_realtime()
-elif section == "Resumen Histórico":
+
+elif section == "📊 Resumen Histórico":
     render_historico()
-elif section == "Perfil Dinámico":
+
+elif section == "📈 Perfil Dinámico":
     render_perfil_dinamico()
-elif section == "Calidad QoS":
-    render_calidad_qos()
-elif section == "Huella de Carbono":
-    render_huella_carbono()
-elif section == "Detección de Anomalías":
+
+elif section == "🧠 Detección de Anomalías":
     render_deteccion_anomalias()
-elif section == "Impacto Climático":
+
+elif section == "📶 Calidad QoS":
+    render_calidad_qos()
+
+elif section == "🌱 Huella de Carbono":
+    render_huella_carbono()
+
+elif section == "🌡️ Impacto Climático":
     render_impacto_climatico()
