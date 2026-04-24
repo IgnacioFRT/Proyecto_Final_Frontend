@@ -66,6 +66,8 @@ with st.sidebar:
     st.markdown("---")
     st.caption("Versión nueva del dashboard")
 
+section = st.session_state.seccion
+
 
 
 def render_status_banner(status_text: str, status_type: str = "success") -> None:
