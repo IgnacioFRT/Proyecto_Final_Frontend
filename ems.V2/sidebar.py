@@ -37,7 +37,7 @@ def render_sidebar() -> str:
         import base64
         from pathlib import Path
 
-        logo_path = Path(__file__).parent / "assets" / "logo_utn_frt.jpeg"
+        logo_path = Path(__file__).parent / "assets" / "SUBTITULO.png"
 
         with open(logo_path, "rb") as img_file:
             logo_b64 = base64.b64encode(img_file.read()).decode()
