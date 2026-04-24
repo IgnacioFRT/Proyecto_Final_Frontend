@@ -50,7 +50,21 @@ def render_sidebar() -> str:
         nav_button("Huella de Carbono", "btn_huella")
         nav_button("Impacto Climático", "btn_clima")
 
-        st.markdown("---")
-        st.caption("Versión nueva del dashboard")
+        st.markdown(
+    """
+    <div style="
+        background: linear-gradient(135deg, #1e3a5f, #2c5282);
+        color: white;
+        padding: 12px;
+        border-radius: 10px;
+        text-align: center;
+        font-weight: 600;
+        margin-top: 10px;
+    ">
+        Ingeniería Electrónica - UTN FRT
+    </div>
+    """,
+    unsafe_allow_html=True
+)
 
     return st.session_state.section
