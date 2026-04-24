@@ -4,6 +4,7 @@ from pathlib import Path
 import streamlit as st
 from streamlit_autorefresh import st_autorefresh
 
+from components.sidebar import render_sidebar
 from styles import load_global_styles
 from config import APP_TITLE, APP_SUBTITLE
 from services.influx_service import get_latest_data, get_raw_data_count
@@ -24,38 +25,7 @@ st.set_page_config(
 
 load_global_styles()
 
-with st.sidebar:
-    st.title("EMS UTN - v2")
-
-    if "section" not in st.session_state:
-        st.session_state.section = "Inicio"
-
-    st.markdown("### Monitoreo")
-    if st.button("Inicio", use_container_width=True):
-        st.session_state.section = "Inicio"
-    if st.button("Tiempo Real", use_container_width=True):
-        st.session_state.section = "Tiempo Real"
-
-    st.markdown("### Análisis energético")
-    if st.button("Resumen Histórico", use_container_width=True):
-        st.session_state.section = "Resumen Histórico"
-    if st.button("Perfil Dinámico", use_container_width=True):
-        st.session_state.section = "Perfil Dinámico"
-    if st.button("Detección de Anomalías", use_container_width=True):
-        st.session_state.section = "Detección de Anomalías"
-
-    st.markdown("### Impacto y gestión")
-    if st.button("Calidad QoS", use_container_width=True):
-        st.session_state.section = "Calidad QoS"
-    if st.button("Huella de Carbono", use_container_width=True):
-        st.session_state.section = "Huella de Carbono"
-    if st.button("Impacto Climático", use_container_width=True):
-        st.session_state.section = "Impacto Climático"
-
-    st.markdown("---")
-    st.caption("Versión nueva del dashboard")
-
-section = st.session_state.section
+section = render_sidebar()
 
 def render_status_banner(status_text: str, status_type: str = "success") -> None:
     if status_type == "success":
