@@ -58,7 +58,7 @@ def render_home() -> None:
         )
 
     st.markdown(f'<div class="sub-title">{APP_SUBTITLE}</div>', unsafe_allow_html=True)
-    st.caption("Monitoreo energético y calidad de suministro en tiempo real para la UTN FRT")
+    st.caption("Monitoreo energético y calidad de suministro")
 
     # ===== DATOS =====
     try:
