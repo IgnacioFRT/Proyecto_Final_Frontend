@@ -28,25 +28,35 @@ load_global_styles()
 with st.sidebar:
     st.title("EMS UTN - v2")
 
-    st.markdown("### Navegación")
+    if "section" not in st.session_state:
+        st.session_state.section = "Inicio"
 
-    section = st.radio(
-        "Seleccionar ventana",
-        [
-            "🏠 Inicio",
-            "⚡ Tiempo Real",
-            "📊 Resumen Histórico",
-            "📈 Perfil Dinámico",
-            "🧠 Detección de Anomalías",
-            "📶 Calidad QoS",
-            "🌱 Huella de Carbono",
-            "🌡️ Impacto Climático",
-        ],
-        label_visibility="collapsed"
-    )
+    st.markdown("### Monitoreo")
+    if st.button("Inicio", use_container_width=True):
+        st.session_state.section = "Inicio"
+    if st.button("Tiempo Real", use_container_width=True):
+        st.session_state.section = "Tiempo Real"
+
+    st.markdown("### Análisis energético")
+    if st.button("Resumen Histórico", use_container_width=True):
+        st.session_state.section = "Resumen Histórico"
+    if st.button("Perfil Dinámico", use_container_width=True):
+        st.session_state.section = "Perfil Dinámico"
+    if st.button("Detección de Anomalías", use_container_width=True):
+        st.session_state.section = "Detección de Anomalías"
+
+    st.markdown("### Impacto y gestión")
+    if st.button("Calidad QoS", use_container_width=True):
+        st.session_state.section = "Calidad QoS"
+    if st.button("Huella de Carbono", use_container_width=True):
+        st.session_state.section = "Huella de Carbono"
+    if st.button("Impacto Climático", use_container_width=True):
+        st.session_state.section = "Impacto Climático"
 
     st.markdown("---")
     st.caption("Versión nueva del dashboard")
+
+section = st.session_state.section
 
 def render_status_banner(status_text: str, status_type: str = "success") -> None:
     if status_type == "success":
@@ -198,26 +208,26 @@ def render_home() -> None:
             "- Base para análisis de eficiencia energética"
         )
 
-if section == "🏠 Inicio":
+if section == "Inicio":
     render_home()
 
-elif section == "⚡ Tiempo Real":
+elif section == "Tiempo Real":
     render_realtime()
 
-elif section == "📊 Resumen Histórico":
+elif section == "Resumen Histórico":
     render_historico()
 
-elif section == "📈 Perfil Dinámico":
+elif section == "Perfil Dinámico":
     render_perfil_dinamico()
 
-elif section == "🧠 Detección de Anomalías":
+elif section == "Detección de Anomalías":
     render_deteccion_anomalias()
 
-elif section == "📶 Calidad QoS":
+elif section == "Calidad QoS":
     render_calidad_qos()
 
-elif section == "🌱 Huella de Carbono":
+elif section == "Huella de Carbono":
     render_huella_carbono()
 
-elif section == "🌡️ Impacto Climático":
+elif section == "Impacto Climático":
     render_impacto_climatico()
