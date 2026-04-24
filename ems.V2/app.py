@@ -51,7 +51,7 @@ def render_home() -> None:
         st.markdown(
             f"""
             <div style="text-align: center;">
-                <img src="data:image/jpeg;base64,{logo_b64}" width="420">
+                <img src="data:image/jpeg;base64,{logo_b64}" width="450">
             </div>
             """,
             unsafe_allow_html=True
