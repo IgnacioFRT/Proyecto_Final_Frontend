@@ -4,7 +4,7 @@ from pathlib import Path
 import streamlit as st
 from streamlit_autorefresh import st_autorefresh
 
-from components.sidebar import render_sidebar
+from sidebar import render_sidebar
 from styles import load_global_styles
 from config import APP_TITLE, APP_SUBTITLE
 from services.influx_service import get_latest_data, get_raw_data_count
