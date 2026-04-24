@@ -44,7 +44,7 @@ def render_home() -> None:
 
     col1, col2, col3 = st.columns([1, 3, 1])
     with col2:
-        logo_path = Path(__file__).parent / "assets" / "PORTADA.jpg"
+        logo_path = Path(__file__).parent / "assets" / "PORTADA.png"
         with open(logo_path, "rb") as img_file:
             logo_b64 = base64.b64encode(img_file.read()).decode()
 
