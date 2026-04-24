@@ -3,6 +3,7 @@ import streamlit as st
 def load_global_styles():
     st.markdown("""
     <style>
+
         footer {visibility: hidden;}
         .stAppDeployButton {display: none;}
         [data-testid="stToolbarActions"] {display: none;}
@@ -12,7 +13,17 @@ def load_global_styles():
             padding-bottom: 2rem !important;
         }
 
-        /* TITULOS */
+        /* ===== SIDEBAR OSCURO ===== */
+        [data-testid="stSidebar"] {
+            background: linear-gradient(180deg, #0f2027, #203a43);
+        }
+
+        /* Texto blanco en sidebar */
+        [data-testid="stSidebar"] * {
+            color: white !important;
+        }
+
+        /* ===== TITULOS ===== */
         .main-title {
             font-size: 2.3rem;
             font-weight: 700;
@@ -36,7 +47,7 @@ def load_global_styles():
             margin-bottom: 0.8rem;
         }
 
-        /* KPI CARDS */
+        /* ===== KPI CARDS ===== */
         .kpi-card {
             background: #f8fafc;
             border: 1px solid #dce3ea;
@@ -68,7 +79,7 @@ def load_global_styles():
             margin-top: 0.4rem;
         }
 
-        /* KPI CHICOS */
+        /* ===== KPI CHICOS ===== */
         .kpi-card-indicator {
             background: #ffffff;
             border: 1px solid #dce3ea;
@@ -100,18 +111,21 @@ def load_global_styles():
             margin-top: 0.35rem;
         }
 
-        /* 🔥 BOTONES SIDEBAR (NUEVO) */
+        /* ===== BOTONES SIDEBAR ===== */
         .stButton > button {
             width: 100%;
             border-radius: 8px;
             height: 42px;
             font-weight: 500;
+            background-color: #1e3a5f;
+            color: white;
+            border: 1px solid #2c5282;
             transition: 0.2s;
         }
 
         .stButton > button:hover {
-            background-color: #e6f0ff;
-            border-color: #9bbcff;
+            background-color: #2c5282;
+            border-color: #4c6ef5;
         }
 
     </style>
