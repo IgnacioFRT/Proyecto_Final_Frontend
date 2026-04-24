@@ -12,11 +12,10 @@ def nav_button(label: str, key: str) -> None:
                 padding: 10px 12px;
                 margin-bottom: 8px;
                 border-radius: 8px;
-                background-color: #ff4b4b;
+                background-color: #0d6efd;
                 color: white;
-                font-weight: 700;
+                font-weight: 600;
                 text-align: center;
-                border: 1px solid #ff4b4b;
             ">
                 {label}
             </div>
