@@ -127,7 +127,7 @@ def render_home() -> None:
     with f2_c1:
         st.markdown(f"""
         <div class="kpi-card">
-            <div class="kpi-title">Datos recibidos</div>
+            <div class="kpi-title">Registros recibidos</div>
             <div class="kpi-value">{raw_count:,}</div>
             <div class="kpi-sub">Registros en InfluxDB</div>
         </div>
