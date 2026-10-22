@@ -44,10 +44,6 @@ def get_historical_data():
     cols = [c for c in ["EA_imp_T1_kwh", "temp", "P1", "P2", "P3"] if c in df.columns]
     df = df[cols].copy()
 
-    # 🛠️ CONVERSIÓN OBLIGATORIA A NUMÉRICO PARA EVITAR EL BUG DE TEXTO
-    for col in cols:
-        df[col] = pd.to_numeric(df[col], errors="coerce")
-
     return df
 
 
